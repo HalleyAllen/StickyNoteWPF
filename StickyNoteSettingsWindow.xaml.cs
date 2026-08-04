@@ -146,8 +146,11 @@ public partial class StickyNoteSettingsWindow : Window
     private void TitleBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         if (_note == null) return;
-        _note.Title = TitleBox.Text;
-        _owner.ApplyTitle();
-        App.Current.SaveAll();
+        // “便利贴”视为默认占位，不写入模型，保持与主窗口占位逻辑一致
+        _note.Title = string.Equals(TitleBox.Text.Trim(), "便利贴", StringComparison.Ordinal)
+            ? string.Empty
+            : TitleBox.Text;
+        // 刷新便签窗口标题 + 保存 + 同步管理界面列表
+        App.Current.RefreshNote(_note, true);
     }
 }

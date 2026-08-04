@@ -13,6 +13,9 @@
         WindowStyle="None"
         ResizeMode="CanResize"
         Background="Transparent">
+    <Window.Resources>
+        <local:TitleFallbackConverter x:Key="TitleFallback"/>
+    </Window.Resources>
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome GlassFrameThickness="0"
                             CornerRadius="0"
@@ -84,20 +87,21 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
-                                    <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
-                                             FontWeight="Bold" FontSize="13" Foreground="#222"
+                                    <TextBox Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
+                                             FontWeight="Bold" FontSize="13"
                                              BorderThickness="0" Background="Transparent"
                                              ToolTip="点击修改便签标题"
                                              TextChanged="TitleTextBox_TextChanged">
                                         <TextBox.Style>
                                             <Style TargetType="TextBox">
-                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Setter Property="Foreground" Value="#222"/>
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Title}" Value="{x:Null}">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                    </DataTrigger>
+                                                    <!-- 空标题显示占位“便利贴”时置灰区分 -->
                                                     <DataTrigger Binding="{Binding Title}" Value="">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Setter Property="Foreground" Value="#999"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Title}" Value="{x:Null}">
+                                                        <Setter Property="Foreground" Value="#999"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>

@@ -97,12 +97,13 @@ public partial class App : System.Windows.Application
         win.Show();
     }
 
-    // 管理界面修改标题等后，刷新已打开的便签窗口显示
-    public void RefreshNote(StickyNoteModel note)
+    // 标题等修改后，刷新已打开的便签窗口显示；refreshManager=true 时同步刷新管理界面列表
+    public void RefreshNote(StickyNoteModel note, bool refreshManager = false)
     {
         if (_openWindows.TryGetValue(note.Id, out var win) && win.IsLoaded)
             win.ApplyTitle();
         SaveAll();
+        if (refreshManager) _manager?.RefreshList();
     }
 
     // 关闭便签窗口：只隐藏，保留数据（下次打开/启动时可恢复）
