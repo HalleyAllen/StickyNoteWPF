@@ -1,0 +1,93 @@
+﻿<Window x:Class="StickyNoteWPF.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:StickyNoteWPF"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        mc:Ignorable="d"
+        Title="便利贴管理" Height="480" Width="360"
+        WindowStartupLocation="CenterScreen"
+        Icon="Resources/StickyNote.ico"
+        WindowStyle="None"
+        ResizeMode="CanMinimize"
+        Background="Transparent">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome GlassFrameThickness="0"
+                            CornerRadius="0"
+                            ResizeBorderThickness="6"
+                            CaptionHeight="32"
+                            UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
+
+    <Border Background="#FFF3F3F3" BorderBrush="#FF2D2D30" BorderThickness="1">
+        <DockPanel LastChildFill="True">
+            <!-- 自定义标题栏（含新建按钮） -->
+            <Grid x:Name="TitleBar" DockPanel.Dock="Top" Height="32"
+                  Background="#FF2D2D30">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center"
+                            Margin="8,0,0,0">
+                    <Image Source="Resources/StickyNote.ico" Width="16" Height="16" Margin="0,0,6,0"/>
+                    <TextBlock Text="我的便利贴" Foreground="White"
+                               FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- 新建按钮（放在标题栏） -->
+                <Button x:Name="NewNoteButton" Grid.Column="1" Content="＋ 新建"
+                        Margin="0,0,2,0" Padding="10,4"
+                        Background="#FF007ACC" Foreground="White"
+                        BorderThickness="0" Cursor="Hand" FontSize="13"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+
+                <!-- 设置 -->
+                <Button x:Name="SettingsButton" Grid.Column="2" Content="⚙"
+                        Width="34" Height="32" Margin="0,0,2,0"
+                        Background="Transparent" Foreground="White"
+                        BorderThickness="0" Cursor="Hand" FontSize="15"
+                        ToolTip="设置" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+
+                <!-- 最小化 -->
+                <Button x:Name="MinButton" Grid.Column="3" Content="—"
+                        Width="34" Height="32" Background="Transparent"
+                        Foreground="White" BorderThickness="0" Cursor="Hand"
+                        FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+
+                <!-- 关闭 -->
+                <Button x:Name="CloseButton" Grid.Column="4" Content="✕"
+                        Width="40" Height="32" Background="Transparent"
+                        Foreground="White" BorderThickness="0" Cursor="Hand"
+                        FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+            </Grid>
+
+            <!-- 内容区 -->
+            <TextBlock x:Name="EmptyHint" DockPanel.Dock="Top" Margin="20,30,20,0"
+                       Text="还没有便利贴，点击标题栏上的「＋ 新建」开始吧。"
+                       Foreground="#888" TextWrapping="Wrap" HorizontalAlignment="Center"/>
+            <ListBox x:Name="NoteList" BorderThickness="0" Margin="8"
+                     Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="4" Padding="10" CornerRadius="6"
+                                Background="{Binding Color}" MaxWidth="320">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
+                                           FontSize="13" Foreground="#222"
+                                           MaxHeight="60" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding CreatedAt, StringFormat='创建于 {0:g}'}"
+                                           FontSize="10" Foreground="#555" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+    </Border>
+</Window>

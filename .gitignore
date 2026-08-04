@@ -1,0 +1,24 @@
+# Build results
+bin/
+obj/
+
+# Visual Studio / Rider
+*.user
+*.suo
+*.userprefs
+.vs/
+
+# Publish output
+publish/
+
+# NuGet
+*.nupkg
+.vs/
+
+# Rider
+.idea/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
