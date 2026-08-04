@@ -97,11 +97,11 @@ public partial class App : System.Windows.Application
         win.Show();
     }
 
-    // 标题等修改后，刷新已打开的便签窗口显示；refreshManager=true 时同步刷新管理界面列表
+    // 外观/标题等修改后，刷新已打开的便签窗口显示；refreshManager=true 时同步刷新管理界面列表
     public void RefreshNote(StickyNoteModel note, bool refreshManager = false)
     {
         if (_openWindows.TryGetValue(note.Id, out var win) && win.IsLoaded)
-            win.ApplyTitle();
+            win.RefreshFromModel();
         SaveAll();
         if (refreshManager) _manager?.RefreshList();
     }

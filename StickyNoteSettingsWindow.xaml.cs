@@ -27,13 +27,14 @@ public partial class StickyNoteSettingsWindow : Window
         void SetBg(string hex)
         {
             _note.Color = hex;
-            Commit();
+            // 刷新便签窗口外观 + 保存 + 同步管理界面列表背景
+            App.Current.RefreshNote(_note, true);
             BuildSwatches(BgColorPanel, hex, SetBg);
         }
         void SetText(string hex)
         {
             _note.TextColor = hex;
-            Commit();
+            App.Current.RefreshNote(_note, true);
             BuildSwatches(TextColorPanel, hex, SetText);
         }
 
