@@ -27,6 +27,20 @@ public static class NoteStore
         }
     }
 
+    // 清除持久化缓存文件（删除 notes.json），用于清掉已删除便签的残留数据
+    public static void Clear()
+    {
+        try
+        {
+            if (File.Exists(FilePath))
+                File.Delete(FilePath);
+        }
+        catch
+        {
+            // 删除失败时不阻塞 UI
+        }
+    }
+
     public static void Save(IEnumerable<StickyNoteModel> notes)
     {
         try
