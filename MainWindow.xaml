@@ -15,6 +15,7 @@
         Background="Transparent">
     <Window.Resources>
         <local:TitleFallbackConverter x:Key="TitleFallback"/>
+        <local:ContrastTextConverter x:Key="ContrastText"/>
     </Window.Resources>
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome GlassFrameThickness="0"
@@ -90,28 +91,17 @@
                                     <TextBox Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
                                              FontWeight="Bold" FontSize="13"
                                              BorderThickness="0" Background="Transparent"
+                                             Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
                                              ToolTip="点击修改便签标题"
-                                             TextChanged="TitleTextBox_TextChanged">
-                                        <TextBox.Style>
-                                            <Style TargetType="TextBox">
-                                                <Setter Property="Foreground" Value="#222"/>
-                                                <Style.Triggers>
-                                                    <!-- 空标题显示占位“便利贴”时置灰区分 -->
-                                                    <DataTrigger Binding="{Binding Title}" Value="">
-                                                        <Setter Property="Foreground" Value="#999"/>
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding Title}" Value="{x:Null}">
-                                                        <Setter Property="Foreground" Value="#999"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBox.Style>
-                                    </TextBox>
+                                             TextChanged="TitleTextBox_TextChanged"/>
                                     <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
-                                               FontSize="13" Foreground="#222"
+                                               FontSize="13"
+                                               Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
                                                MaxHeight="60" TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Text="{Binding CreatedAt, StringFormat='创建于 {0:g}'}"
-                                               FontSize="10" Foreground="#555" Margin="0,4,0,0"/>
+                                               FontSize="10"
+                                               Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
+                                               Margin="0,4,0,0"/>
                                 </StackPanel>
                                 <Button Grid.Column="1" Content="🗑"
                                         Width="28" Height="28" Margin="8,0,0,0"
