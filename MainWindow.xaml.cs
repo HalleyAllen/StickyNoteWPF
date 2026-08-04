@@ -14,7 +14,6 @@ public partial class MainWindow : Window
         InitializeComponent();
         NewNoteButton.Click += (_, _) => App.Current.CreateNote();
         SettingsButton.Click += (_, _) => App.Current.OpenSettings();
-        ClearCacheButton.Click += ClearCacheButton_Click;
         MinButton.Click += (_, _) => WindowState = WindowState.Minimized;
         CloseButton.Click += (_, _) => Close();
         TitleBar.MouseLeftButtonDown += (_, e) =>
@@ -34,17 +33,6 @@ public partial class MainWindow : Window
     {
         if (sender is System.Windows.Controls.Button btn && btn.DataContext is StickyNoteModel note)
             App.Current.DeleteNote(note);
-    }
-
-    private void ClearCacheButton_Click(object sender, RoutedEventArgs e)
-    {
-        var result = System.Windows.MessageBox.Show(
-            "将清除已删除便签的残留数据（按当前便签重新保存）。\n确定继续吗？",
-            "清除缓存",
-            System.Windows.MessageBoxButton.OKCancel,
-            System.Windows.MessageBoxImage.Question);
-        if (result == System.Windows.MessageBoxResult.OK)
-            App.Current.ClearCache();
     }
 
     private void TitleTextBox_TextChanged(object sender, TextChangedEventArgs e)

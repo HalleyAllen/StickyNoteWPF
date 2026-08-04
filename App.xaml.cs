@@ -132,14 +132,6 @@ public partial class App : System.Windows.Application
         _manager?.RefreshList();
     }
 
-    // 清除缓存：删除磁盘残留文件，再按当前内存便签重新保存，确保清掉已删除数据
-    public void ClearCache()
-    {
-        NoteStore.Clear();
-        SaveAll();
-        _manager?.RefreshList();
-    }
-
     public void ShowManager()
     {
         if (_manager == null)
