@@ -84,11 +84,13 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Text="{Binding Title}" FontWeight="Bold"
-                                               FontSize="13" Foreground="#222"
-                                               TextTrimming="CharacterEllipsis">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
+                                    <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
+                                             FontWeight="Bold" FontSize="13" Foreground="#222"
+                                             BorderThickness="0" Background="Transparent"
+                                             ToolTip="点击修改便签标题"
+                                             TextChanged="TitleTextBox_TextChanged">
+                                        <TextBox.Style>
+                                            <Style TargetType="TextBox">
                                                 <Setter Property="Visibility" Value="Visible"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding Title}" Value="{x:Null}">
@@ -99,8 +101,8 @@
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
+                                        </TextBox.Style>
+                                    </TextBox>
                                     <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
                                                FontSize="13" Foreground="#222"
                                                MaxHeight="60" TextTrimming="CharacterEllipsis"/>

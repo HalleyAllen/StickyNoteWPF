@@ -35,6 +35,12 @@ public partial class MainWindow : Window
             App.Current.DeleteNote(note);
     }
 
+    private void TitleTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.TextBox box && box.DataContext is StickyNoteModel note)
+            App.Current.RefreshNote(note);
+    }
+
     public void RefreshList()
     {
         var notes = App.Current.Notes;

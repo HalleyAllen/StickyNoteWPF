@@ -97,6 +97,14 @@ public partial class App : System.Windows.Application
         win.Show();
     }
 
+    // 管理界面修改标题等后，刷新已打开的便签窗口显示
+    public void RefreshNote(StickyNoteModel note)
+    {
+        if (_openWindows.TryGetValue(note.Id, out var win) && win.IsLoaded)
+            win.ApplyTitle();
+        SaveAll();
+    }
+
     // 关闭便签窗口：只隐藏，保留数据（下次打开/启动时可恢复）
     private void HideNote(StickyNoteModel note)
     {
