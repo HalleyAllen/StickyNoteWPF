@@ -26,13 +26,11 @@ public partial class App : System.Windows.Application
         _notes = NoteStore.Load();
         _tray = new TrayIconService(this);
 
-        // 启动时打开之前存在的便利贴
+        // 启动时打开之前存在的便利贴（每个便签使用自身持久化的样式）
         foreach (var note in _notes)
             OpenNote(note);
 
         ApplyTopmost(Settings.GlobalTopmost);
-        ApplyOpacity(Settings.WindowOpacity);
-        ApplyThemeColors();
 
         // 管理器窗口关闭时不退出应用（托盘常驻）
         ShowManager();
@@ -66,27 +64,7 @@ public partial class App : System.Windows.Application
             win.Topmost = topmost;
     }
 
-    // 全局透明度滑块：批量设置所有便签（作为统一调整）
-    public void ApplyOpacity(double opacity)
-    {
-        foreach (var win in _openWindows.Values)
-        {
-            win.Note.Opacity = opacity;
-            win.ApplyOpacity(opacity);
-        }
-        SaveAll();
-    }
-
-    // 全局文字/按钮颜色：批量设置所有便签
-    public void ApplyThemeColors()
-    {
-        foreach (var win in _openWindows.Values)
-        {
-            win.Note.TextColor = Settings.NoteTextColor;
-            win.ApplyTextStyle();
-        }
-        SaveAll();
-    }
+    // 主设置只作为新建便签的默认值，已创建的便签保留各自样式（见 CreateNote / StickyNoteWindow）
 
     public void OpenSettings()
     {
@@ -112,18 +90,33 @@ public partial class App : System.Windows.Application
         }
 
         var win = new StickyNoteWindow(note);
-        win.ClosedByUser += (_, _) => RemoveNote(note);
+        // 便签窗口关闭（点 ✕）仅隐藏，不删除数据
+        win.ClosedByUser += (_, _) => HideNote(note);
         win.Closed += (_, _) => _openWindows.Remove(note.Id);
         _openWindows[note.Id] = win;
         win.Show();
     }
 
-    private void RemoveNote(StickyNoteModel note)
+    // 关闭便签窗口：只隐藏，保留数据（下次打开/启动时可恢复）
+    private void HideNote(StickyNoteModel note)
     {
         if (_openWindows.TryGetValue(note.Id, out var win))
         {
             _openWindows.Remove(note.Id);
-            win.Close();
+            if (win.IsLoaded)
+                win.Close();
+        }
+        SaveAll();
+    }
+
+    // 真正删除便签：关闭窗口并从数据/磁盘移除
+    public void DeleteNote(StickyNoteModel note)
+    {
+        if (_openWindows.TryGetValue(note.Id, out var win))
+        {
+            _openWindows.Remove(note.Id);
+            if (win.IsLoaded)
+                win.Close();
         }
         _notes.Remove(note);
         SaveAll();

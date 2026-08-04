@@ -28,7 +28,7 @@ public partial class SettingsWindow : Window
         BuildSwatches(ColorPanel, _settings.DefaultColor,
             hex => { _settings.DefaultColor = hex; _settings.Save(); BuildSwatches(ColorPanel, hex, null); },
             hex => { _settings.DefaultColor = hex; _settings.Save(); BuildSwatches(ColorPanel, hex, null); });
-        // 统一的文字与按钮颜色：同时驱动便签文字/标题文字/按钮
+        // 统一的文字与按钮颜色：仅作为新建便签的默认值，不影响已创建的便签
         BuildSwatches(TextColorPanel, _settings.NoteTextColor,
             hex =>
             {
@@ -36,7 +36,6 @@ public partial class SettingsWindow : Window
                 _settings.TitleTextColor = hex;
                 _settings.ButtonColor = hex;
                 _settings.Save();
-                App.Current.ApplyThemeColors();
                 BuildSwatches(TextColorPanel, hex, null);
             },
             hex =>
@@ -45,7 +44,6 @@ public partial class SettingsWindow : Window
                 _settings.TitleTextColor = hex;
                 _settings.ButtonColor = hex;
                 _settings.Save();
-                App.Current.ApplyThemeColors();
                 BuildSwatches(TextColorPanel, hex, null);
             });
 
@@ -67,7 +65,6 @@ public partial class SettingsWindow : Window
         _settings.WindowOpacity = v;
         _settings.Save();
         UpdateOpacityLabel(v);
-        App.Current.ApplyOpacity(v);
     }
 
     private void UpdateOpacityLabel(double v)

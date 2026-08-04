@@ -7,10 +7,11 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
         Title="便利贴管理" Height="480" Width="360"
+        MinHeight="240" MinWidth="280"
         WindowStartupLocation="CenterScreen"
         Icon="Resources/StickyNote.ico"
         WindowStyle="None"
-        ResizeMode="CanMinimize"
+        ResizeMode="CanResize"
         Background="Transparent">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome GlassFrameThickness="0"
@@ -77,13 +78,42 @@
                     <DataTemplate>
                         <Border Margin="4" Padding="10" CornerRadius="6"
                                 Background="{Binding Color}" MaxWidth="320">
-                            <StackPanel>
-                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
-                                           FontSize="13" Foreground="#222"
-                                           MaxHeight="60" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="{Binding CreatedAt, StringFormat='创建于 {0:g}'}"
-                                           FontSize="10" Foreground="#555" Margin="0,4,0,0"/>
-                            </StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="{Binding Title}" FontWeight="Bold"
+                                               FontSize="13" Foreground="#222"
+                                               TextTrimming="CharacterEllipsis">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Title}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Title}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
+                                               FontSize="13" Foreground="#222"
+                                               MaxHeight="60" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding CreatedAt, StringFormat='创建于 {0:g}'}"
+                                               FontSize="10" Foreground="#555" Margin="0,4,0,0"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="🗑"
+                                        Width="28" Height="28" Margin="8,0,0,0"
+                                        Background="Transparent" Foreground="#C0392B"
+                                        BorderThickness="0" Cursor="Hand" FontSize="14"
+                                        ToolTip="删除便签"
+                                        Click="DeleteNoteButton_Click"/>
+                            </Grid>
                         </Border>
                     </DataTemplate>
                 </ListBox.ItemTemplate>

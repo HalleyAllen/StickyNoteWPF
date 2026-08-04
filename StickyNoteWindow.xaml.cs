@@ -25,6 +25,7 @@ public partial class StickyNoteWindow : Window
         NoteTextBox.FontSize = note.FontSize;
 
         RefreshFromModel();
+        ApplyTitle();
 
         TitleBar.MouseLeftButtonDown += TitleBar_MouseLeftButtonDown;
         CloseButton.Click += (_, _) => RequestClose();
@@ -37,6 +38,13 @@ public partial class StickyNoteWindow : Window
     {
         ApplyColor(Note.Color);
         ApplyTextStyle();
+        ApplyTitle();
+    }
+
+    // 应用便签标题：空则用默认“便利贴”
+    public void ApplyTitle()
+    {
+        TitleText.Text = string.IsNullOrWhiteSpace(Note.Title) ? "便利贴" : Note.Title;
     }
 
     // 仅调节窗口背景透明度，文字保持不透明（供全局滑块批量调用）

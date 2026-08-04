@@ -23,38 +23,32 @@ public partial class StickyNoteSettingsWindow : Window
         _note = owner.Note;
         InitializeComponent();
 
-        var customBg = MakeCustomSwatch(hex =>
+        // 颜色设置后用本地函数重绘，保证 onPick 始终有效（避免重绘传入 null 导致后续点击无反应）
+        void SetBg(string hex)
         {
             _note.Color = hex;
             Commit();
-            BuildSwatches(BgColorPanel, hex, null);
-        });
-        var customText = MakeCustomSwatch(hex =>
+            BuildSwatches(BgColorPanel, hex, SetBg);
+        }
+        void SetText(string hex)
         {
             _note.TextColor = hex;
             Commit();
-            BuildSwatches(TextColorPanel, hex, null);
-        });
-        BgColorPanel.Children.Add(customBg);
-        TextColorPanel.Children.Add(customText);
-        BuildSwatches(BgColorPanel, _note.Color, hex =>
-        {
-            _note.Color = hex;
-            Commit();
-            BuildSwatches(BgColorPanel, hex, null);
-        });
-        BuildSwatches(TextColorPanel, _note.TextColor, hex =>
-        {
-            _note.TextColor = hex;
-            Commit();
-            BuildSwatches(TextColorPanel, hex, null);
-        });
+            BuildSwatches(TextColorPanel, hex, SetText);
+        }
+
+        BgColorPanel.Children.Add(MakeCustomSwatch(SetBg));
+        TextColorPanel.Children.Add(MakeCustomSwatch(SetText));
+        BuildSwatches(BgColorPanel, _note.Color, SetBg);
+        BuildSwatches(TextColorPanel, _note.TextColor, SetText);
 
         FontSizeSlider.Value = _note.FontSize;
         FontSizeValue.Text = $"{Math.Round(_note.FontSize)}";
 
         OpacitySlider.Value = _note.Opacity;
         OpacityValue.Text = $"{Math.Round(_note.Opacity * 100)}%";
+
+        TitleBox.Text = _note.Title;
 
         CloseButton.Click += (_, _) => Close();
         TitleBar.MouseLeftButtonDown += (_, e) =>
@@ -147,5 +141,13 @@ public partial class StickyNoteSettingsWindow : Window
         _note.Opacity = v;
         OpacityValue.Text = $"{Math.Round(v * 100)}%";
         Commit();
+    }
+
+    private void TitleBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_note == null) return;
+        _note.Title = TitleBox.Text;
+        _owner.ApplyTitle();
+        App.Current.SaveAll();
     }
 }

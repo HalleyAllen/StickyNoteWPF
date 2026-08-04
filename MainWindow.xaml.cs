@@ -29,6 +29,12 @@ public partial class MainWindow : Window
         Loaded += (_, _) => RefreshList();
     }
 
+    private void DeleteNoteButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button btn && btn.DataContext is StickyNoteModel note)
+            App.Current.DeleteNote(note);
+    }
+
     public void RefreshList()
     {
         var notes = App.Current.Notes;

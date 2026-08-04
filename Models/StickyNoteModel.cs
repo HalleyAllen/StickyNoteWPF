@@ -3,6 +3,7 @@ namespace StickyNoteWPF.Models;
 public class StickyNoteModel
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public string Title { get; set; } = string.Empty; // 便签标题，用于区分；空则用默认"便利贴"
     public string Text { get; set; } = string.Empty;
     public double Left { get; set; } = 200;
     public double Top { get; set; } = 200;

@@ -3,17 +3,25 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
         Title="便利贴"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
-        ResizeMode="CanResizeWithGrip"
+        ResizeMode="CanResize"
         ShowInTaskbar="False"
         Topmost="True"
         MinWidth="160" MinHeight="120"
         SizeToContent="Manual"
         Icon="Resources/StickyNote.ico">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome GlassFrameThickness="0"
+                            CornerRadius="0"
+                            ResizeBorderThickness="6"
+                            CaptionHeight="0"
+                            UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
     <!-- 根容器：透明，避免整体被当作半透明单元合成 -->
     <Grid>
         <!-- 底层：半透明背景 + 阴影（只负责背景，不含文字） -->
@@ -35,11 +43,13 @@
                 <Button x:Name="SettingsButton" Grid.Column="1" Content="⚙"
                         Width="26" Height="22" Margin="0,0,2,0"
                         Background="Transparent" BorderThickness="0"
-                        ToolTip="便签设置" Cursor="Hand"/>
+                        ToolTip="便签设置" Cursor="Hand"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                 <Button x:Name="CloseButton" Grid.Column="2" Content="✕"
                         Width="26" Height="22" Margin="0,0,4,0"
                         Background="Transparent" BorderThickness="0"
-                        ToolTip="关闭" Cursor="Hand"/>
+                        ToolTip="关闭" Cursor="Hand"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
             </Grid>
             <!-- 文本编辑区 -->
             <TextBox x:Name="NoteTextBox" DockPanel.Dock="Bottom"
