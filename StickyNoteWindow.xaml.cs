@@ -1,8 +1,10 @@
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using System.Windows.Threading;
 using StickyNoteWPF.Models;
 using StickyNoteWPF.Services;
 
@@ -32,23 +34,44 @@ public partial class StickyNoteWindow : Window
         SettingsButton.Click += (_, _) => App.Current.OpenNoteSettings(this);
         NoteTextBox.TextChanged += (_, _) => { Note.Text = NoteTextBox.Text; Persist(); };
 
-        // 鼠标移入便签区域才显示，移开则隐藏（鼠标穿透仍可捕获进入）
-        MouseEnter += (_, _) => ShowContent();
-        MouseLeave += (_, _) => HideContent();
+        // 鼠标悬停显示：用全局光标坐标判定是否落在便签矩形内（Opacity=0 时窗口不可命中，需轮询）
+        _hoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+        _hoverTimer.Tick += HoverTick;
+        _hoverTimer.Start();
         HideContent();
     }
 
-    // 鼠标移入：显示完整便签并恢复置顶
+    private readonly DispatcherTimer _hoverTimer;
+
+    // 定时器按全局鼠标坐标判定是否进入便签区域
+    private void HoverTick(object? sender, EventArgs e)
+    {
+        try
+        {
+            var p = PointFromScreen(new System.Windows.Point(
+                System.Windows.Forms.Cursor.Position.X,
+                System.Windows.Forms.Cursor.Position.Y));
+            if (p.X >= 0 && p.Y >= 0 && p.X <= ActualWidth && p.Y <= ActualHeight)
+                ShowContent();
+            else
+                HideContent();
+        }
+        catch { }
+    }
+
+    // 鼠标移入：显示完整便签并恢复置顶、可交互
     private void ShowContent()
     {
         Opacity = 1;
+        IsHitTestVisible = true;
         Topmost = App.Current?.Settings.GlobalTopmost ?? true;
     }
 
-    // 鼠标移开：隐藏（Opacity=0 但仍可命中，以便再次移入时显示）
+    // 鼠标移开：隐藏并穿透（不挡桌面操作），仍可被坐标判定重新显示
     private void HideContent()
     {
         Opacity = 0;
+        IsHitTestVisible = false;
         Topmost = false;
     }
 
