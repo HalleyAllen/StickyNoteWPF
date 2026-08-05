@@ -13,5 +13,6 @@ public class StickyNoteModel
     public double FontSize { get; set; } = 14;
     public string TextColor { get; set; } = "#FF222222"; // 便签文字颜色
     public double Opacity { get; set; } = 1.0;           // 便签窗口透明度
+    public bool HoverToShow { get; set; } = false;       // 鼠标移到该便签区域才显示，移开隐藏
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 }

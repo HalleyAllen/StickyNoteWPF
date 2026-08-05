@@ -9,11 +9,12 @@
         WindowStartupLocation="CenterOwner"
         Icon="Resources/StickyNote.ico"
         WindowStyle="None"
-        ResizeMode="NoResize"
+        ResizeMode="CanResize"
+        MinHeight="420" MinWidth="340"
         Background="Transparent">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome GlassFrameThickness="0" CornerRadius="0"
-                            ResizeBorderThickness="0" CaptionHeight="40"
+                            ResizeBorderThickness="6" CaptionHeight="40"
                             UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
 

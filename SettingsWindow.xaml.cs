@@ -20,6 +20,13 @@ public partial class SettingsWindow : Window
         _settings = settings;
         InitializeComponent();
 
+        // 恢复上次保存的窗口大小
+        if (_settings.SettingsWindowWidth > 0 && _settings.SettingsWindowHeight > 0)
+        {
+            Width = _settings.SettingsWindowWidth;
+            Height = _settings.SettingsWindowHeight;
+        }
+
         StartupCheck.IsChecked = AppSettings.IsStartupEnabled();
         TopmostCheck.IsChecked = _settings.GlobalTopmost;
         OpacitySlider.Value = _settings.WindowOpacity;
@@ -51,6 +58,12 @@ public partial class SettingsWindow : Window
         TitleBar.MouseLeftButtonDown += (_, e) =>
         {
             if (e.LeftButton == MouseButtonState.Pressed) DragMove();
+        };
+        Closing += (_, _) =>
+        {
+            _settings.SettingsWindowWidth = Width;
+            _settings.SettingsWindowHeight = Height;
+            _settings.Save();
         };
         StartupCheck.Checked += (_, _) => { AppSettings.SetStartupWithWindows(true); _settings.StartupWithWindows = true; _settings.Save(); };
         StartupCheck.Unchecked += (_, _) => { AppSettings.SetStartupWithWindows(false); _settings.StartupWithWindows = false; _settings.Save(); };

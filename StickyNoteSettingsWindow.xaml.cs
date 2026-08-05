@@ -23,6 +23,14 @@ public partial class StickyNoteSettingsWindow : Window
         _note = owner.Note;
         InitializeComponent();
 
+        // 恢复上次保存的便签设置窗口大小
+        var s = App.Current.Settings;
+        if (s.NoteSettingsWidth > 0 && s.NoteSettingsHeight > 0)
+        {
+            Width = s.NoteSettingsWidth;
+            Height = s.NoteSettingsHeight;
+        }
+
         // 颜色设置后用本地函数重绘，保证 onPick 始终有效（避免重绘传入 null 导致后续点击无反应）
         void SetBg(string hex)
         {
@@ -55,6 +63,13 @@ public partial class StickyNoteSettingsWindow : Window
         TitleBar.MouseLeftButtonDown += (_, e) =>
         {
             if (e.LeftButton == MouseButtonState.Pressed) DragMove();
+        };
+        Closing += (_, _) =>
+        {
+            var st = App.Current.Settings;
+            st.NoteSettingsWidth = Width;
+            st.NoteSettingsHeight = Height;
+            st.Save();
         };
     }
 
