@@ -31,6 +31,25 @@ public partial class StickyNoteWindow : Window
         CloseButton.Click += (_, _) => RequestClose();
         SettingsButton.Click += (_, _) => App.Current.OpenNoteSettings(this);
         NoteTextBox.TextChanged += (_, _) => { Note.Text = NoteTextBox.Text; Persist(); };
+
+        // 鼠标移入便签区域才显示，移开则隐藏（鼠标穿透仍可捕获进入）
+        MouseEnter += (_, _) => ShowContent();
+        MouseLeave += (_, _) => HideContent();
+        HideContent();
+    }
+
+    // 鼠标移入：显示完整便签并恢复置顶
+    private void ShowContent()
+    {
+        Opacity = 1;
+        Topmost = App.Current?.Settings.GlobalTopmost ?? true;
+    }
+
+    // 鼠标移开：隐藏（Opacity=0 但仍可命中，以便再次移入时显示）
+    private void HideContent()
+    {
+        Opacity = 0;
+        Topmost = false;
     }
 
     // 根据 Note 自身存储的外观重新应用（颜色/透明度/字体/文字色）
