@@ -14,6 +14,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         NewNoteButton.Click += (_, _) => App.Current.CreateNote();
         SettingsButton.Click += (_, _) => App.Current.OpenSettings();
+        HoverToggleButton.Click += HoverToggleButton_Click;
         MinButton.Click += (_, _) => WindowState = WindowState.Minimized;
         CloseButton.Click += (_, _) => Close();
         TitleBar.MouseLeftButtonDown += (_, e) =>
@@ -26,7 +27,26 @@ public partial class MainWindow : Window
             if (NoteList.SelectedItem is StickyNoteModel note)
                 App.Current.OpenNote(note);
         };
-        Loaded += (_, _) => RefreshList();
+        Loaded += (_, _) =>
+        {
+            UpdateHoverButton();
+            RefreshList();
+        };
+    }
+
+    // 根据设置更新悬停显示按钮文字
+    private void UpdateHoverButton()
+    {
+        HoverToggleButton.Content = App.Current.Settings.HoverToShow ? "悬停显示：开" : "悬停显示：关";
+    }
+
+    private void HoverToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        var s = App.Current.Settings;
+        s.HoverToShow = !s.HoverToShow;
+        s.Save();
+        App.Current.ApplyHoverSetting();
+        UpdateHoverButton();
     }
 
     private void DeleteNoteButton_Click(object sender, RoutedEventArgs e)

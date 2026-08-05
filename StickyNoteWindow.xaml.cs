@@ -35,13 +35,23 @@ public partial class StickyNoteWindow : Window
         NoteTextBox.TextChanged += (_, _) => { Note.Text = NoteTextBox.Text; Persist(); };
 
         // 鼠标悬停显示：用全局光标坐标判定是否落在便签矩形内（Opacity=0 时窗口不可命中，需轮询）
-        _hoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
-        _hoverTimer.Tick += HoverTick;
-        _hoverTimer.Start();
-        HideContent();
+        if (App.Current?.Settings.HoverToShow == true)
+        {
+            _hoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+            _hoverTimer.Tick += HoverTick;
+            _hoverTimer.Start();
+            HideContent();
+        }
+        else
+        {
+            // 不启用悬停显隐：始终完整显示
+            Opacity = 1;
+            IsHitTestVisible = true;
+            Topmost = App.Current?.Settings.GlobalTopmost ?? true;
+        }
     }
 
-    private readonly DispatcherTimer _hoverTimer;
+    private DispatcherTimer? _hoverTimer;
 
     // 定时器按全局鼠标坐标判定是否进入便签区域
     private void HoverTick(object? sender, EventArgs e)
@@ -73,6 +83,30 @@ public partial class StickyNoteWindow : Window
         Opacity = 0;
         IsHitTestVisible = false;
         Topmost = false;
+    }
+
+    // 设置切换后实时应用：开启悬停显隐则开始轮询隐藏，否则停止并完整显示
+    public void ApplyHoverSetting()
+    {
+        if (App.Current?.Settings.HoverToShow == true)
+        {
+            if (_hoverTimer == null)
+            {
+                var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+                t.Tick += HoverTick;
+                t.Start();
+                _hoverTimer = t;
+            }
+            HideContent();
+        }
+        else
+        {
+            _hoverTimer?.Stop();
+            _hoverTimer = null;
+            Opacity = 1;
+            IsHitTestVisible = true;
+            Topmost = App.Current?.Settings.GlobalTopmost ?? true;
+        }
     }
 
     // 根据 Note 自身存储的外观重新应用（颜色/透明度/字体/文字色）

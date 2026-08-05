@@ -12,6 +12,7 @@ public class AppSettings
 
     public bool StartupWithWindows { get; set; }
     public bool GlobalTopmost { get; set; } = true;
+    public bool HoverToShow { get; set; } = false;   // 鼠标悬停才显示便签，移开隐藏
     public string DefaultColor { get; set; } = "#FFF7A900";
     public double WindowOpacity { get; set; } = 1.0;
     public string NoteTextColor { get; set; } = "#FF222222";   // 便签编辑区文字

@@ -52,21 +52,29 @@
                         BorderThickness="0" Cursor="Hand" FontSize="13"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
+                <!-- 悬停显示开关 -->
+                <Button x:Name="HoverToggleButton" Grid.Column="2" Content="悬停显示：关"
+                        Margin="0,0,2,0" Padding="8,4"
+                        Background="Transparent" Foreground="White"
+                        BorderThickness="0" Cursor="Hand" FontSize="12"
+                        ToolTip="开启后鼠标移到便签范围才显示，移开隐藏"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+
                 <!-- 设置 -->
-                <Button x:Name="SettingsButton" Grid.Column="2" Content="⚙"
+                <Button x:Name="SettingsButton" Grid.Column="3" Content="⚙"
                         Width="34" Height="32" Margin="0,0,2,0"
                         Background="Transparent" Foreground="White"
                         BorderThickness="0" Cursor="Hand" FontSize="15"
                         ToolTip="设置" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
                 <!-- 最小化 -->
-                <Button x:Name="MinButton" Grid.Column="3" Content="—"
+                <Button x:Name="MinButton" Grid.Column="4" Content="—"
                         Width="34" Height="32" Background="Transparent"
                         Foreground="White" BorderThickness="0" Cursor="Hand"
                         FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
                 <!-- 关闭 -->
-                <Button x:Name="CloseButton" Grid.Column="4" Content="✕"
+                <Button x:Name="CloseButton" Grid.Column="5" Content="✕"
                         Width="40" Height="32" Background="Transparent"
                         Foreground="White" BorderThickness="0" Cursor="Hand"
                         FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>

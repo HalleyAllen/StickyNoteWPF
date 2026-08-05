@@ -118,6 +118,13 @@ public partial class App : System.Windows.Application
         SaveAll();
     }
 
+    // 悬停显隐设置切换后，实时刷新所有已打开的便签
+    public void ApplyHoverSetting()
+    {
+        foreach (var win in _openWindows.Values)
+            win.ApplyHoverSetting();
+    }
+
     // 真正删除便签：关闭窗口并从数据/磁盘移除
     public void DeleteNote(StickyNoteModel note)
     {
