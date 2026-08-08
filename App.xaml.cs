@@ -1,6 +1,8 @@
 ﻿using System.Configuration;
 using System.Data;
+using System.Threading;
 using System.Windows;
+using System.Windows.Interop;
 using StickyNoteWPF.Models;
 using StickyNoteWPF.Services;
 
@@ -8,6 +10,12 @@ namespace StickyNoteWPF;
 
 public partial class App : System.Windows.Application
 {
+    // 单实例互斥锁：保证同一时间只运行一个程序
+    private static readonly string MutexName = "StickyNoteWPF_SingleInstance";
+    private static Mutex? _singleMutex;
+    // 用于激活已运行实例的自定义窗口消息（internal 供 MainWindow 读取）
+    internal static readonly int ActivateMessage = NativeMethods.RegisterWindowMessage("StickyNoteWPF_Activate");
+
     private List<StickyNoteModel> _notes = new();
     private readonly Dictionary<Guid, StickyNoteWindow> _openWindows = new();
     private MainWindow? _manager;
@@ -20,6 +28,20 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // 单实例检测：若已有实例在运行，则激活它并退出当前实例
+        _singleMutex = new Mutex(true, MutexName, out bool createdNew);
+        if (!createdNew)
+        {
+            // 向已运行实例广播“激活”消息
+            NativeMethods.PostMessage(
+                (IntPtr)NativeMethods.HWND_BROADCAST,
+                ActivateMessage,
+                IntPtr.Zero,
+                IntPtr.Zero);
+            Shutdown();
+            return;
+        }
+
         base.OnStartup(e);
 
         Settings = AppSettings.Load();
@@ -165,4 +187,23 @@ public partial class App : System.Windows.Application
         _tray?.Dispose();
         base.OnExit(e);
     }
+
+    // 收到其他实例发来的激活消息时，显示并前置管理器窗口
+    internal void ActivateFromOtherInstance()
+    {
+        ShowManager();
+    }
+}
+
+// Win32 互操作：跨实例广播消息
+internal static class NativeMethods
+{
+    public const int HWND_BROADCAST = 0xFFFF;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+    public static extern int RegisterWindowMessage(string lpString);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    public static extern bool PostMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
 }
