@@ -46,9 +46,13 @@ public partial class MainWindow : Window
         {
             UpdateForceShowButton();
             RefreshLists();
+            UpdateTabIndicator();
+            UpdateTabVisuals();
             var source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
             source.AddHook(WndProc);
         };
+        // 窗口尺寸变化时同步指示器宽度/位置，避免错位
+        SizeChanged += (_, _) => UpdateTabIndicator();
     }
 
     // 根据设置更新“全部显示”按钮状态（图标高亮表示已开启）
@@ -100,7 +104,19 @@ public partial class MainWindow : Window
         AddNoteButton.ToolTip = showTasks ? "新建任务清单" : "新建便利贴";
 
         UpdateTabIndicator();
+        UpdateTabVisuals();
         RefreshLists();
+    }
+
+    // 选中页签的文字高亮（蓝色 + 加粗），未选中为深灰
+    private void UpdateTabVisuals()
+    {
+        var selected = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x00, 0x7A, 0xCC));
+        var normal = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x44, 0x44, 0x44));
+        TabNotes.Foreground = _showTasks ? normal : selected;
+        TabNotes.FontWeight = _showTasks ? FontWeights.Normal : FontWeights.SemiBold;
+        TabTasks.Foreground = _showTasks ? selected : normal;
+        TabTasks.FontWeight = _showTasks ? FontWeights.SemiBold : FontWeights.Normal;
     }
 
     private void UpdateTabIndicator()
