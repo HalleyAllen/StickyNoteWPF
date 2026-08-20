@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using StickyNoteWPF.Models;
 using StickyNoteWPF.Services;
@@ -26,7 +27,24 @@ public partial class MainWindow : Window
             if (NoteList.SelectedItem is StickyNoteModel note)
                 App.Current.OpenNote(note);
         };
-        Loaded += (_, _) => RefreshList();
+        Loaded += (_, _) =>
+        {
+            RefreshList();
+            // 注册窗口消息钩子，接收其他实例发来的“激活”消息
+            var source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+            source.AddHook(WndProc);
+        };
+    }
+
+    // 处理跨实例激活消息
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == App.ActivateMessage)
+        {
+            App.Current.ActivateFromOtherInstance();
+            handled = true;
+        }
+        return IntPtr.Zero;
     }
 
     private void DeleteNoteButton_Click(object sender, RoutedEventArgs e)
