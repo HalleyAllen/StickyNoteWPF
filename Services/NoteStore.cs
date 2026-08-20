@@ -4,30 +4,51 @@ using StickyNoteWPF.Models;
 
 namespace StickyNoteWPF.Services;
 
+public class StoreData
+{
+    public List<StickyNoteModel> Notes { get; set; } = new();
+    public List<TaskListModel> TaskLists { get; set; } = new();
+}
+
 public static class NoteStore
 {
     private static readonly string FilePath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "StickyNoteWPF", "notes.json");
 
-    public static List<StickyNoteModel> Load()
+    public static StoreData Load()
     {
+        var data = new StoreData();
         try
         {
             if (!File.Exists(FilePath))
-                return new List<StickyNoteModel>();
+                return data;
 
             var json = File.ReadAllText(FilePath);
-            var list = JsonSerializer.Deserialize<List<StickyNoteModel>>(json);
-            return list ?? new List<StickyNoteModel>();
+
+            // 兼容旧格式：直接是便利贴数组
+            var legacy = JsonSerializer.Deserialize<List<StickyNoteModel>>(json);
+            if (legacy is not null)
+            {
+                data.Notes = legacy;
+                return data;
+            }
+
+            var parsed = JsonSerializer.Deserialize<StoreData>(json);
+            if (parsed is not null)
+            {
+                data.Notes = parsed.Notes ?? new List<StickyNoteModel>();
+                data.TaskLists = parsed.TaskLists ?? new List<TaskListModel>();
+            }
         }
         catch
         {
-            return new List<StickyNoteWPF.Models.StickyNoteModel>();
+            // 解析失败时返回空数据
         }
+        return data;
     }
 
-    public static void Save(IEnumerable<StickyNoteModel> notes)
+    public static void Save(StoreData data)
     {
         try
         {
@@ -35,7 +56,7 @@ public static class NoteStore
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
 
-            var json = JsonSerializer.Serialize(notes,
+            var json = JsonSerializer.Serialize(data,
                 new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(FilePath, json);
         }

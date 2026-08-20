@@ -38,6 +38,7 @@ public sealed class TrayIconService : IDisposable
         strip.Items.AddRange(new ToolStripItem[]
         {
             new System.Windows.Forms.ToolStripMenuItem("新建便利贴", null, (_, _) => _app.CreateNote()),
+            new System.Windows.Forms.ToolStripMenuItem("新建任务清单", null, (_, _) => _app.CreateTaskList()),
             new System.Windows.Forms.ToolStripMenuItem("管理便利贴", null, (_, _) => _app.ShowManager()),
             new System.Windows.Forms.ToolStripSeparator(),
             new System.Windows.Forms.ToolStripMenuItem("退出", null, (_, _) => _app.ExitApp())

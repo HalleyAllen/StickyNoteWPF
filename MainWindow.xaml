@@ -16,6 +16,7 @@
     <Window.Resources>
         <local:TitleFallbackConverter x:Key="TitleFallback"/>
         <local:ContrastTextConverter x:Key="ContrastText"/>
+        <local:TaskProgressConverter x:Key="TaskProgress"/>
 
         <!-- 细滚动条样式：宽 5px、圆形滑块，参考便利贴 -->
         <Style TargetType="{x:Type ScrollBar}">
@@ -75,13 +76,11 @@
     <Border Background="#FFF3F3F3" BorderBrush="#FF2D2D30" BorderThickness="1">
         <Grid>
             <DockPanel LastChildFill="True">
-            <!-- 自定义标题栏（含新建按钮） -->
+            <!-- 自定义标题栏（含功能按钮） -->
             <Grid x:Name="TitleBar" DockPanel.Dock="Top" Height="32"
                   Background="#FF2D2D30">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
@@ -123,10 +122,28 @@
                         FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
             </Grid>
 
+            <!-- Tab 切换栏 -->
+            <Grid DockPanel.Dock="Top" Height="38" Background="#FFE8E8E8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Button x:Name="TabNotes" Grid.Column="0" Content="便利贴"
+                        Background="Transparent" BorderThickness="0" Cursor="Hand"
+                        FontSize="13" FontWeight="SemiBold" Click="TabNotes_Click"/>
+                <Button x:Name="TabTasks" Grid.Column="1" Content="任务清单"
+                        Background="Transparent" BorderThickness="0" Cursor="Hand"
+                        FontSize="13" FontWeight="SemiBold" Click="TabTasks_Click"/>
+                <Rectangle x:Name="TabIndicator" Height="3" VerticalAlignment="Bottom"
+                           HorizontalAlignment="Left" Width="0" Fill="#FF007ACC"/>
+            </Grid>
+
             <!-- 内容区 -->
             <TextBlock x:Name="EmptyHint" DockPanel.Dock="Top" Margin="20,30,20,0"
-                       Text="还没有便利贴，点击右下角「＋」或托盘菜单新建一个吧。"
+                       Text="还没有内容，点击右下角「＋」新建一个吧。"
                        Foreground="#888" TextWrapping="Wrap" HorizontalAlignment="Center"/>
+
+            <!-- 便利贴列表 -->
             <ListBox x:Name="NoteList" BorderThickness="0" Margin="8,8,0,8"
                      Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <ListBox.Resources>
@@ -179,6 +196,66 @@
                                         BorderThickness="0" Cursor="Hand" FontSize="14"
                                         ToolTip="删除便签"
                                         Click="DeleteNoteButton_Click"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- 任务清单列表 -->
+            <ListBox x:Name="TaskListBox" BorderThickness="0" Margin="8,8,0,8"
+                     Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     Visibility="Collapsed">
+                <ListBox.Resources>
+                    <Style TargetType="{x:Type ScrollViewer}">
+                        <Setter Property="Padding" Value="0"/>
+                    </Style>
+                </ListBox.Resources>
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="Margin" Value="0"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="Transparent"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="6" Padding="10" CornerRadius="6" Width="180"
+                                Background="{Binding Color}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBox Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
+                                             FontWeight="Bold" FontSize="13"
+                                             BorderThickness="0" Background="Transparent"
+                                             Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
+                                             ToolTip="点击修改清单标题"
+                                             TextChanged="TaskTitleTextBox_TextChanged"/>
+                                    <TextBlock FontSize="10"
+                                               Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
+                                               Margin="0,4,0,0"
+                                               Text="{Binding Items, Converter={StaticResource TaskProgress}}"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="🗑"
+                                        Width="28" Height="28" Margin="8,0,0,0"
+                                        Background="Transparent" Foreground="#C0392B"
+                                        BorderThickness="0" Cursor="Hand" FontSize="14"
+                                        ToolTip="删除清单"
+                                        Click="DeleteTaskListButton_Click"/>
                             </Grid>
                         </Border>
                     </DataTemplate>

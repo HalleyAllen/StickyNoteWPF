@@ -17,13 +17,16 @@ public partial class App : System.Windows.Application
     internal static readonly int ActivateMessage = NativeMethods.RegisterWindowMessage("StickyNoteWPF_Activate");
 
     private List<StickyNoteModel> _notes = new();
+    private List<TaskListModel> _taskLists = new();
     private readonly Dictionary<Guid, StickyNoteWindow> _openWindows = new();
+    private readonly Dictionary<Guid, TaskListWindow> _openTaskLists = new();
     private MainWindow? _manager;
     private TrayIconService? _tray;
     private bool _isExiting;
     public AppSettings Settings { get; private set; } = new();
 
     public IReadOnlyList<StickyNoteModel> Notes => _notes;
+    public IReadOnlyList<TaskListModel> TaskLists => _taskLists;
 
     public static new App Current => (App)System.Windows.Application.Current;
 
@@ -46,13 +49,18 @@ public partial class App : System.Windows.Application
         base.OnStartup(e);
 
         Settings = AppSettings.Load();
-        _notes = NoteStore.Load();
+        var data = NoteStore.Load();
+        _notes = data.Notes;
+        _taskLists = data.TaskLists;
         _tray = new TrayIconService(this);
 
-        // 启动时只打开上次处于打开状态的便利贴（其余保持关闭，可在管理界面打开）
+        // 启动时只打开上次处于打开状态的便利贴与任务清单（其余保持关闭，可在管理界面打开）
         foreach (var note in _notes)
             if (note.IsOpen)
                 OpenNote(note);
+        foreach (var list in _taskLists)
+            if (list.IsOpen)
+                OpenTaskList(list);
 
         ApplyTopmost(Settings.GlobalTopmost);
 
@@ -79,13 +87,15 @@ public partial class App : System.Windows.Application
         _notes.Add(note);
         SaveAll();
         OpenNote(note);
-        _manager?.RefreshList();
+        _manager?.RefreshLists();
         _tray?.ShowBalloon("已新建便利贴", "在桌面上编辑你的内容吧。");
     }
 
     public void ApplyTopmost(bool topmost)
     {
         foreach (var win in _openWindows.Values)
+            win.Topmost = topmost;
+        foreach (var win in _openTaskLists.Values)
             win.Topmost = topmost;
     }
 
@@ -129,6 +139,33 @@ public partial class App : System.Windows.Application
         w.ShowDialog();
     }
 
+    public void OpenTaskListSettings(TaskListWindow listWindow)
+    {
+        var w = new TaskListSettingsWindow(listWindow);
+        w.Owner = listWindow;
+
+        const double gap = 12;
+        var screen = System.Windows.SystemParameters.WorkArea;
+        double left = listWindow.Left + listWindow.Width + gap;
+        double top = listWindow.Top;
+
+        if (left + w.Width > screen.Right)
+        {
+            left = listWindow.Left - w.Width - gap;
+            if (left < screen.Left)
+                left = screen.Left + gap;
+        }
+
+        if (top < screen.Top) top = screen.Top + gap;
+        if (top + w.Height > screen.Bottom)
+            top = System.Math.Max(screen.Top + gap, screen.Bottom - w.Height - gap);
+
+        w.Left = left;
+        w.Top = top;
+
+        w.ShowDialog();
+    }
+
     public void OpenNote(StickyNoteModel note)
     {
         if (_openWindows.TryGetValue(note.Id, out var existing))
@@ -148,10 +185,12 @@ public partial class App : System.Windows.Application
         win.ApplyForceShowAll();
     }
 
-    // 全局“全部显示”开关切换后，实时刷新所有已打开的便签
+    // 全局“全部显示”开关切换后，实时刷新所有已打开的窗口
     public void ApplyForceShowAll()
     {
         foreach (var win in _openWindows.Values)
+            win.ApplyForceShowAll();
+        foreach (var win in _openTaskLists.Values)
             win.ApplyForceShowAll();
     }
 
@@ -161,7 +200,7 @@ public partial class App : System.Windows.Application
         if (_openWindows.TryGetValue(note.Id, out var win) && win.IsLoaded)
             win.RefreshFromModel();
         SaveAll();
-        if (refreshManager) _manager?.RefreshList();
+        if (refreshManager) _manager?.RefreshLists();
     }
 
     // 关闭便签窗口：只隐藏，保留数据（下次打开/启动时可恢复）
@@ -188,7 +227,76 @@ public partial class App : System.Windows.Application
         }
         _notes.Remove(note);
         SaveAll();
-        _manager?.RefreshList();
+        _manager?.RefreshLists();
+    }
+
+    // ====== 任务清单 ======
+
+    public void CreateTaskList()
+    {
+        var list = new TaskListModel();
+        list.TextColor = Settings.NoteTextColor;
+        list.Opacity = Settings.WindowOpacity;
+        list.FontSize = Settings.DefaultFontSize;
+        list.Left = 200 + (_taskLists.Count % 5) * 30;
+        list.Top = 150 + (_taskLists.Count % 5) * 30;
+        list.Items.Add(new TaskItem { Text = "新任务" });
+        _taskLists.Add(list);
+        SaveAll();
+        OpenTaskList(list);
+        _manager?.RefreshLists();
+        _tray?.ShowBalloon("已新建任务清单", "在桌面上勾选完成你的任务吧。");
+    }
+
+    public void OpenTaskList(TaskListModel list)
+    {
+        if (_openTaskLists.TryGetValue(list.Id, out var existing))
+        {
+            existing.Activate();
+            return;
+        }
+
+        var win = new TaskListWindow(list);
+        win.ClosedByUser += (_, _) => HideTaskList(list);
+        win.Closed += (_, _) => _openTaskLists.Remove(list.Id);
+        _openTaskLists[list.Id] = win;
+        list.IsOpen = true;
+        SaveAll();
+        win.Show();
+        win.ApplyForceShowAll();
+    }
+
+    public void RefreshTaskList(TaskListModel list, bool refreshManager = false)
+    {
+        if (_openTaskLists.TryGetValue(list.Id, out var win) && win.IsLoaded)
+            win.RefreshFromModel();
+        SaveAll();
+        if (refreshManager) _manager?.RefreshLists();
+    }
+
+    private void HideTaskList(TaskListModel list)
+    {
+        if (_openTaskLists.TryGetValue(list.Id, out var win))
+        {
+            _openTaskLists.Remove(list.Id);
+            if (win.IsLoaded)
+                win.Close();
+        }
+        list.IsOpen = false;
+        SaveAll();
+    }
+
+    public void DeleteTaskList(TaskListModel list)
+    {
+        if (_openTaskLists.TryGetValue(list.Id, out var win))
+        {
+            _openTaskLists.Remove(list.Id);
+            if (win.IsLoaded)
+                win.Close();
+        }
+        _taskLists.Remove(list);
+        SaveAll();
+        _manager?.RefreshLists();
     }
 
     public void ShowManager()
@@ -201,22 +309,30 @@ public partial class App : System.Windows.Application
             _manager.Activate();
         else
             _manager.Show();
-        _manager.RefreshList();
+        _manager.RefreshLists();
     }
 
     public void SaveAll()
     {
-        NoteStore.Save(_notes);
+        NoteStore.Save(new StoreData
+        {
+            Notes = _notes,
+            TaskLists = _taskLists
+        });
     }
 
     public void ExitApp()
     {
         _isExiting = true;
-        // 退出前根据当前打开的窗口写回 IsOpen，下次启动只恢复这些便签
+        // 退出前根据当前打开的窗口写回 IsOpen，下次启动只恢复这些窗口
         foreach (var note in _notes)
             note.IsOpen = _openWindows.ContainsKey(note.Id);
+        foreach (var list in _taskLists)
+            list.IsOpen = _openTaskLists.ContainsKey(list.Id);
         SaveAll();
         foreach (var win in _openWindows.Values.ToList())
+            win.Close();
+        foreach (var win in _openTaskLists.Values.ToList())
             win.Close();
         _tray?.Dispose();
         _tray = null;
@@ -230,6 +346,8 @@ public partial class App : System.Windows.Application
         {
             foreach (var note in _notes)
                 note.IsOpen = _openWindows.ContainsKey(note.Id);
+            foreach (var list in _taskLists)
+                list.IsOpen = _openTaskLists.ContainsKey(list.Id);
             SaveAll();
         }
         _tray?.Dispose();
