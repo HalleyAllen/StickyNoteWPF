@@ -1,13 +1,5 @@
-fix: 任务清单交互与样式修正
+fix: 新任务始终生成在未完成区最顶部
 
-- TaskListModel 实现 INotifyPropertyChanged，运行时属性变化可实时刷新绑定
-- 锁定/解锁立即隐藏或显示删除按钮与文本框只读，无需借助打勾触发
-- 删除按钮可见性改用 XAML 绑定 List.IsLocked
-- 光标颜色跟随文字色 (CaretBrush 绑定)
-- 添加按钮移至标题栏 (符号＋)，移除底部按钮
-- 回车新建任务插入列表顶部并显示在未完成区置顶
-- 新任务聚焦改用 ContainerFromItem 精确定位，避免排序后光标跳错行
-- 引用便利贴同款细滚动条样式 (宽5、滑块=文字色、轨道=背景色)
-- 窗口恢复可拖拽边缘调整大小 (不显示 resize grip 标识)
-- 删除按钮缩小为 22x22 并垂直居中，避免撑高行高
-- 勾选沉底改用 CollectionView 排序，不再重建容器
+- TaskItem 增加 Order 序号字段（随数据持久化）
+- CollectionView 排序改为 IsDone 升序 + Order 降序
+- 新建任务 Order 取当前最大+1，保证稳定置顶，不再依赖 ListCollectionView 的稳定排序行为

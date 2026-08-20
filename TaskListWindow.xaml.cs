@@ -29,6 +29,8 @@ public partial class TaskListWindow : Window
 
         var view = CollectionViewSource.GetDefaultView(list.Items);
         view.SortDescriptions.Add(new SortDescription(nameof(TaskItem.IsDone), ListSortDirection.Ascending));
+        // 未完成区内按 Order 降序，序号最大（最新）的置顶，保证新任务始终在最顶
+        view.SortDescriptions.Add(new SortDescription(nameof(TaskItem.Order), ListSortDirection.Descending));
         TaskList.ItemsSource = view;
 
         RefreshFromModel();
@@ -297,9 +299,10 @@ public partial class TaskListWindow : Window
     private void AddTask()
     {
         var newItem = new TaskItem { Text = "新任务" };
-        // 插入到列表最前面：未完成任务区（IsDone 相同）内按源集合顺序稳定排序，
-        // 因此新任务会显示在未完成区的置顶位置
-        List.Items.Insert(0, newItem);
+        // Order 取当前最大+1，配合排序（IsDone 升序 + Order 降序）保证新任务置顶
+        long maxOrder = List.Items.Count == 0 ? 0 : List.Items.Max(i => i.Order);
+        newItem.Order = maxOrder + 1;
+        List.Items.Add(newItem);
         Persist();
         // 聚焦到新添加任务的文本框（文字色由 XAML 绑定处理）
         // 注意：CollectionView 按 IsDone 排序，不能按索引取，必须用新项对象定位

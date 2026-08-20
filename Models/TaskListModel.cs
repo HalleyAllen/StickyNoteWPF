@@ -8,6 +8,7 @@ public class TaskItem : INotifyPropertyChanged
 {
     private string _text = string.Empty;
     private bool _isDone;
+    private long _order;
 
     public Guid Id { get; set; } = Guid.NewGuid();
 
@@ -21,6 +22,13 @@ public class TaskItem : INotifyPropertyChanged
     {
         get => _isDone;
         set { _isDone = value; OnPropertyChanged(); }
+    }
+
+    // 创建顺序序号：用于排序，未完成区内序号最大（最新）的排在最前（置顶）
+    public long Order
+    {
+        get => _order;
+        set { _order = value; OnPropertyChanged(); }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
