@@ -62,7 +62,7 @@
                      BorderThickness="0" Background="Transparent"
                      Padding="8" TextWrapping="Wrap" AcceptsReturn="True"
                      VerticalScrollBarVisibility="Auto"
-                     FontSize="14" Foreground="#222"
+                     Foreground="#222"
                      CaretBrush="#222" UndoLimit="100"/>
         </DockPanel>
     </Grid>

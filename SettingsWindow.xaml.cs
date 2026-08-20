@@ -9,6 +9,10 @@ namespace StickyNoteWPF;
 public partial class SettingsWindow : Window
 {
     private readonly AppSettings _settings;
+    // 必须初始为 true：XAML 里绑定的 ValueChanged 在 InitializeComponent() 解析时就已挂上，
+    // Slider 的 Value(0) 会被 Minimum(8) 强制钳成 8 并立刻触发一次 ValueChanged，
+    // 那时构造函数尚未执行完、Loaded 更未触发，若为 false 会把 8 直接写回配置。
+    private bool _suppressSliderEvents = true;
     private readonly string[] Palette =
     {
         "#FFF7A900", "#FFFFF275", "#FFA0E7A0", "#FF9AD0EC",
@@ -29,11 +33,25 @@ public partial class SettingsWindow : Window
 
         StartupCheck.IsChecked = AppSettings.IsStartupEnabled();
         TopmostCheck.IsChecked = _settings.GlobalTopmost;
-        OpacitySlider.Value = _settings.WindowOpacity;
-        UpdateOpacityLabel(_settings.WindowOpacity);
+        // 兼容旧数据：默认字体大小无效时回退，避免被 Slider 钳到最小值
+        if (_settings.DefaultFontSize <= 0)
+            _settings.DefaultFontSize = 14;
 
-        FontSizeSlider.Value = _settings.DefaultFontSize;
+        UpdateOpacityLabel(_settings.WindowOpacity);
         FontSizeValue.Text = $"{Math.Round(_settings.DefaultFontSize)}";
+
+        // 关键：Slider 必须在模板应用/布局完成后再赋值，
+        // 否则构造函数中的赋值会被钳制回 Minimum，导致每次打开都显示最小值。
+        Loaded += (_, _) =>
+        {
+            _suppressSliderEvents = true;
+            OpacitySlider.Value = Math.Clamp(_settings.WindowOpacity, OpacitySlider.Minimum, OpacitySlider.Maximum);
+            FontSizeSlider.Value = Math.Clamp(_settings.DefaultFontSize, FontSizeSlider.Minimum, FontSizeSlider.Maximum);
+            _suppressSliderEvents = false;
+
+            UpdateOpacityLabel(OpacitySlider.Value);
+            FontSizeValue.Text = $"{Math.Round(FontSizeSlider.Value)}";
+        };
 
         BuildSwatches(ColorPanel, _settings.DefaultColor,
             hex => { _settings.DefaultColor = hex; _settings.Save(); BuildSwatches(ColorPanel, hex, null); },
@@ -76,7 +94,7 @@ public partial class SettingsWindow : Window
 
     private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (_settings == null) return;
+        if (_settings == null || _suppressSliderEvents) return;
         var v = e.NewValue;
         _settings.WindowOpacity = v;
         _settings.Save();
@@ -86,7 +104,7 @@ public partial class SettingsWindow : Window
     // 初始字体大小：仅作为新建便签的默认值，不影响已创建的便签
     private void FontSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (_settings == null) return;
+        if (_settings == null || _suppressSliderEvents) return;
         var v = Math.Round(e.NewValue);
         _settings.DefaultFontSize = v;
         _settings.Save();

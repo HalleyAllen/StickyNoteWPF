@@ -10,6 +10,10 @@ public partial class StickyNoteSettingsWindow : Window
 {
     private readonly StickyNoteWindow _owner;
     private readonly StickyNoteModel _note;
+    // 必须初始为 true：XAML 里绑定的 ValueChanged 在 InitializeComponent() 解析时就已挂上，
+    // Slider 的 Value(0) 会被 Minimum(8) 强制钳成 8 并立刻触发一次 ValueChanged，
+    // 那时构造函数尚未执行完、Loaded 更未触发，若为 false 会把 8 直接写回便签数据。
+    private bool _suppressSliderEvents = true;
 
     private static readonly string[] Palette =
     {
@@ -51,11 +55,27 @@ public partial class StickyNoteSettingsWindow : Window
         BuildSwatches(BgColorPanel, _note.Color, SetBg);
         BuildSwatches(TextColorPanel, _note.TextColor, SetText);
 
-        FontSizeSlider.Value = _note.FontSize;
-        FontSizeValue.Text = $"{Math.Round(_note.FontSize)}";
+        // 兼容旧数据：字体大小无效（<=0）时回退默认，避免被 Slider 钳到最小值并误写回
+        if (_note.FontSize <= 0)
+            _note.FontSize = App.Current?.Settings.DefaultFontSize ?? 14;
 
-        OpacitySlider.Value = _note.Opacity;
+        // 文本先显示真实值（不依赖 Slider）
+        FontSizeValue.Text = $"{Math.Round(_note.FontSize)}";
         OpacityValue.Text = $"{Math.Round(_note.Opacity * 100)}%";
+
+        // 关键：必须等模板应用/布局完成后再赋值滑块。
+        // 在构造函数里直接赋值时 Slider 模板尚未应用，Value 会被钳制回 Minimum(8)，
+        // 导致每次打开都显示 8（虽然 _suppressSliderEvents 阻止了写回磁盘，但显示仍是错的）。
+        Loaded += (_, _) =>
+        {
+            _suppressSliderEvents = true;
+            FontSizeSlider.Value = Math.Clamp(_note.FontSize, FontSizeSlider.Minimum, FontSizeSlider.Maximum);
+            OpacitySlider.Value = Math.Clamp(_note.Opacity, OpacitySlider.Minimum, OpacitySlider.Maximum);
+            _suppressSliderEvents = false;
+
+            FontSizeValue.Text = $"{Math.Round(FontSizeSlider.Value)}";
+            OpacityValue.Text = $"{Math.Round(OpacitySlider.Value * 100)}%";
+        };
 
         TitleBox.Text = _note.Title;
 
@@ -75,8 +95,9 @@ public partial class StickyNoteSettingsWindow : Window
 
     private void Commit()
     {
-        _owner.RefreshFromModel();
+        // 先保存（含刚改的字体大小）到磁盘，再刷新便签窗口显示，避免刷新覆盖未保存的值
         App.Current.SaveAll();
+        _owner.RefreshFromModel();
     }
 
     private Border MakeCustomSwatch(Action<string> onPicked)
@@ -143,7 +164,7 @@ public partial class StickyNoteSettingsWindow : Window
 
     private void FontSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (_note == null) return;
+        if (_note == null || _suppressSliderEvents) return;
         var v = e.NewValue;
         _note.FontSize = v;
         FontSizeValue.Text = $"{Math.Round(v)}";
@@ -152,7 +173,7 @@ public partial class StickyNoteSettingsWindow : Window
 
     private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (_note == null) return;
+        if (_note == null || _suppressSliderEvents) return;
         var v = e.NewValue;
         _note.Opacity = v;
         OpacityValue.Text = $"{Math.Round(v * 100)}%";

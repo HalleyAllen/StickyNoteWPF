@@ -24,6 +24,9 @@ public partial class StickyNoteWindow : Window
         Width = note.Width;
         Height = note.Height;
         NoteTextBox.Text = note.Text;
+        // 兼容旧数据：若字体大小无效（<=0），回退到默认字体大小并写回模型
+        if (note.FontSize <= 0)
+            note.FontSize = App.Current?.Settings.DefaultFontSize ?? 14;
         NoteTextBox.FontSize = note.FontSize;
 
         RefreshFromModel();
@@ -52,6 +55,17 @@ public partial class StickyNoteWindow : Window
     {
         EyeButton.Content = Note.HoverToShow ? "👁" : "🚫";
         EyeButton.ToolTip = Note.HoverToShow ? "鼠标移入才显示（点此关闭）" : "始终显示（点此开启悬停）";
+
+        // 全局“全部显示”开启时，无论单个便签开关如何，一律强制不透明且始终显示
+        if (App.Current?.Settings.ForceShowAll == true)
+        {
+            _hoverTimer?.Stop();
+            _hoverTimer = null;
+            Opacity = 1;
+            IsHitTestVisible = true;
+            Topmost = App.Current?.Settings.GlobalTopmost ?? true;
+            return;
+        }
 
         if (Note.HoverToShow)
         {
@@ -183,7 +197,7 @@ public partial class StickyNoteWindow : Window
     // 应用便签文字 / 标题文字 / 按钮 的颜色（来自该便签自身存储）
     public void ApplyTextStyle()
     {
-        NoteTextBox.FontSize = Note.FontSize;
+        NoteTextBox.FontSize = Note.FontSize > 0 ? Note.FontSize : (App.Current?.Settings.DefaultFontSize ?? 14);
         NoteTextBox.Foreground = MakeBrush(Note.TextColor);
         NoteTextBox.CaretBrush = MakeBrush(Note.TextColor);
         TitleText.Foreground = MakeBrush(Note.TextColor);
