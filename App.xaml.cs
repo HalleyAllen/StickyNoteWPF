@@ -101,6 +101,29 @@ public partial class App : System.Windows.Application
     {
         var w = new StickyNoteSettingsWindow(noteWindow);
         w.Owner = noteWindow;
+
+        // 计算位置：默认放在便利贴右侧外部，避免遮挡；超出屏幕则放左侧
+        const double gap = 12;
+        var screen = System.Windows.SystemParameters.WorkArea;
+        double left = noteWindow.Left + noteWindow.Width + gap;
+        double top = noteWindow.Top;
+
+        if (left + w.Width > screen.Right)
+        {
+            // 右侧放不下，改放便利贴左侧
+            left = noteWindow.Left - w.Width - gap;
+            if (left < screen.Left)
+                left = screen.Left + gap; // 实在放不下就贴屏幕左边
+        }
+
+        // 垂直方向限制在屏幕工作区内
+        if (top < screen.Top) top = screen.Top + gap;
+        if (top + w.Height > screen.Bottom)
+            top = System.Math.Max(screen.Top + gap, screen.Bottom - w.Height - gap);
+
+        w.Left = left;
+        w.Top = top;
+
         w.ShowDialog();
     }
 

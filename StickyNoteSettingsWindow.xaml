@@ -6,7 +6,7 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
         Title="便签设置" Height="470" Width="360"
-        WindowStartupLocation="CenterOwner"
+        WindowStartupLocation="Manual"
         Icon="Resources/StickyNote.ico"
         WindowStyle="None"
         ResizeMode="CanResize"
