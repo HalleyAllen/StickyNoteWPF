@@ -158,6 +158,8 @@
                                      PreviewKeyDown="TaskText_PreviewKeyDown">
                                 <TextBox.Style>
                                     <Style TargetType="TextBox">
+                                        <Setter Property="FontSize"
+                                                Value="{Binding ElementName=Root, Path=List.FontSize}"/>
                                         <Setter Property="Foreground"
                                                 Value="{Binding ElementName=Root, Path=List.TextColor}"/>
                                         <Setter Property="CaretBrush"
