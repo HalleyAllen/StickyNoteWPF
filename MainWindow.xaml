@@ -16,6 +16,53 @@
     <Window.Resources>
         <local:TitleFallbackConverter x:Key="TitleFallback"/>
         <local:ContrastTextConverter x:Key="ContrastText"/>
+
+        <!-- 细滚动条样式：宽 5px、圆形滑块，参考便利贴 -->
+        <Style TargetType="{x:Type ScrollBar}">
+            <Setter Property="Width" Value="5"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ScrollBar}">
+                        <Track x:Name="PART_Track" Width="5" HorizontalAlignment="Stretch"
+                               IsDirectionReversed="True">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.LineUpCommand" Focusable="False" Opacity="0">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="{x:Type ButtonBase}">
+                                            <Border Background="Transparent"/>
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb>
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="{x:Type Thumb}">
+                                            <Rectangle x:Name="Rect" Width="5" Fill="#BBBBBB" RadiusX="3" RadiusY="3"/>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Rect" Property="Fill" Value="#888888"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.LineDownCommand" Focusable="False" Opacity="0">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="{x:Type ButtonBase}">
+                                            <Border Background="Transparent"/>
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome GlassFrameThickness="0"
@@ -87,8 +134,13 @@
             <TextBlock x:Name="EmptyHint" DockPanel.Dock="Top" Margin="20,30,20,0"
                        Text="还没有便利贴，点击标题栏上的「＋ 新建」开始吧。"
                        Foreground="#888" TextWrapping="Wrap" HorizontalAlignment="Center"/>
-            <ListBox x:Name="NoteList" BorderThickness="0" Margin="8"
+            <ListBox x:Name="NoteList" BorderThickness="0" Margin="8,8,0,8"
                      Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.Resources>
+                    <Style TargetType="{x:Type ScrollViewer}">
+                        <Setter Property="Padding" Value="0"/>
+                    </Style>
+                </ListBox.Resources>
                 <ListBox.ItemsPanel>
                     <ItemsPanelTemplate>
                         <WrapPanel Orientation="Horizontal" />
