@@ -2,7 +2,9 @@
 using System.Data;
 using System.Threading;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using StickyNoteWPF.Models;
 using StickyNoteWPF.Services;
 
@@ -191,6 +193,9 @@ public partial class App : System.Windows.Application
                 _manager.Show();
                 _manager.RefreshLists();
             }
+            // 清除键盘焦点：重新显示后 WPF 会把焦点分给之前点过的控件，
+            // 从而画出焦点虚线框，这里主动清除避免残留
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => Keyboard.ClearFocus()));
         }
     }
 
