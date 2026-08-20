@@ -20,6 +20,7 @@ public partial class App : System.Windows.Application
     private readonly Dictionary<Guid, StickyNoteWindow> _openWindows = new();
     private MainWindow? _manager;
     private TrayIconService? _tray;
+    private bool _isExiting;
     public AppSettings Settings { get; private set; } = new();
 
     public IReadOnlyList<StickyNoteModel> Notes => _notes;
@@ -48,9 +49,10 @@ public partial class App : System.Windows.Application
         _notes = NoteStore.Load();
         _tray = new TrayIconService(this);
 
-        // 启动时打开之前存在的便利贴（每个便签使用自身持久化的样式）
+        // 启动时只打开上次处于打开状态的便利贴（其余保持关闭，可在管理界面打开）
         foreach (var note in _notes)
-            OpenNote(note);
+            if (note.IsOpen)
+                OpenNote(note);
 
         ApplyTopmost(Settings.GlobalTopmost);
 
@@ -140,6 +142,8 @@ public partial class App : System.Windows.Application
         win.ClosedByUser += (_, _) => HideNote(note);
         win.Closed += (_, _) => _openWindows.Remove(note.Id);
         _openWindows[note.Id] = win;
+        note.IsOpen = true;
+        SaveAll();
         win.Show();
         win.ApplyForceShowAll();
     }
@@ -169,6 +173,7 @@ public partial class App : System.Windows.Application
             if (win.IsLoaded)
                 win.Close();
         }
+        note.IsOpen = false;
         SaveAll();
     }
 
@@ -206,9 +211,13 @@ public partial class App : System.Windows.Application
 
     public void ExitApp()
     {
+        _isExiting = true;
+        // 退出前根据当前打开的窗口写回 IsOpen，下次启动只恢复这些便签
+        foreach (var note in _notes)
+            note.IsOpen = _openWindows.ContainsKey(note.Id);
+        SaveAll();
         foreach (var win in _openWindows.Values.ToList())
             win.Close();
-        SaveAll();
         _tray?.Dispose();
         _tray = null;
         Shutdown();
@@ -216,6 +225,13 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        // 兜底：仅当尚未经 ExitApp 处理时，写回当前打开状态
+        if (!_isExiting)
+        {
+            foreach (var note in _notes)
+                note.IsOpen = _openWindows.ContainsKey(note.Id);
+            SaveAll();
+        }
         _tray?.Dispose();
         base.OnExit(e);
     }
