@@ -32,9 +32,10 @@
                 <Button x:Name="CloseButton" Grid.Column="1" Content="✕"
                         Width="40" Height="40" Background="Transparent"
                         Foreground="White" BorderThickness="0" Cursor="Hand"
-                        FontSize="15" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                        FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
             </Grid>
 
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="20,16" Orientation="Vertical">
                 <!-- 开机自启 -->
                 <DockPanel LastChildFill="True" Margin="0,0,0,18">
@@ -85,6 +86,7 @@
                 <TextBlock x:Name="Hint" Text="" FontSize="12" Foreground="#C0392B"
                            TextWrapping="Wrap" Margin="0,4,0,0"/>
             </StackPanel>
+            </ScrollViewer>
         </DockPanel>
     </Border>
 </Window>
