@@ -32,6 +32,27 @@ public static class AppearanceHelper
         }
     }
 
+    public static bool TryParseColor(string? hex, out System.Windows.Media.Color color)
+    {
+        try
+        {
+            color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex!);
+            return true;
+        }
+        catch
+        {
+            color = System.Windows.Media.Colors.Transparent;
+            return false;
+        }
+    }
+
+    // 根据背景色亮度返回对比前景色（浅背景深色，深背景浅色），保证图标可读
+    public static System.Windows.Media.Color GetContrastColor(System.Windows.Media.Color bg)
+    {
+        var luminance = (0.299 * bg.R + 0.587 * bg.G + 0.114 * bg.B) / 255.0;
+        return luminance > 0.6 ? System.Windows.Media.Colors.Black : System.Windows.Media.Colors.White;
+    }
+
     // 为给定的 TextBox 注入与便利贴一致的细滚动条主题（滑块=文字色，轨道=背景色，宽5，方向正确）
     // 颜色通过 DynamicResource 引用 tb.Resources 中的 ScrollThumbBrush / ScrollThumbHoverBrush / ScrollTrackBrush
     public static void ApplyScrollBarTheme(System.Windows.Controls.TextBox tb, string textColorHex, string bgColorHex)

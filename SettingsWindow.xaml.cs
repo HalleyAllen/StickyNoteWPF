@@ -120,14 +120,20 @@ public partial class SettingsWindow : Window
     {
         panel.Children.Clear();
 
-        // 自定义颜色按钮（✎）
+        // 自定义颜色按钮（✎）：当前颜色不在预置色板时，显示该颜色并高亮为选中态
+        var isCustom = current != null && !Palette.Contains(current)
+                       && AppearanceHelper.TryParseColor(current, out var customColor);
         var custom = new Border
         {
             Width = 30, Height = 30, Margin = new Thickness(0, 0, 8, 8),
             CornerRadius = new CornerRadius(4),
-            Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.White),
-            BorderThickness = new Thickness(1),
-            BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray),
+            Background = isCustom
+                ? new System.Windows.Media.SolidColorBrush(customColor)
+                : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.White),
+            BorderThickness = new Thickness(isCustom ? 3 : 1),
+            BorderBrush = isCustom
+                ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Black)
+                : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray),
             Cursor = System.Windows.Input.Cursors.Hand
         };
         custom.Child = new TextBlock
@@ -135,7 +141,8 @@ public partial class SettingsWindow : Window
             Text = "✎", FontSize = 14,
             HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
             VerticalAlignment = System.Windows.VerticalAlignment.Center,
-            Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray)
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                isCustom ? AppearanceHelper.GetContrastColor(customColor) : System.Windows.Media.Colors.Gray)
         };
         custom.MouseLeftButtonDown += (_, _) => PickCustomColor(hex => onCustom?.Invoke(hex));
         panel.Children.Add(custom);

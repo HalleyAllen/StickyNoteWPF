@@ -130,6 +130,10 @@ public partial class TaskListSettingsWindow : Window
         while (panel.Children.Count > 1)
             panel.Children.RemoveAt(panel.Children.Count - 1);
 
+        // 自定义按钮同步显示当前颜色：非预置色时显示该色并高亮为选中态
+        if (panel.Children.Count > 0 && panel.Children[0] is Border custom)
+            UpdateCustomSwatch(custom, current);
+
         foreach (var hex in Palette)
         {
             var btn = new Border
@@ -147,6 +151,20 @@ public partial class TaskListSettingsWindow : Window
             btn.MouseLeftButtonDown += (_, _) => onPick?.Invoke(captured);
             panel.Children.Add(btn);
         }
+    }
+
+    // 自定义颜色按钮：当前颜色不在预置色板（即自定义色）时，按钮填充该色并加粗黑边表示选中
+    private void UpdateCustomSwatch(Border custom, string? current)
+    {
+        var isCustom = current != null && !Palette.Contains(current)
+                       && StickyNoteWPF.Services.AppearanceHelper.TryParseColor(current, out var c);
+        custom.Background = new SolidColorBrush(isCustom ? c : Colors.White);
+        custom.BorderThickness = new Thickness(isCustom ? 3 : 1);
+        custom.BorderBrush = new SolidColorBrush(isCustom ? Colors.Black : Colors.Gray);
+        if (custom.Child is TextBlock icon)
+            icon.Foreground = new SolidColorBrush(isCustom
+                ? StickyNoteWPF.Services.AppearanceHelper.GetContrastColor(c)
+                : Colors.Gray);
     }
 
     private void FontSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
