@@ -15,12 +15,62 @@
                           CornerRadius="12" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
 
+    <Window.Resources>
+        <!-- 滚动条样式（参考便利贴）：宽5、滑块=文字色、轨道=背景色、悬停高亮、圆角 -->
+        <Style TargetType="ScrollBar">
+            <Setter Property="Width" Value="5"/>
+            <Setter Property="Background" Value="{DynamicResource ScrollTrackBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Track x:Name="PART_Track" Width="5" HorizontalAlignment="Stretch" IsDirectionReversed="True">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="{x:Static ScrollBar.LineUpCommand}" Focusable="False" Opacity="0">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="ButtonBase">
+                                            <Border Background="Transparent"/>
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb>
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Rectangle Name="Rect" Width="5"
+                                                       Fill="{DynamicResource ScrollThumbBrush}"
+                                                       RadiusX="3" RadiusY="3"/>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Rect" Property="Fill"
+                                                            Value="{DynamicResource ScrollThumbHoverBrush}"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="{x:Static ScrollBar.LineDownCommand}" Focusable="False" Opacity="0">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="ButtonBase">
+                                            <Border Background="Transparent"/>
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
     <Border x:Name="RootBorder" CornerRadius="12" BorderThickness="1" Background="White">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- 标题栏（鼠标拖动移动窗口） -->
@@ -32,35 +82,45 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <TextBlock x:Name="TitleText" Grid.Column="0" VerticalAlignment="Center"
                            Margin="10,0,4,0" FontWeight="SemiBold" FontSize="13"
                            TextTrimming="CharacterEllipsis" Text="任务清单"/>
 
+                <!-- 添加任务 -->
+                <Button x:Name="AddTaskButton" Grid.Column="1" Content="＋"
+                        Width="32" Height="32" Background="Transparent"
+                        Foreground="#FF222222" BorderThickness="0" Cursor="Hand"
+                        FontSize="16" FontWeight="Bold" ToolTip="添加任务"
+                        Click="AddTask_Click"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+
                 <!-- 锁定 -->
-                <Button x:Name="LockButton" Grid.Column="1" Content="🔓"
+                <Button x:Name="LockButton" Grid.Column="2" Content="🔓"
                         Width="32" Height="32" Background="Transparent"
                         Foreground="#FF222222" BorderThickness="0" Cursor="Hand"
                         FontSize="14" ToolTip="未锁定（点此锁定，锁定后不可编辑）"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
                 <!-- 悬停显示 -->
-                <Button x:Name="EyeButton" Grid.Column="2" Content="🚫"
+                <Button x:Name="EyeButton" Grid.Column="3" Content="🚫"
                         Width="32" Height="32" Background="Transparent"
                         Foreground="#FF222222" BorderThickness="0" Cursor="Hand"
                         FontSize="14" ToolTip="始终显示（点此开启悬停）"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
                 <!-- 设置 -->
-                <Button x:Name="SettingsButton" Grid.Column="3" Content="⚙"
+                <Button x:Name="SettingsButton" Grid.Column="4" Content="⚙"
                         Width="32" Height="32" Background="Transparent"
                         Foreground="#FF222222" BorderThickness="0" Cursor="Hand"
                         FontSize="15" ToolTip="设置"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
                 <!-- 关闭 -->
-                <Button x:Name="CloseButton" Grid.Column="4" Content="✕"
+                <Button x:Name="CloseButton" Grid.Column="5" Content="✕"
                         Width="40" Height="32" Background="Transparent"
                         Foreground="#FF222222" BorderThickness="0" Cursor="Hand"
                         FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
@@ -82,7 +142,7 @@
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <Grid>
+                        <Grid MinHeight="24">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
@@ -100,6 +160,10 @@
                                     <Style TargetType="TextBox">
                                         <Setter Property="Foreground"
                                                 Value="{Binding ElementName=Root, Path=List.TextColor}"/>
+                                        <Setter Property="CaretBrush"
+                                                Value="{Binding ElementName=Root, Path=List.TextColor}"/>
+                                        <Setter Property="IsReadOnly"
+                                                Value="{Binding ElementName=Root, Path=List.IsLocked}"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsDone}" Value="True">
                                                 <Setter Property="TextDecorations" Value="Strikethrough"/>
@@ -110,21 +174,26 @@
                                     </Style>
                                 </TextBox.Style>
                             </TextBox>
-                            <Button Grid.Column="2" Content="🗑" Width="26" Height="26"
+                            <Button Grid.Column="2" Content="🗑" Width="22" Height="22"
                                     Background="Transparent" BorderThickness="0" Cursor="Hand"
-                                    FontSize="12" ToolTip="删除任务"
+                                    FontSize="11" ToolTip="删除任务" VerticalAlignment="Center"
                                     Foreground="{Binding ElementName=Root, Path=List.TextColor}"
-                                    Click="DeleteTask_Click"/>
+                                    Click="DeleteTask_Click">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ElementName=Root, Path=List.IsLocked}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
-
-            <!-- 底部添加任务 -->
-            <Button x:Name="AddTaskButton" Grid.Row="2" Content="＋ 添加任务"
-                    Margin="8,4,8,8" Padding="8,6" HorizontalAlignment="Stretch"
-                    Background="Transparent" BorderThickness="0" Cursor="Hand"
-                    FontSize="13" Click="AddTask_Click"/>
         </Grid>
     </Border>
 </Window>

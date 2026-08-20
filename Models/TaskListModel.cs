@@ -27,27 +27,91 @@ public class TaskItem : INotifyPropertyChanged
     private void OnPropertyChanged() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
 }
 
-public class TaskListModel
+public class TaskListModel : INotifyPropertyChanged
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
-    public string Title { get; set; } = "任务清单";
+    private string _title = "任务清单";
+    private string _color = "#FFF7A900";
+    private string _textColor = "#FF222222";
+    private string? _backgroundImagePath;
+    private string _backgroundImageMode = "Fill";
+    private double _opacity = 1.0;
+    private double _fontSize = 16;
+    private string _fontFamily = "Microsoft YaHei";
+    private bool _forceShow;
+    private bool _hoverToShow;
+    private bool _isLocked;
+    private bool _isOpen;
 
-    public string Color { get; set; } = "#FFF7A900";
-    public string TextColor { get; set; } = "#FF222222";
-    public string? BackgroundImagePath { get; set; }
-    public string BackgroundImageMode { get; set; } = "Fill"; // Fill / Stretch / Tile / Center
-    public double Opacity { get; set; } = 1.0;
-    public double FontSize { get; set; } = 16;
-    public string FontFamily { get; set; } = "Microsoft YaHei";
-    public bool ForceShow { get; set; }
-    public bool HoverToShow { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Title
+    {
+        get => _title;
+        set { _title = value; OnPropertyChanged(); }
+    }
+
+    public string Color
+    {
+        get => _color;
+        set { _color = value; OnPropertyChanged(); }
+    }
+    public string TextColor
+    {
+        get => _textColor;
+        set { _textColor = value; OnPropertyChanged(); }
+    }
+    public string? BackgroundImagePath
+    {
+        get => _backgroundImagePath;
+        set { _backgroundImagePath = value; OnPropertyChanged(); }
+    }
+    public string BackgroundImageMode
+    {
+        get => _backgroundImageMode;
+        set { _backgroundImageMode = value; OnPropertyChanged(); }
+    }
+    public double Opacity
+    {
+        get => _opacity;
+        set { _opacity = value; OnPropertyChanged(); }
+    }
+    public double FontSize
+    {
+        get => _fontSize;
+        set { _fontSize = value; OnPropertyChanged(); }
+    }
+    public string FontFamily
+    {
+        get => _fontFamily;
+        set { _fontFamily = value; OnPropertyChanged(); }
+    }
+    public bool ForceShow
+    {
+        get => _forceShow;
+        set { _forceShow = value; OnPropertyChanged(); }
+    }
+    public bool HoverToShow
+    {
+        get => _hoverToShow;
+        set { _hoverToShow = value; OnPropertyChanged(); }
+    }
 
     public double Left { get; set; } = double.NaN;
     public double Top { get; set; } = double.NaN;
 
-    public bool IsLocked { get; set; }
-    public bool IsOpen { get; set; }
+    public bool IsLocked
+    {
+        get => _isLocked;
+        set { _isLocked = value; OnPropertyChanged(); }
+    }
+    public bool IsOpen
+    {
+        get => _isOpen;
+        set { _isOpen = value; OnPropertyChanged(); }
+    }
 
     [JsonInclude]
     public ObservableCollection<TaskItem> Items { get; set; } = new();
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void OnPropertyChanged() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
 }

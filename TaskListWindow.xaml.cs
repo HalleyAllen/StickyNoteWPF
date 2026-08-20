@@ -70,15 +70,8 @@ public partial class TaskListWindow : Window
 
     private void ApplyLockToItems()
     {
-        foreach (var item in List.Items)
-        {
-            if (TaskList.ItemContainerGenerator.ContainerFromItem(item) is not ListBoxItem container)
-                continue;
-            if (container.FindVisualChild<System.Windows.Controls.TextBox>() is { } tb)
-                tb.IsReadOnly = List.IsLocked;
-            if (container.FindVisualChild<System.Windows.Controls.Button>() is { } del)
-                del.Visibility = List.IsLocked ? Visibility.Collapsed : Visibility.Visible;
-        }
+        // 删除按钮可见性已改为 XAML 绑定 List.IsLocked（见 TaskListWindow.xaml）
+        // 此处保留方法以便锁定状态切换时统一刷新，无需再手动设置
     }
 
     private void ApplyHoverState()
@@ -303,12 +296,16 @@ public partial class TaskListWindow : Window
 
     private void AddTask()
     {
-        List.Items.Add(new TaskItem { Text = "新任务" });
+        var newItem = new TaskItem { Text = "新任务" };
+        // 插入到列表最前面：未完成任务区（IsDone 相同）内按源集合顺序稳定排序，
+        // 因此新任务会显示在未完成区的置顶位置
+        List.Items.Insert(0, newItem);
         Persist();
         // 聚焦到新添加任务的文本框（文字色由 XAML 绑定处理）
+        // 注意：CollectionView 按 IsDone 排序，不能按索引取，必须用新项对象定位
         TaskList.Dispatcher.BeginInvoke(new Action(() =>
         {
-            if (TaskList.ItemContainerGenerator.ContainerFromIndex(List.Items.Count - 1) is ListBoxItem container)
+            if (TaskList.ItemContainerGenerator.ContainerFromItem(newItem) is ListBoxItem container)
             {
                 if (container.FindVisualChild<System.Windows.Controls.TextBox>() is System.Windows.Controls.TextBox tb)
                 {
