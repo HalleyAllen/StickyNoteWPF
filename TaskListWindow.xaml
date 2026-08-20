@@ -23,9 +23,13 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ScrollBar">
-                        <Track x:Name="PART_Track" Width="5" HorizontalAlignment="Stretch" IsDirectionReversed="True">
+                        <!-- 点击轨道空白处按行小步滚动（默认按整页跳，体验改为细腻滚动） -->
+                        <Track x:Name="PART_Track" Width="5" HorizontalAlignment="Stretch" IsDirectionReversed="True"
+                               PreviewMouseLeftButtonDown="Track_PreviewMouseLeftButtonDown">
                             <Track.DecreaseRepeatButton>
-                                <RepeatButton Command="{x:Static ScrollBar.LineUpCommand}" Focusable="False" Opacity="0">
+                                <!-- Delay：按住后开始重复的等待时间；Interval：重复滚动间隔（默认 33ms 太快） -->
+                                <RepeatButton Command="{x:Static ScrollBar.LineUpCommand}" Focusable="False" Opacity="0"
+                                              Delay="400" Interval="80">
                                     <RepeatButton.Template>
                                         <ControlTemplate TargetType="ButtonBase">
                                             <Border Background="Transparent"/>
@@ -51,7 +55,8 @@
                                 </Thumb>
                             </Track.Thumb>
                             <Track.IncreaseRepeatButton>
-                                <RepeatButton Command="{x:Static ScrollBar.LineDownCommand}" Focusable="False" Opacity="0">
+                                <RepeatButton Command="{x:Static ScrollBar.LineDownCommand}" Focusable="False" Opacity="0"
+                                              Delay="400" Interval="80">
                                     <RepeatButton.Template>
                                         <ControlTemplate TargetType="ButtonBase">
                                             <Border Background="Transparent"/>
@@ -248,10 +253,12 @@
             </Grid>
 
             <!-- 任务列表 -->
+            <!-- CanContentScroll=False：按像素滚动，避免虚拟化按"项"跳跃（滚轮/滑块细腻） -->
             <ListBox x:Name="TaskList" Grid.Row="1" Margin="8,4,2,4"
                      Background="Transparent" BorderThickness="0"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.CanContentScroll="False">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>

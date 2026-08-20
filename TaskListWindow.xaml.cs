@@ -345,6 +345,29 @@ public partial class TaskListWindow : Window
             item.IsExpanded = !item.IsExpanded;
     }
 
+    // 滚动条轨道点击：默认按整页跳，改为按行小步滚动。
+    // 用 Preview（隧道）事件在默认行为之前拦截，点击 Thumb 上方/下方空白处时手动滚动一行。
+    private void Track_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Primitives.Track track) return;
+        var thumb = track.Thumb;
+        if (thumb is null) return;
+
+        var pos = e.GetPosition(track);
+        var thumbTop = thumb.TranslatePoint(new System.Windows.Point(0, 0), track).Y;
+        var thumbBottom = thumbTop + thumb.ActualHeight;
+        if (pos.Y >= thumbTop && pos.Y <= thumbBottom) return; // 点在 Thumb 上，交给默认拖拽
+
+        var scrollViewer = track.FindAncestor<ScrollViewer>();
+        if (scrollViewer is null) return;
+
+        e.Handled = true; // 阻止默认的整页跳转
+        if (pos.Y < thumbTop)
+            scrollViewer.LineUp();
+        else
+            scrollViewer.LineDown();
+    }
+
     // 添加子任务
     private void AddSubTask_Click(object sender, RoutedEventArgs e)
     {
