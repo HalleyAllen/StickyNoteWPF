@@ -14,6 +14,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         NewNoteButton.Click += (_, _) => App.Current.CreateNote();
+        ForceShowButton.Click += ForceShowButton_Click;
         SettingsButton.Click += (_, _) => App.Current.OpenSettings();
         MinButton.Click += (_, _) => WindowState = WindowState.Minimized;
         CloseButton.Click += (_, _) => Close();
@@ -29,11 +30,34 @@ public partial class MainWindow : Window
         };
         Loaded += (_, _) =>
         {
+            UpdateForceShowButton();
             RefreshList();
             // 注册窗口消息钩子，接收其他实例发来的“激活”消息
             var source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
             source.AddHook(WndProc);
         };
+    }
+
+    // 根据设置更新“全部显示”按钮状态（图标高亮表示已开启）
+    private void UpdateForceShowButton()
+    {
+        var on = App.Current.Settings.ForceShowAll;
+        ForceShowButton.Foreground = on
+            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xFF, 0xD7, 0x00))
+            : System.Windows.Media.Brushes.White;
+        ForceShowButton.ToolTip = on
+            ? "全部显示：开启（所有便签已强制不透明且始终显示，点此关闭）"
+            : "全部显示：关闭（点此开启，强制所有便签不透明且始终显示）";
+    }
+
+    // 切换全局“全部显示”开关
+    private void ForceShowButton_Click(object sender, RoutedEventArgs e)
+    {
+        var s = App.Current.Settings;
+        s.ForceShowAll = !s.ForceShowAll;
+        s.Save();
+        App.Current.ApplyForceShowAll();
+        UpdateForceShowButton();
     }
 
     // 处理跨实例激活消息

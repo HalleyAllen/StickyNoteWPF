@@ -36,6 +36,8 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center"
@@ -46,27 +48,35 @@
                 </StackPanel>
 
                 <!-- 新建按钮（放在标题栏） -->
-                <Button x:Name="NewNoteButton" Grid.Column="1" Content="＋ 新建"
+                <Button x:Name="NewNoteButton" Grid.Column="1" Content="＋"
                         Margin="0,0,2,0" Padding="10,4"
                         Background="#FF007ACC" Foreground="White"
                         BorderThickness="0" Cursor="Hand" FontSize="13"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
+                <!-- 全部显示：停用/启用所有便签的隐藏与透明效果 -->
+                <Button x:Name="ForceShowButton" Grid.Column="2" Content="👁"
+                        Width="34" Height="32" Margin="0,0,2,0"
+                        Background="Transparent" Foreground="White"
+                        BorderThickness="0" Cursor="Hand" FontSize="15"
+                        ToolTip="全部显示：关闭（点此开启，强制所有便签不透明且始终显示）"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+
                 <!-- 设置 -->
-                <Button x:Name="SettingsButton" Grid.Column="2" Content="⚙"
+                <Button x:Name="SettingsButton" Grid.Column="3" Content="⚙"
                         Width="34" Height="32" Margin="0,0,2,0"
                         Background="Transparent" Foreground="White"
                         BorderThickness="0" Cursor="Hand" FontSize="15"
                         ToolTip="设置" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
                 <!-- 最小化 -->
-                <Button x:Name="MinButton" Grid.Column="3" Content="—"
+                <Button x:Name="MinButton" Grid.Column="4" Content="—"
                         Width="34" Height="32" Background="Transparent"
                         Foreground="White" BorderThickness="0" Cursor="Hand"
                         FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
                 <!-- 关闭 -->
-                <Button x:Name="CloseButton" Grid.Column="4" Content="✕"
+                <Button x:Name="CloseButton" Grid.Column="5" Content="✕"
                         Width="40" Height="32" Background="Transparent"
                         Foreground="White" BorderThickness="0" Cursor="Hand"
                         FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
@@ -112,10 +122,6 @@
                                              Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
                                              ToolTip="点击修改便签标题"
                                              TextChanged="TitleTextBox_TextChanged"/>
-                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
-                                               FontSize="13"
-                                               Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
-                                               MaxHeight="60" TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Text="{Binding CreatedAt, StringFormat='创建于 {0:g}'}"
                                                FontSize="10"
                                                Foreground="{Binding Color, Converter={StaticResource ContrastText}}"

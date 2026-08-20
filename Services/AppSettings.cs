@@ -12,7 +12,9 @@ public class AppSettings
 
     public bool StartupWithWindows { get; set; }
     public bool GlobalTopmost { get; set; } = true;
+    public bool ForceShowAll { get; set; } = false;   // 全局强制所有便签不透明且始终显示（停用隐藏/透明效果）
     public string DefaultColor { get; set; } = "#FFF7A900";
+    public double DefaultFontSize { get; set; } = 14;   // 初始默认字体大小（仅影响新建便签）
     public double WindowOpacity { get; set; } = 1.0;
     public string NoteTextColor { get; set; } = "#FF222222";   // 便签编辑区文字
     public string TitleTextColor { get; set; } = "#FF333333";  // 标题栏文字

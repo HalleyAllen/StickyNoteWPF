@@ -74,6 +74,24 @@ public partial class StickyNoteWindow : Window
         }
     }
 
+    // 全局“全部显示”开关：开启时强制所有便签不透明且始终可见（停用各自的隐藏/透明效果）
+    public void ApplyForceShowAll()
+    {
+        if (App.Current?.Settings.ForceShowAll == true)
+        {
+            _hoverTimer?.Stop();
+            _hoverTimer = null;
+            Opacity = 1;
+            IsHitTestVisible = true;
+            Topmost = App.Current?.Settings.GlobalTopmost ?? true;
+        }
+        else
+        {
+            // 恢复该便签自身设置
+            ApplyHoverState();
+        }
+    }
+
     private DispatcherTimer? _hoverTimer;
 
     // 定时器按全局鼠标坐标判定是否进入便签区域

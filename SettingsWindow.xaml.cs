@@ -32,6 +32,9 @@ public partial class SettingsWindow : Window
         OpacitySlider.Value = _settings.WindowOpacity;
         UpdateOpacityLabel(_settings.WindowOpacity);
 
+        FontSizeSlider.Value = _settings.DefaultFontSize;
+        FontSizeValue.Text = $"{Math.Round(_settings.DefaultFontSize)}";
+
         BuildSwatches(ColorPanel, _settings.DefaultColor,
             hex => { _settings.DefaultColor = hex; _settings.Save(); BuildSwatches(ColorPanel, hex, null); },
             hex => { _settings.DefaultColor = hex; _settings.Save(); BuildSwatches(ColorPanel, hex, null); });
@@ -78,6 +81,16 @@ public partial class SettingsWindow : Window
         _settings.WindowOpacity = v;
         _settings.Save();
         UpdateOpacityLabel(v);
+    }
+
+    // 初始字体大小：仅作为新建便签的默认值，不影响已创建的便签
+    private void FontSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_settings == null) return;
+        var v = Math.Round(e.NewValue);
+        _settings.DefaultFontSize = v;
+        _settings.Save();
+        FontSizeValue.Text = $"{v}";
     }
 
     private void UpdateOpacityLabel(double v)

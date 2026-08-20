@@ -70,6 +70,7 @@ public partial class App : System.Windows.Application
         note.Color = Settings.DefaultColor;
         note.TextColor = Settings.NoteTextColor;
         note.Opacity = Settings.WindowOpacity;
+        note.FontSize = Settings.DefaultFontSize;
         // 新便利贴稍微错位，避免完全重叠
         note.Left = 200 + (_notes.Count % 5) * 30;
         note.Top = 150 + (_notes.Count % 5) * 30;
@@ -117,6 +118,14 @@ public partial class App : System.Windows.Application
         win.Closed += (_, _) => _openWindows.Remove(note.Id);
         _openWindows[note.Id] = win;
         win.Show();
+        win.ApplyForceShowAll();
+    }
+
+    // 全局“全部显示”开关切换后，实时刷新所有已打开的便签
+    public void ApplyForceShowAll()
+    {
+        foreach (var win in _openWindows.Values)
+            win.ApplyForceShowAll();
     }
 
     // 外观/标题等修改后，刷新已打开的便签窗口显示；refreshManager=true 时同步刷新管理界面列表
