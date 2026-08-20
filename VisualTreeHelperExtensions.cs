@@ -19,4 +19,17 @@ public static class VisualTreeHelperExtensions
         }
         return null;
     }
+
+    // 沿视觉树向上查找指定类型的祖先（含自身）
+    public static T? FindAncestor<T>(this DependencyObject? child) where T : DependencyObject
+    {
+        DependencyObject? cur = child;
+        while (cur != null)
+        {
+            if (cur is T t)
+                return t;
+            cur = VisualTreeHelper.GetParent(cur);
+        }
+        return null;
+    }
 }

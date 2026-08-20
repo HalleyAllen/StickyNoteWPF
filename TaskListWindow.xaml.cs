@@ -1,6 +1,8 @@
 using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -28,10 +30,12 @@ public partial class TaskListWindow : Window
         Height = 360;
 
         var view = CollectionViewSource.GetDefaultView(list.Items);
+        view.SortDescriptions.Clear();
         view.SortDescriptions.Add(new SortDescription(nameof(TaskItem.IsDone), ListSortDirection.Ascending));
         // 未完成区内按 Order 降序，序号最大（最新）的置顶，保证新任务始终在最顶
         view.SortDescriptions.Add(new SortDescription(nameof(TaskItem.Order), ListSortDirection.Descending));
         TaskList.ItemsSource = view;
+        EnsureSubSorting(list.Items);
 
         RefreshFromModel();
         ApplyTitle();
@@ -265,8 +269,16 @@ public partial class TaskListWindow : Window
 
     private void Task_CheckedChanged(object sender, RoutedEventArgs e)
     {
-        // 排序由 CollectionView 处理，无需重建容器，因此不会丢失调色/可见性
-        CollectionViewSource.GetDefaultView(List.Items).Refresh();
+        // 刷新所在层级（根或子任务集合）的排序视图，完成项沉底、未完成项保持置顶
+        var ic = (sender as DependencyObject)?.FindAncestor<ItemsControl>();
+        if (ic is System.Windows.Controls.ListBox)
+        {
+            CollectionViewSource.GetDefaultView(List.Items).Refresh();
+        }
+        else if (ic?.ItemsSource is System.Collections.IEnumerable src)
+        {
+            CollectionViewSource.GetDefaultView(src)?.Refresh();
+        }
         Persist();
     }
 
@@ -274,9 +286,21 @@ public partial class TaskListWindow : Window
     {
         if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None)
         {
-            // Enter 提交当前任务并新建一条
+            // Enter 提交当前任务并新建一条同级任务
             ((System.Windows.Controls.TextBox)sender).GetBindingExpression(System.Windows.Controls.TextBox.TextProperty)?.UpdateSource();
-            AddTask();
+            var ic = (sender as DependencyObject)?.FindAncestor<ItemsControl>();
+            if (ic is System.Windows.Controls.ListBox)
+                AddTask();
+            else if (ic?.DataContext is TaskItem parent)
+                AddSubTask(parent);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Tab && Keyboard.Modifiers == ModifierKeys.None)
+        {
+            // Tab 提交当前任务并在其下添加子任务（Shift+Tab 保留默认反向焦点移动）
+            ((System.Windows.Controls.TextBox)sender).GetBindingExpression(System.Windows.Controls.TextBox.TextProperty)?.UpdateSource();
+            if ((sender as FrameworkElement)?.DataContext is TaskItem item)
+                AddSubTask(item);
             e.Handled = true;
         }
         else if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Shift)
@@ -287,11 +311,18 @@ public partial class TaskListWindow : Window
 
     private void DeleteTask_Click(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is TaskItem item)
+        if ((sender as FrameworkElement)?.DataContext is not TaskItem item) return;
+        var ic = (sender as DependencyObject)?.FindAncestor<ItemsControl>();
+        if (ic is System.Windows.Controls.ListBox)
         {
             List.Items.Remove(item);
-            Persist();
         }
+        else if (ic?.DataContext is TaskItem parent)
+        {
+            parent.SubItems.Remove(item);
+            parent.RefreshHasSubItems();
+        }
+        Persist();
     }
 
     private void AddTask_Click(object sender, RoutedEventArgs e) => AddTask();
@@ -304,21 +335,80 @@ public partial class TaskListWindow : Window
         newItem.Order = maxOrder + 1;
         List.Items.Add(newItem);
         Persist();
-        // 聚焦到新添加任务的文本框（文字色由 XAML 绑定处理）
-        // 注意：CollectionView 按 IsDone 排序，不能按索引取，必须用新项对象定位
+        FocusItemTextBox(newItem);
+    }
+
+    // 展开/折叠子任务
+    private void ToggleExpand_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is TaskItem item)
+            item.IsExpanded = !item.IsExpanded;
+    }
+
+    // 添加子任务
+    private void AddSubTask_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is TaskItem parent)
+            AddSubTask(parent);
+    }
+
+    private void AddSubTask(TaskItem parent)
+    {
+        long maxOrder = parent.SubItems.Count == 0 ? 0 : parent.SubItems.Max(i => i.Order);
+        var sub = new TaskItem { Text = "新子任务", Order = maxOrder + 1 };
+        parent.SubItems.Add(sub);
+        parent.IsExpanded = true;
+        parent.RefreshHasSubItems();
+        EnsureSubSorting(parent.SubItems);
+        Persist();
+        FocusItemTextBox(sub);
+    }
+
+    // 聚焦到指定任务项的文本框（可用于任意层级）
+    private void FocusItemTextBox(TaskItem item)
+    {
         TaskList.Dispatcher.BeginInvoke(new Action(() =>
         {
-            if (TaskList.ItemContainerGenerator.ContainerFromItem(newItem) is ListBoxItem container)
+            var tb = FindTextBoxForItem(item);
+            if (tb == null)
             {
-                if (container.FindVisualChild<System.Windows.Controls.TextBox>() is System.Windows.Controls.TextBox tb)
+                // 容器可能尚未生成，再等一轮
+                TaskList.Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    tb.Focus();
-                    tb.SelectAll();
-                }
+                    if (FindTextBoxForItem(item) is System.Windows.Controls.TextBox tb2) { tb2.Focus(); tb2.SelectAll(); }
+                }), DispatcherPriority.Loaded);
+                return;
             }
-            // 新项同步锁定状态（只读/删除按钮可见性）
-            ApplyLockToItems();
+            tb.Focus();
+            tb.SelectAll();
         }), DispatcherPriority.Loaded);
+    }
+
+    private System.Windows.Controls.TextBox? FindTextBoxForItem(TaskItem item)
+        => FindTextBoxRecursive(TaskList, item);
+
+    private static System.Windows.Controls.TextBox? FindTextBoxRecursive(DependencyObject parent, TaskItem item)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is System.Windows.Controls.TextBox tb && tb.DataContext == item) return tb;
+            var found = FindTextBoxRecursive(child, item);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    // 为子任务集合设置与根级一致的排序（IsDone 升序 + Order 降序），幂等可重复调用
+    private static void EnsureSubSorting(ObservableCollection<TaskItem> items)
+    {
+        var view = CollectionViewSource.GetDefaultView(items);
+        view.SortDescriptions.Clear();
+        view.SortDescriptions.Add(new SortDescription(nameof(TaskItem.IsDone), ListSortDirection.Ascending));
+        view.SortDescriptions.Add(new SortDescription(nameof(TaskItem.Order), ListSortDirection.Descending));
+        foreach (var item in items)
+            if (item.SubItems.Count > 0)
+                EnsureSubSorting(item.SubItems);
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

@@ -64,6 +64,127 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- 任务行模板（递归：子任务复用同一模板，支持多层嵌套） -->
+        <DataTemplate x:Key="TaskItemTemplate" DataType="{x:Type models:TaskItem}">
+            <StackPanel>
+                <Grid MinHeight="26">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 展开/折叠子任务箭头（无子任务时隐藏） -->
+                    <Button Grid.Column="0" Width="20" Height="24" Padding="0"
+                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                            VerticalAlignment="Center" Click="ToggleExpand_Click"
+                            ToolTip="展开/折叠子任务">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Visibility" Value="Hidden"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasSubItems}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <TextBlock FontSize="10" Foreground="#FF999999"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="▶"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                            <Setter Property="Text" Value="▼"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Button>
+
+                    <CheckBox Grid.Column="1" VerticalAlignment="Center"
+                              IsChecked="{Binding IsDone, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              Checked="Task_CheckedChanged" Unchecked="Task_CheckedChanged"/>
+
+                    <TextBox Grid.Column="2" Margin="4,0" VerticalAlignment="Center"
+                             BorderThickness="0" Background="Transparent"
+                             Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             TextWrapping="Wrap" AcceptsReturn="True"
+                             PreviewKeyDown="TaskText_PreviewKeyDown">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox">
+                                <Setter Property="FontSize"
+                                        Value="{Binding ElementName=Root, Path=List.FontSize}"/>
+                                <Setter Property="Foreground"
+                                        Value="{Binding ElementName=Root, Path=List.TextColor}"/>
+                                <Setter Property="CaretBrush"
+                                        Value="{Binding ElementName=Root, Path=List.TextColor}"/>
+                                <Setter Property="IsReadOnly"
+                                        Value="{Binding ElementName=Root, Path=List.IsLocked}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsDone}" Value="True">
+                                        <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                        <Setter Property="Foreground"
+                                                Value="{Binding ElementName=Root, Path=List.TextColor}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+
+                    <!-- 添加子任务 -->
+                    <Button Grid.Column="3" Content="＋" Width="22" Height="22"
+                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                            FontSize="12" ToolTip="添加子任务" VerticalAlignment="Center"
+                            Foreground="{Binding ElementName=Root, Path=List.TextColor}"
+                            Click="AddSubTask_Click">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ElementName=Root, Path=List.IsLocked}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <!-- 删除任务 -->
+                    <Button Grid.Column="4" Content="🗑" Width="22" Height="22"
+                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                            FontSize="11" ToolTip="删除任务" VerticalAlignment="Center"
+                            Foreground="{Binding ElementName=Root, Path=List.TextColor}"
+                            Click="DeleteTask_Click">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ElementName=Root, Path=List.IsLocked}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </Grid>
+
+                <!-- 子任务区（缩进 + 左侧竖线） -->
+                <Border BorderThickness="1,0,0,0" BorderBrush="#33000000"
+                        Margin="16,0,0,0"
+                        Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}">
+                    <ItemsControl ItemsSource="{Binding SubItems}"
+                                  ItemTemplate="{DynamicResource TaskItemTemplate}"/>
+                </Border>
+            </StackPanel>
+        </DataTemplate>
     </Window.Resources>
 
     <Border x:Name="RootBorder" CornerRadius="12" BorderThickness="1" Background="White">
@@ -141,59 +262,7 @@
                     </Style>
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <Grid MinHeight="24">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <CheckBox Grid.Column="0" VerticalAlignment="Center"
-                                      IsChecked="{Binding IsDone, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      Checked="Task_CheckedChanged" Unchecked="Task_CheckedChanged"/>
-                            <TextBox Grid.Column="1" Margin="6,0,4,0" VerticalAlignment="Center"
-                                     BorderThickness="0" Background="Transparent"
-                                     Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     TextWrapping="Wrap" AcceptsReturn="True"
-                                     PreviewKeyDown="TaskText_PreviewKeyDown">
-                                <TextBox.Style>
-                                    <Style TargetType="TextBox">
-                                        <Setter Property="FontSize"
-                                                Value="{Binding ElementName=Root, Path=List.FontSize}"/>
-                                        <Setter Property="Foreground"
-                                                Value="{Binding ElementName=Root, Path=List.TextColor}"/>
-                                        <Setter Property="CaretBrush"
-                                                Value="{Binding ElementName=Root, Path=List.TextColor}"/>
-                                        <Setter Property="IsReadOnly"
-                                                Value="{Binding ElementName=Root, Path=List.IsLocked}"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsDone}" Value="True">
-                                                <Setter Property="TextDecorations" Value="Strikethrough"/>
-                                                <Setter Property="Foreground"
-                                                        Value="{Binding ElementName=Root, Path=List.TextColor}"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBox.Style>
-                            </TextBox>
-                            <Button Grid.Column="2" Content="🗑" Width="22" Height="22"
-                                    Background="Transparent" BorderThickness="0" Cursor="Hand"
-                                    FontSize="11" ToolTip="删除任务" VerticalAlignment="Center"
-                                    Foreground="{Binding ElementName=Root, Path=List.TextColor}"
-                                    Click="DeleteTask_Click">
-                                <Button.Style>
-                                    <Style TargetType="Button">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding ElementName=Root, Path=List.IsLocked}" Value="True">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
-                        </Grid>
-                    </DataTemplate>
+                    <StaticResource ResourceKey="TaskItemTemplate"/>
                 </ListBox.ItemTemplate>
             </ListBox>
         </Grid>

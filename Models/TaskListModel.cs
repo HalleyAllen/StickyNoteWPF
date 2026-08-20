@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 
 namespace StickyNoteWPF.Models;
@@ -9,6 +10,7 @@ public class TaskItem : INotifyPropertyChanged
     private string _text = string.Empty;
     private bool _isDone;
     private long _order;
+    private bool _isExpanded = true;
 
     public Guid Id { get; set; } = Guid.NewGuid();
 
@@ -31,8 +33,28 @@ public class TaskItem : INotifyPropertyChanged
         set { _order = value; OnPropertyChanged(); }
     }
 
+    // 子任务集合（可嵌套多层）
+    [JsonInclude]
+    public ObservableCollection<TaskItem> SubItems { get; set; } = new();
+
+    // 是否有子任务（控制展开箭头显示）
+    [JsonIgnore]
+    public bool HasSubItems => SubItems.Count > 0;
+
+    // 是否展开显示子任务（仅 UI 状态，不持久化）
+    [JsonIgnore]
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set { _isExpanded = value; OnPropertyChanged(); }
+    }
+
+    // 子任务增减后调用，刷新 HasSubItems 相关绑定
+    public void RefreshHasSubItems() => OnPropertyChanged(nameof(HasSubItems));
+
     public event PropertyChangedEventHandler? PropertyChanged;
-    private void OnPropertyChanged() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
+    private void OnPropertyChanged([CallerMemberName] string? name = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
 public class TaskListModel : INotifyPropertyChanged
