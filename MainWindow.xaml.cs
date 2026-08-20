@@ -79,6 +79,13 @@ public partial class MainWindow : Window
             App.Current.ActivateFromOtherInstance();
             handled = true;
         }
+        else if (msg == App.ShutdownMessage)
+        {
+            // 新实例请求接管：正常退出并存盘（释放互斥锁），由新实例启动
+            Logger.Log("MainWindow.WndProc: 收到 ShutdownMessage，准备退出存盘");
+            App.Current.ExitApp();
+            handled = true;
+        }
         return IntPtr.Zero;
     }
 

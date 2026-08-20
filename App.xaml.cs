@@ -15,6 +15,8 @@ public partial class App : System.Windows.Application
     private static Mutex? _singleMutex;
     // 用于激活已运行实例的自定义窗口消息（internal 供 MainWindow 读取）
     internal static readonly int ActivateMessage = NativeMethods.RegisterWindowMessage("StickyNoteWPF_Activate");
+    // 用于通知已运行实例退出的自定义窗口消息（新实例接管时发送）
+    internal static readonly int ShutdownMessage = NativeMethods.RegisterWindowMessage("StickyNoteWPF_Shutdown");
 
     private List<StickyNoteModel> _notes = new();
     private List<TaskListModel> _taskLists = new();
@@ -32,18 +34,51 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        // 单实例检测：若已有实例在运行，则激活它并退出当前实例
+        Logger.Log($"=== App.OnStartup 开始，进程PID={System.Diagnostics.Process.GetCurrentProcess().Id} ===");
+        // 单实例检测：若已有实例在运行，则请求旧实例退出并等待其释放文件，由新实例接管
         _singleMutex = new Mutex(true, MutexName, out bool createdNew);
         if (!createdNew)
         {
-            // 向已运行实例广播“激活”消息
+            Logger.Log("OnStartup: 检测到已有实例，开始请求旧实例退出并接管");
+            // 1) 通知旧实例存盘退出
             NativeMethods.PostMessage(
                 (IntPtr)NativeMethods.HWND_BROADCAST,
-                ActivateMessage,
+                ShutdownMessage,
                 IntPtr.Zero,
                 IntPtr.Zero);
-            Shutdown();
-            return;
+
+            // 2) 找到其他 StickyNoteWPF 进程，请求其关闭主窗口（正常退出存盘），等待退出
+            var selfId = System.Diagnostics.Process.GetCurrentProcess().Id;
+            foreach (var p in System.Diagnostics.Process.GetProcessesByName("StickyNoteWPF"))
+            {
+                if (p.Id == selfId) continue;
+                try { p.CloseMainWindow(); } catch { }
+            }
+            // 等待旧实例退出（最多约 2.5 秒）
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            while (sw.ElapsedMilliseconds < 2500)
+            {
+                var stillAlive = System.Diagnostics.Process.GetProcessesByName("StickyNoteWPF")
+                    .Any(p => p.Id != selfId);
+                if (!stillAlive) break;
+                System.Threading.Thread.Sleep(150);
+            }
+            // 3) 仍有残留则强制结束，避免两个实例写同一文件
+            foreach (var p in System.Diagnostics.Process.GetProcessesByName("StickyNoteWPF"))
+            {
+                if (p.Id == selfId) continue;
+                try { p.Kill(); } catch { }
+            }
+
+            // 释放本实例占用的互斥锁引用，重新获取以确保独占
+            _singleMutex.Close();
+            System.Threading.Thread.Sleep(200);
+            _singleMutex = new Mutex(true, MutexName, out createdNew);
+            if (!createdNew)
+            {
+                _singleMutex.Close();
+                _singleMutex = null;
+            }
         }
 
         base.OnStartup(e);
@@ -314,6 +349,9 @@ public partial class App : System.Windows.Application
 
     public void SaveAll()
     {
+        int notes = _notes?.Count ?? 0;
+        int lists = _taskLists?.Count ?? 0;
+        Logger.Log($"SaveAll: 准备保存，内存便利贴数={notes}，任务清单数={lists}");
         NoteStore.Save(new StoreData
         {
             Notes = _notes,
@@ -324,6 +362,7 @@ public partial class App : System.Windows.Application
     public void ExitApp()
     {
         _isExiting = true;
+        Logger.Log($"ExitApp: 开始退出，内存便利贴数={_notes?.Count ?? 0}，任务清单数={_taskLists?.Count ?? 0}");
         // 退出前根据当前打开的窗口写回 IsOpen，下次启动只恢复这些窗口
         foreach (var note in _notes)
             note.IsOpen = _openWindows.ContainsKey(note.Id);
@@ -336,11 +375,16 @@ public partial class App : System.Windows.Application
             win.Close();
         _tray?.Dispose();
         _tray = null;
+        // 释放单实例互斥锁，交出新实例接管
+        _singleMutex?.ReleaseMutex();
+        _singleMutex?.Close();
+        _singleMutex = null;
         Shutdown();
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
+        Logger.Log($"OnExit: _isExiting={_isExiting}，内存便利贴数={_notes?.Count ?? 0}，任务清单数={_taskLists?.Count ?? 0}");
         // 兜底：仅当尚未经 ExitApp 处理时，写回当前打开状态
         if (!_isExiting)
         {

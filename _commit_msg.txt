@@ -1,5 +1,0 @@
-fix: 新任务始终生成在未完成区最顶部
-
-- TaskItem 增加 Order 序号字段（随数据持久化）
-- CollectionView 排序改为 IsDone 升序 + Order 降序
-- 新建任务 Order 取当前最大+1，保证稳定置顶，不再依赖 ListCollectionView 的稳定排序行为
