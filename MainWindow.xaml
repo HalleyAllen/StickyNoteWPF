@@ -26,7 +26,8 @@
     </shell:WindowChrome.WindowChrome>
 
     <Border Background="#FFF3F3F3" BorderBrush="#FF2D2D30" BorderThickness="1">
-        <DockPanel LastChildFill="True">
+        <Grid>
+            <DockPanel LastChildFill="True">
             <!-- 自定义标题栏（含新建按钮） -->
             <Grid x:Name="TitleBar" DockPanel.Dock="Top" Height="32"
                   Background="#FF2D2D30">
@@ -138,6 +139,33 @@
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
-        </DockPanel>
+            </DockPanel>
+
+            <!-- 悬浮“新建”按钮：右下角圆形 + 加号，不受列表内容影响位置 -->
+            <Button x:Name="AddNoteButton" Width="46" Height="46"
+                    HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                    Margin="0,0,26,16"
+                    Background="#FF007ACC" BorderThickness="0"
+                    Cursor="Hand" ToolTip="新建便利贴"
+                    shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                <Grid>
+                    <Rectangle Width="20" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="White"/>
+                    <Rectangle Width="3" Height="20" RadiusX="1.5" RadiusY="1.5" Fill="White"/>
+                </Grid>
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Ellipse x:Name="Circle" Fill="{TemplateBinding Background}"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Circle" Property="Fill" Value="#FF1E8FE0"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+        </Grid>
     </Border>
 </Window>
