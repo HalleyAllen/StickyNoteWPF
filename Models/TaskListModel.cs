@@ -34,6 +34,8 @@ public class TaskListModel
 
     public string Color { get; set; } = "#FFF7A900";
     public string TextColor { get; set; } = "#FF222222";
+    public string? BackgroundImagePath { get; set; }
+    public string BackgroundImageMode { get; set; } = "Fill"; // Fill / Stretch / Tile / Center
     public double Opacity { get; set; } = 1.0;
     public double FontSize { get; set; } = 16;
     public string FontFamily { get; set; } = "Microsoft YaHei";

@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Microsoft.Win32;
 using StickyNoteWPF.Models;
 
 namespace StickyNoteWPF;
@@ -171,6 +172,26 @@ public partial class TaskListSettingsWindow : Window
         _list.Title = string.Equals(TitleBox.Text.Trim(), "任务清单", System.StringComparison.Ordinal)
             ? string.Empty
             : TitleBox.Text;
+        App.Current.RefreshTaskList(_list, true);
+    }
+
+    private void PickImageButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "图片文件|*.png;*.jpg;*.jpeg;*.bmp;*.gif|所有文件|*.*",
+            Title = "选择背景图片"
+        };
+        if (dlg.ShowDialog() == true)
+        {
+            _list.BackgroundImagePath = dlg.FileName;
+            App.Current.RefreshTaskList(_list, true);
+        }
+    }
+
+    private void ClearImageButton_Click(object sender, RoutedEventArgs e)
+    {
+        _list.BackgroundImagePath = null;
         App.Current.RefreshTaskList(_list, true);
     }
 }

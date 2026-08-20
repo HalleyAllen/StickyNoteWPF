@@ -1,6 +1,9 @@
 using System;
+using System.ComponentModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
@@ -24,7 +27,9 @@ public partial class TaskListWindow : Window
         Width = 320;
         Height = 360;
 
-        TaskList.ItemsSource = list.Items;
+        var view = CollectionViewSource.GetDefaultView(list.Items);
+        view.SortDescriptions.Add(new SortDescription(nameof(TaskItem.IsDone), ListSortDirection.Ascending));
+        TaskList.ItemsSource = view;
 
         RefreshFromModel();
         ApplyTitle();
@@ -57,8 +62,23 @@ public partial class TaskListWindow : Window
     {
         LockButton.Content = List.IsLocked ? "🔒" : "🔓";
         LockButton.ToolTip = List.IsLocked ? "已锁定（点此解锁，解锁后可编辑）" : "未锁定（点此锁定，锁定后不可编辑）";
-        TaskList.IsEnabled = !List.IsLocked;
-        AddTaskButton.IsEnabled = !List.IsLocked;
+
+        // 锁定：仅关闭编辑（文本框只读）、隐藏删除与添加按钮；勾选仍可用
+        AddTaskButton.Visibility = List.IsLocked ? Visibility.Collapsed : Visibility.Visible;
+        ApplyLockToItems();
+    }
+
+    private void ApplyLockToItems()
+    {
+        foreach (var item in List.Items)
+        {
+            if (TaskList.ItemContainerGenerator.ContainerFromItem(item) is not ListBoxItem container)
+                continue;
+            if (container.FindVisualChild<System.Windows.Controls.TextBox>() is { } tb)
+                tb.IsReadOnly = List.IsLocked;
+            if (container.FindVisualChild<System.Windows.Controls.Button>() is { } del)
+                del.Visibility = List.IsLocked ? Visibility.Collapsed : Visibility.Visible;
+        }
     }
 
     private void ApplyHoverState()
@@ -169,9 +189,46 @@ public partial class TaskListWindow : Window
         var o = Math.Clamp(List.Opacity, 0.0, 1.0);
         try
         {
-            var c = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(List.Color);
-            c.A = (byte)(o * 255);
-            RootBorder.Background = new System.Windows.Media.SolidColorBrush(c);
+            if (!string.IsNullOrEmpty(List.BackgroundImagePath) && File.Exists(List.BackgroundImagePath))
+            {
+                var bmp = new System.Windows.Media.Imaging.BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                bmp.UriSource = new Uri(List.BackgroundImagePath, UriKind.Absolute);
+                bmp.EndInit();
+
+                var stretch = List.BackgroundImageMode switch
+                {
+                    "Center" => System.Windows.Media.Stretch.None,
+                    "Tile" => System.Windows.Media.Stretch.None,
+                    "Stretch" => System.Windows.Media.Stretch.Fill,
+                    _ => System.Windows.Media.Stretch.UniformToFill
+                };
+
+                var brush = new System.Windows.Media.ImageBrush(bmp)
+                {
+                    Stretch = stretch,
+                    Opacity = o
+                };
+                if (List.BackgroundImageMode == "Tile")
+                {
+                    brush.TileMode = System.Windows.Media.TileMode.Tile;
+                    brush.Viewport = new Rect(0, 0, 0.25, 0.25);
+                    brush.ViewportUnits = System.Windows.Media.BrushMappingMode.RelativeToBoundingBox;
+                }
+                else if (List.BackgroundImageMode == "Center")
+                {
+                    brush.AlignmentX = System.Windows.Media.AlignmentX.Center;
+                    brush.AlignmentY = System.Windows.Media.AlignmentY.Center;
+                }
+                RootBorder.Background = brush;
+            }
+            else
+            {
+                var c = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(List.Color);
+                c.A = (byte)(o * 255);
+                RootBorder.Background = new System.Windows.Media.SolidColorBrush(c);
+            }
 
             RootBorder.BorderBrush = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromArgb((byte)(o * 0x55), 0, 0, 0));
@@ -200,24 +257,21 @@ public partial class TaskListWindow : Window
         EyeButton.Foreground = AppearanceHelper.MakeBrush(List.TextColor);
         LockButton.Foreground = AppearanceHelper.MakeBrush(List.TextColor);
 
-        // 任务文本与滚动条主题
+        // 底部“添加任务”按钮颜色跟随文字色
+        AddTaskButton.Foreground = AppearanceHelper.MakeBrush(List.TextColor);
+
+        // 任务文本与滚动条主题（ListBox 内 TextBox/删除按钮 的文字色改用 XAML 绑定，避免刷新丢失）
         var textColor = AppearanceHelper.ParseColor(List.TextColor, Colors.Black);
         var bgColor = AppearanceHelper.ParseColor(List.Color, Colors.White);
         TaskList.Resources["ScrollThumbBrush"] = new SolidColorBrush(textColor);
         TaskList.Resources["ScrollThumbHoverBrush"] = new SolidColorBrush(textColor);
         TaskList.Resources["ScrollTrackBrush"] = new SolidColorBrush(bgColor);
-
-        // 给 ListBox 内的 TextBox 应用细滚动条（虽多数单行，输入长文本换行时仍可滚动）
-        foreach (var item in TaskList.Items)
-        {
-            var container = TaskList.ItemContainerGenerator.ContainerFromItem(item) as ListBoxItem;
-            if (container?.FindVisualChild<System.Windows.Controls.TextBox>() is { } tb)
-                AppearanceHelper.ApplyScrollBarTheme(tb, List.TextColor, List.Color);
-        }
     }
 
     private void Task_CheckedChanged(object sender, RoutedEventArgs e)
     {
+        // 排序由 CollectionView 处理，无需重建容器，因此不会丢失调色/可见性
+        CollectionViewSource.GetDefaultView(List.Items).Refresh();
         Persist();
     }
 
@@ -251,7 +305,7 @@ public partial class TaskListWindow : Window
     {
         List.Items.Add(new TaskItem { Text = "新任务" });
         Persist();
-        // 聚焦到新添加任务的文本框
+        // 聚焦到新添加任务的文本框（文字色由 XAML 绑定处理）
         TaskList.Dispatcher.BeginInvoke(new Action(() =>
         {
             if (TaskList.ItemContainerGenerator.ContainerFromIndex(List.Items.Count - 1) is ListBoxItem container)
@@ -262,6 +316,8 @@ public partial class TaskListWindow : Window
                     tb.SelectAll();
                 }
             }
+            // 新项同步锁定状态（只读/删除按钮可见性）
+            ApplyLockToItems();
         }), DispatcherPriority.Loaded);
     }
 

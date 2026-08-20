@@ -3,9 +3,11 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:local="clr-namespace:StickyNoteWPF"
+        xmlns:models="clr-namespace:StickyNoteWPF.Models"
+        x:Name="Root"
         Title="任务清单" Height="360" Width="320"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        ResizeMode="CanResizeWithGrip" Topmost="True"
+        ResizeMode="CanResize" Topmost="True"
         ShowInTaskbar="False" FontFamily="Microsoft YaHei">
 
     <shell:WindowChrome.WindowChrome>
@@ -93,10 +95,25 @@
                                      BorderThickness="0" Background="Transparent"
                                      Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      TextWrapping="Wrap" AcceptsReturn="True"
-                                     PreviewKeyDown="TaskText_PreviewKeyDown"/>
+                                     PreviewKeyDown="TaskText_PreviewKeyDown">
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox">
+                                        <Setter Property="Foreground"
+                                                Value="{Binding ElementName=Root, Path=List.TextColor}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDone}" Value="True">
+                                                <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                                <Setter Property="Foreground"
+                                                        Value="{Binding ElementName=Root, Path=List.TextColor}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
                             <Button Grid.Column="2" Content="🗑" Width="26" Height="26"
                                     Background="Transparent" BorderThickness="0" Cursor="Hand"
                                     FontSize="12" ToolTip="删除任务"
+                                    Foreground="{Binding ElementName=Root, Path=List.TextColor}"
                                     Click="DeleteTask_Click"/>
                         </Grid>
                     </DataTemplate>
