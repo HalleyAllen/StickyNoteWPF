@@ -38,20 +38,26 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="TitleText" Grid.Column="0" Text="便利贴" VerticalAlignment="Center"
                            Margin="8,0,0,0" FontSize="11" Foreground="#333"/>
-                <Button x:Name="EyeButton" Grid.Column="1" Content="👁"
+                <Button x:Name="LockButton" Grid.Column="1" Content="🔓"
+                        Width="26" Height="22" Margin="0,0,2,0"
+                        Background="Transparent" BorderThickness="0"
+                        ToolTip="未锁定（点此锁定，锁定后不可编辑）" Cursor="Hand"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                <Button x:Name="EyeButton" Grid.Column="2" Content="👁"
                         Width="26" Height="22" Margin="0,0,2,0"
                         Background="Transparent" BorderThickness="0"
                         ToolTip="鼠标移入才显示" Cursor="Hand"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                <Button x:Name="SettingsButton" Grid.Column="2" Content="⚙"
+                <Button x:Name="SettingsButton" Grid.Column="3" Content="⚙"
                         Width="26" Height="22" Margin="0,0,2,0"
                         Background="Transparent" BorderThickness="0"
                         ToolTip="便签设置" Cursor="Hand"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                <Button x:Name="CloseButton" Grid.Column="3" Content="✕"
+                <Button x:Name="CloseButton" Grid.Column="4" Content="✕"
                         Width="26" Height="22" Margin="0,0,4,0"
                         Background="Transparent" BorderThickness="0"
                         ToolTip="关闭" Cursor="Hand"

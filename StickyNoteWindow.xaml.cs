@@ -37,6 +37,7 @@ public partial class StickyNoteWindow : Window
         CloseButton.Click += (_, _) => RequestClose();
         SettingsButton.Click += (_, _) => App.Current.OpenNoteSettings(this);
         EyeButton.Click += (_, _) => ToggleHover();
+        LockButton.Click += (_, _) => ToggleLock();
         NoteTextBox.TextChanged += (_, _) => { Note.Text = NoteTextBox.Text; Persist(); };
 
         // 鼠标悬停显示：用全局光标坐标判定是否落在便签矩形内（Opacity=0 时窗口不可命中，需轮询）
@@ -49,6 +50,23 @@ public partial class StickyNoteWindow : Window
         Note.HoverToShow = !Note.HoverToShow;
         Persist();
         ApplyHoverState();
+    }
+
+    // 锁按钮：切换该便签是否锁定（锁定后内容只读，不可编辑）
+    private void ToggleLock()
+    {
+        Note.IsLocked = !Note.IsLocked;
+        Persist();
+        ApplyLockState();
+    }
+
+    // 根据当前便签的 IsLocked 刷新锁图标与文本框只读状态
+    private void ApplyLockState()
+    {
+        LockButton.Content = Note.IsLocked ? "🔒" : "🔓";
+        LockButton.ToolTip = Note.IsLocked ? "已锁定（点此解锁，解锁后可编辑）" : "未锁定（点此锁定，锁定后不可编辑）";
+        NoteTextBox.IsReadOnly = Note.IsLocked;
+        NoteTextBox.CaretBrush = Note.IsLocked ? System.Windows.Media.Brushes.Transparent : MakeBrush(Note.TextColor);
     }
 
     // 根据当前便签的 HoverToShow 应用悬停显隐状态，并刷新眼睛图标
@@ -147,6 +165,7 @@ public partial class StickyNoteWindow : Window
         ApplyBackground();
         ApplyTextStyle();
         ApplyScrollBarTheme();
+        ApplyLockState();
         ApplyTitle();
     }
 
@@ -235,6 +254,7 @@ public partial class StickyNoteWindow : Window
         SettingsButton.Foreground = MakeBrush(Note.TextColor);
         CloseButton.Foreground = MakeBrush(Note.TextColor);
         EyeButton.Foreground = MakeBrush(Note.TextColor);
+        LockButton.Foreground = MakeBrush(Note.TextColor);
 
         ApplyScrollBarTheme();
     }
