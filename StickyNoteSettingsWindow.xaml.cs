@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using StickyNoteWPF.Models;
+using StickyNoteWPF.Services;
 
 namespace StickyNoteWPF;
 
@@ -15,12 +16,6 @@ public partial class StickyNoteSettingsWindow : Window
     // Slider 的 Value(0) 会被 Minimum(8) 强制钳成 8 并立刻触发一次 ValueChanged，
     // 那时构造函数尚未执行完、Loaded 更未触发，若为 false 会把 8 直接写回便签数据。
     private bool _suppressSliderEvents = true;
-
-    private static readonly string[] Palette =
-    {
-        "#FFF7A900", "#FFFFF275", "#FFA0E7A0", "#FF9AD0EC",
-        "#FFE6A8E0", "#FFFFB3A7", "#FFD6C8FF", "#FFC0C0C0"
-    };
 
     public StickyNoteSettingsWindow(StickyNoteWindow owner)
     {
@@ -42,19 +37,17 @@ public partial class StickyNoteSettingsWindow : Window
             _note.Color = hex;
             // 刷新便签窗口外观 + 保存 + 同步管理界面列表背景
             App.Current.RefreshNote(_note, true);
-            BuildSwatches(BgColorPanel, hex, SetBg);
+            AppearanceHelper.BuildColorSwatches(BgColorPanel, App.Current.Settings, hex, SetBg);
         }
         void SetText(string hex)
         {
             _note.TextColor = hex;
             App.Current.RefreshNote(_note, true);
-            BuildSwatches(TextColorPanel, hex, SetText);
+            AppearanceHelper.BuildColorSwatches(TextColorPanel, App.Current.Settings, hex, SetText);
         }
 
-        BgColorPanel.Children.Add(MakeCustomSwatch(SetBg));
-        TextColorPanel.Children.Add(MakeCustomSwatch(SetText));
-        BuildSwatches(BgColorPanel, _note.Color, SetBg);
-        BuildSwatches(TextColorPanel, _note.TextColor, SetText);
+        AppearanceHelper.BuildColorSwatches(BgColorPanel, App.Current.Settings, _note.Color, SetBg);
+        AppearanceHelper.BuildColorSwatches(TextColorPanel, App.Current.Settings, _note.TextColor, SetText);
 
         // 兼容旧数据：字体大小无效（<=0）时回退默认，避免被 Slider 钳到最小值并误写回
         if (_note.FontSize <= 0)
@@ -99,86 +92,6 @@ public partial class StickyNoteSettingsWindow : Window
         // 先保存（含刚改的字体大小）到磁盘，再刷新便签窗口显示，避免刷新覆盖未保存的值
         App.Current.SaveAll();
         _owner.RefreshFromModel();
-    }
-
-    private Border MakeCustomSwatch(Action<string> onPicked)
-    {
-        var btn = new Border
-        {
-            Width = 30, Height = 30, Margin = new Thickness(0, 0, 8, 8),
-            CornerRadius = new CornerRadius(4),
-            Background = new SolidColorBrush(System.Windows.Media.Colors.White),
-            BorderThickness = new Thickness(1),
-            BorderBrush = new SolidColorBrush(System.Windows.Media.Colors.Gray),
-            Cursor = System.Windows.Input.Cursors.Hand
-        };
-        btn.Child = new TextBlock
-        {
-            Text = "✎", FontSize = 14,
-            HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-            VerticalAlignment = System.Windows.VerticalAlignment.Center,
-            Foreground = new SolidColorBrush(System.Windows.Media.Colors.Gray)
-        };
-        btn.MouseLeftButtonDown += (_, _) => PickCustom(hex =>
-        {
-            onPicked?.Invoke(hex);
-            // 自定义选色后重绘该面板高亮（由回调内的 BuildSwatches 处理）
-        });
-        return btn;
-    }
-
-    private void PickCustom(Action<string> onPicked)
-    {
-        using var dlg = new System.Windows.Forms.ColorDialog();
-        if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-        {
-            var argb = dlg.Color.ToArgb();
-            var hex = "#" + argb.ToString("X8");
-            onPicked(hex);
-        }
-    }
-
-    private void BuildSwatches(WrapPanel panel, string current, Action<string>? onPick)
-    {
-        // 保留第一个子元素（自定义按钮），重建其余色板
-        while (panel.Children.Count > 1)
-            panel.Children.RemoveAt(panel.Children.Count - 1);
-
-        // 自定义按钮同步显示当前颜色：非预置色时显示该色并高亮为选中态
-        if (panel.Children.Count > 0 && panel.Children[0] is Border custom)
-            UpdateCustomSwatch(custom, current);
-
-        foreach (var hex in Palette)
-        {
-            var btn = new Border
-            {
-                Width = 30, Height = 30, Margin = new Thickness(0, 0, 8, 8),
-                CornerRadius = new CornerRadius(4),
-                Background = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex)),
-                BorderThickness = new Thickness(hex == current ? 3 : 1),
-                BorderBrush = hex == current
-                    ? new SolidColorBrush(System.Windows.Media.Colors.Black)
-                    : new SolidColorBrush(System.Windows.Media.Colors.Gray),
-                Cursor = System.Windows.Input.Cursors.Hand
-            };
-            var captured = hex;
-            btn.MouseLeftButtonDown += (_, _) => onPick?.Invoke(captured);
-            panel.Children.Add(btn);
-        }
-    }
-
-    // 自定义颜色按钮：当前颜色不在预置色板（即自定义色）时，按钮填充该色并加粗黑边表示选中
-    private void UpdateCustomSwatch(Border custom, string? current)
-    {
-        var isCustom = current != null && !Palette.Contains(current)
-                       && StickyNoteWPF.Services.AppearanceHelper.TryParseColor(current, out var c);
-        custom.Background = new SolidColorBrush(isCustom ? c : System.Windows.Media.Colors.White);
-        custom.BorderThickness = new Thickness(isCustom ? 3 : 1);
-        custom.BorderBrush = new SolidColorBrush(isCustom ? System.Windows.Media.Colors.Black : System.Windows.Media.Colors.Gray);
-        if (custom.Child is TextBlock icon)
-            icon.Foreground = new SolidColorBrush(isCustom
-                ? StickyNoteWPF.Services.AppearanceHelper.GetContrastColor(c)
-                : System.Windows.Media.Colors.Gray);
     }
 
     private void FontSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

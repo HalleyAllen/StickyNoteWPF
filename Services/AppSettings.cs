@@ -20,6 +20,9 @@ public class AppSettings
     public string TitleTextColor { get; set; } = "#FF333333";  // 标题栏文字
     public string ButtonColor { get; set; } = "#FF333333";     // 标题栏按钮(🎨/✕)
 
+    // 最近使用颜色（MRU，最多 8 个，第一位为最近选中）；初始为预置色板
+    public List<string> RecentColors { get; set; } = new(AppearanceHelper.DefaultColors);
+
     // 设置窗口尺寸记忆
     public double SettingsWindowWidth { get; set; } = 380;
     public double SettingsWindowHeight { get; set; } = 470;

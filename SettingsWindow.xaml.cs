@@ -13,11 +13,6 @@ public partial class SettingsWindow : Window
     // Slider 的 Value(0) 会被 Minimum(8) 强制钳成 8 并立刻触发一次 ValueChanged，
     // 那时构造函数尚未执行完、Loaded 更未触发，若为 false 会把 8 直接写回配置。
     private bool _suppressSliderEvents = true;
-    private readonly string[] Palette =
-    {
-        "#FFF7A900", "#FFFFF275", "#FFA0E7A0", "#FF9AD0EC",
-        "#FFE6A8E0", "#FFFFB3A7", "#FFD6C8FF", "#FFC0C0C0"
-    };
 
     public SettingsWindow(AppSettings settings)
     {
@@ -59,7 +54,7 @@ public partial class SettingsWindow : Window
         {
             _settings.DefaultColor = hex;
             _settings.Save();
-            BuildSwatches(ColorPanel, hex, SetDefaultColor, SetDefaultColor);
+            AppearanceHelper.BuildColorSwatches(ColorPanel, _settings, hex, SetDefaultColor);
         }
         // 统一的文字与按钮颜色：仅作为新建便签的默认值，不影响已创建的便签
         void SetNoteTextColor(string hex)
@@ -68,11 +63,11 @@ public partial class SettingsWindow : Window
             _settings.TitleTextColor = hex;
             _settings.ButtonColor = hex;
             _settings.Save();
-            BuildSwatches(TextColorPanel, hex, SetNoteTextColor, SetNoteTextColor);
+            AppearanceHelper.BuildColorSwatches(TextColorPanel, _settings, hex, SetNoteTextColor);
         }
 
-        BuildSwatches(ColorPanel, _settings.DefaultColor, SetDefaultColor, SetDefaultColor);
-        BuildSwatches(TextColorPanel, _settings.NoteTextColor, SetNoteTextColor, SetNoteTextColor);
+        AppearanceHelper.BuildColorSwatches(ColorPanel, _settings, _settings.DefaultColor, SetDefaultColor);
+        AppearanceHelper.BuildColorSwatches(TextColorPanel, _settings, _settings.NoteTextColor, SetNoteTextColor);
 
         CloseButton.Click += (_, _) => Close();
         TitleBar.MouseLeftButtonDown += (_, e) =>
@@ -115,61 +110,4 @@ public partial class SettingsWindow : Window
         OpacityValue.Text = $"{Math.Round(v * 100)}%";
     }
 
-    // onPick: 选中色板颜色时回调；onCustom: 点击"自定义"按钮（打开取色器）时回调
-    private void BuildSwatches(WrapPanel panel, string current, Action<string>? onPick, Action<string>? onCustom = null)
-    {
-        panel.Children.Clear();
-
-        // 自定义颜色按钮（✎）：当前颜色不在预置色板时，显示该颜色并高亮为选中态
-        var isCustom = current != null && !Palette.Contains(current)
-                       && AppearanceHelper.TryParseColor(current, out var customColor);
-        var custom = new Border
-        {
-            Width = 30, Height = 30, Margin = new Thickness(0, 0, 8, 8),
-            CornerRadius = new CornerRadius(4),
-            Background = isCustom
-                ? new System.Windows.Media.SolidColorBrush(customColor)
-                : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.White),
-            BorderThickness = new Thickness(isCustom ? 3 : 1),
-            BorderBrush = isCustom
-                ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Black)
-                : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray),
-            Cursor = System.Windows.Input.Cursors.Hand
-        };
-        custom.Child = new TextBlock
-        {
-            Text = "✎", FontSize = 14,
-            HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-            VerticalAlignment = System.Windows.VerticalAlignment.Center,
-            Foreground = new System.Windows.Media.SolidColorBrush(
-                isCustom ? AppearanceHelper.GetContrastColor(customColor) : System.Windows.Media.Colors.Gray)
-        };
-        custom.MouseLeftButtonDown += (_, _) => PickCustomColor(hex => onCustom?.Invoke(hex));
-        panel.Children.Add(custom);
-
-        foreach (var hex in Palette)
-        {
-            var btn = new Border
-            {
-                Width = 30, Height = 30, Margin = new Thickness(0, 0, 8, 8),
-                CornerRadius = new CornerRadius(4), Background = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex)),
-                BorderThickness = new Thickness(hex == current ? 3 : 1),
-                BorderBrush = hex == current ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Black) : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray),
-                Cursor = System.Windows.Input.Cursors.Hand
-            };
-            var captured = hex;
-            btn.MouseLeftButtonDown += (_, _) => onPick?.Invoke(captured);
-            panel.Children.Add(btn);
-        }
-    }
-
-    private void PickCustomColor(Action<string> onPicked)
-    {
-        using var dlg = new System.Windows.Forms.ColorDialog();
-        if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-        {
-            var hex = "#" + dlg.Color.ToArgb().ToString("X8");
-            onPicked(hex);
-        }
-    }
 }
