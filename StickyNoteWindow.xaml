@@ -24,7 +24,7 @@
     </shell:WindowChrome.WindowChrome>
     <!-- 根容器：透明，避免整体被当作半透明单元合成 -->
     <Grid>
-        <!-- 底层：半透明背景 + 阴影（只负责背景，不含文字） -->
+        <!-- 底层：半透明背景 + 阴影（有图片时背景为 ImageBrush，否则为纯色） -->
         <Border x:Name="RootBorder" CornerRadius="10"
                 BorderThickness="1" BorderBrush="#55000000"/>
 

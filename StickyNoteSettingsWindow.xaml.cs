@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -188,6 +189,26 @@ public partial class StickyNoteSettingsWindow : Window
             ? string.Empty
             : TitleBox.Text;
         // 刷新便签窗口标题 + 保存 + 同步管理界面列表
+        App.Current.RefreshNote(_note, true);
+    }
+
+    private void PickImageButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "图片文件|*.png;*.jpg;*.jpeg;*.bmp;*.gif|所有文件|*.*",
+            Title = "选择背景图片"
+        };
+        if (dlg.ShowDialog() == true)
+        {
+            _note.BackgroundImagePath = dlg.FileName;
+            App.Current.RefreshNote(_note, true);
+        }
+    }
+
+    private void ClearImageButton_Click(object sender, RoutedEventArgs e)
+    {
+        _note.BackgroundImagePath = string.Empty;
         App.Current.RefreshNote(_note, true);
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -143,7 +144,7 @@ public partial class StickyNoteWindow : Window
     // 根据 Note 自身存储的外观重新应用（颜色/透明度/字体/文字色）
     public void RefreshFromModel()
     {
-        ApplyColor(Note.Color);
+        ApplyBackground();
         ApplyTextStyle();
         ApplyTitle();
     }
@@ -158,29 +159,58 @@ public partial class StickyNoteWindow : Window
     public void ApplyOpacity(double opacity)
     {
         Note.Opacity = Math.Clamp(opacity, 0.0, 1.0);
-        ApplyColor(Note.Color);
+        ApplyBackground();
         Persist();
     }
 
-    private void ApplyColor(string hex)
+    // 应用背景：有图片用图片背景，否则用纯色背景；两者都遵循窗口透明度。
+    // 关键：图片模式下 RootBorder.Background 直接设为 ImageBrush，
+    // 不再叠加纯色层，否则透明度拉满时纯色不透明会盖住图片。
+    public void ApplyBackground()
     {
-        Note.Color = hex;
         var o = Math.Clamp(Note.Opacity, 0.0, 1.0);
         try
         {
-            var c = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex);
-            c.A = (byte)(o * 255);
-            RootBorder.Background = new System.Windows.Media.SolidColorBrush(c);
+            if (!string.IsNullOrEmpty(Note.BackgroundImagePath) && File.Exists(Note.BackgroundImagePath))
+            {
+                var bmp = new System.Windows.Media.Imaging.BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                bmp.UriSource = new Uri(Note.BackgroundImagePath, UriKind.Absolute);
+                bmp.EndInit();
 
-            // 边框与标题栏同样随透明度比例变化（保持相对浓淡：背景最浓、边框次之、标题栏最淡）
+                RootBorder.Background = new System.Windows.Media.ImageBrush(bmp)
+                {
+                    Stretch = System.Windows.Media.Stretch.UniformToFill,
+                    Opacity = o
+                };
+            }
+            else
+            {
+                var c = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(Note.Color);
+                c.A = (byte)(o * 255);
+                RootBorder.Background = new System.Windows.Media.SolidColorBrush(c);
+            }
+
+            // 边框与标题栏同样随透明度比例变化（保持相对浓淡）
             RootBorder.BorderBrush = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromArgb((byte)(o * 0x55), 0, 0, 0));
             TitleBar.Background = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromArgb((byte)(o * 0x22), 0, 0, 0));
-
-            ApplyShadow();
         }
-        catch { }
+        catch
+        {
+            // 解析失败回退纯色
+            try
+            {
+                var c = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(Note.Color);
+                c.A = (byte)(o * 255);
+                RootBorder.Background = new System.Windows.Media.SolidColorBrush(c);
+            }
+            catch { }
+        }
+
+        ApplyShadow();
     }
 
     private void ApplyShadow()

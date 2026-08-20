@@ -10,6 +10,8 @@ public class StickyNoteModel
     public double Width { get; set; } = 220;
     public double Height { get; set; } = 220;
     public string Color { get; set; } = "#FFF7A900"; // 默认黄色
+    public string BackgroundImagePath { get; set; } = string.Empty; // 图片背景路径，空则用纯色
+    public string BackgroundImageMode { get; set; } = "Stretch";   // 图片填充方式：Stretch / Tile
     public double FontSize { get; set; } = 14;
     public string TextColor { get; set; } = "#FF222222"; // 便签文字颜色
     public double Opacity { get; set; } = 1.0;           // 便签窗口透明度
