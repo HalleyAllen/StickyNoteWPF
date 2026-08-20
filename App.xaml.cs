@@ -50,9 +50,9 @@ public partial class App : System.Windows.Application
                 IntPtr.Zero,
                 IntPtr.Zero);
 
-            // 2) 找到其他 StickyNoteWPF 进程，请求其关闭主窗口（正常退出存盘），等待退出
+            // 2) 找到其他 StickyNote 进程，请求其关闭主窗口（正常退出存盘），等待退出
             var selfId = System.Diagnostics.Process.GetCurrentProcess().Id;
-            foreach (var p in System.Diagnostics.Process.GetProcessesByName("StickyNoteWPF"))
+            foreach (var p in System.Diagnostics.Process.GetProcessesByName("StickyNote"))
             {
                 if (p.Id == selfId) continue;
                 try { p.CloseMainWindow(); } catch { }
@@ -61,13 +61,13 @@ public partial class App : System.Windows.Application
             var sw = System.Diagnostics.Stopwatch.StartNew();
             while (sw.ElapsedMilliseconds < 2500)
             {
-                var stillAlive = System.Diagnostics.Process.GetProcessesByName("StickyNoteWPF")
+                var stillAlive = System.Diagnostics.Process.GetProcessesByName("StickyNote")
                     .Any(p => p.Id != selfId);
                 if (!stillAlive) break;
                 System.Threading.Thread.Sleep(150);
             }
             // 3) 仍有残留则强制结束，避免两个实例写同一文件
-            foreach (var p in System.Diagnostics.Process.GetProcessesByName("StickyNoteWPF"))
+            foreach (var p in System.Diagnostics.Process.GetProcessesByName("StickyNote"))
             {
                 if (p.Id == selfId) continue;
                 try { p.Kill(); } catch { }
