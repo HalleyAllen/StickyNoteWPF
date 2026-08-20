@@ -53,27 +53,26 @@ public partial class SettingsWindow : Window
             FontSizeValue.Text = $"{Math.Round(FontSizeSlider.Value)}";
         };
 
-        BuildSwatches(ColorPanel, _settings.DefaultColor,
-            hex => { _settings.DefaultColor = hex; _settings.Save(); BuildSwatches(ColorPanel, hex, null); },
-            hex => { _settings.DefaultColor = hex; _settings.Save(); BuildSwatches(ColorPanel, hex, null); });
+        // 默认背景颜色：仅作为新建便签的默认值，不影响已创建的便签。
+        // 用局部函数自引用，重建色板时继续传入自身，保证之后点击其他颜色仍生效
+        void SetDefaultColor(string hex)
+        {
+            _settings.DefaultColor = hex;
+            _settings.Save();
+            BuildSwatches(ColorPanel, hex, SetDefaultColor, SetDefaultColor);
+        }
         // 统一的文字与按钮颜色：仅作为新建便签的默认值，不影响已创建的便签
-        BuildSwatches(TextColorPanel, _settings.NoteTextColor,
-            hex =>
-            {
-                _settings.NoteTextColor = hex;
-                _settings.TitleTextColor = hex;
-                _settings.ButtonColor = hex;
-                _settings.Save();
-                BuildSwatches(TextColorPanel, hex, null);
-            },
-            hex =>
-            {
-                _settings.NoteTextColor = hex;
-                _settings.TitleTextColor = hex;
-                _settings.ButtonColor = hex;
-                _settings.Save();
-                BuildSwatches(TextColorPanel, hex, null);
-            });
+        void SetNoteTextColor(string hex)
+        {
+            _settings.NoteTextColor = hex;
+            _settings.TitleTextColor = hex;
+            _settings.ButtonColor = hex;
+            _settings.Save();
+            BuildSwatches(TextColorPanel, hex, SetNoteTextColor, SetNoteTextColor);
+        }
+
+        BuildSwatches(ColorPanel, _settings.DefaultColor, SetDefaultColor, SetDefaultColor);
+        BuildSwatches(TextColorPanel, _settings.NoteTextColor, SetNoteTextColor, SetNoteTextColor);
 
         CloseButton.Click += (_, _) => Close();
         TitleBar.MouseLeftButtonDown += (_, e) =>
