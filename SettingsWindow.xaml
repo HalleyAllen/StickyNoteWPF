@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
-        Title="设置" Height="470" Width="380"
+        Title="设置" Height="560" Width="380"
         WindowStartupLocation="CenterOwner"
         Icon="Resources/StickyNote.ico"
         WindowStyle="None"
@@ -50,6 +50,25 @@
                     <CheckBox x:Name="TopmostCheck" DockPanel.Dock="Right"
                               VerticalAlignment="Center" HorizontalAlignment="Right"/>
                 </DockPanel>
+
+                <!-- 全局快捷键：隐藏/显示所有窗口（设置窗口除外） -->
+                <TextBlock Text="隐藏/显示全部窗口快捷键" FontSize="14" Margin="0,0,0,6"/>
+                <DockPanel LastChildFill="True" Margin="0,0,0,4">
+                    <TextBlock x:Name="HotKeyHint" Text="按下快捷键可一键隐藏或显示所有便签与任务清单（设置窗口除外）"
+                               FontSize="11" Foreground="#FF999999" TextWrapping="Wrap"/>
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                    <Border x:Name="HotKeyBox" BorderBrush="#FFCCCCCC" BorderThickness="1"
+                            CornerRadius="3" Background="White" Height="30" MinWidth="150"
+                            Padding="10,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="HotKeyText" Text="未设置" FontSize="13"
+                                   VerticalAlignment="Center" Foreground="#FF555555"/>
+                    </Border>
+                    <Button x:Name="SetHotKeyButton" Content="修改" Width="56" Height="30"
+                            Margin="8,0,0,0" Cursor="Hand" FontSize="13"/>
+                    <Button x:Name="ClearHotKeyButton" Content="删除" Width="56" Height="30"
+                            Margin="8,0,0,0" Cursor="Hand" FontSize="13"/>
+                </StackPanel>
 
                 <!-- 窗口透明度（仅背景透明，文字不透明） -->
                 <DockPanel LastChildFill="True" Margin="0,0,0,6">

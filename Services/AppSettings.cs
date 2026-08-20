@@ -12,6 +12,9 @@ public class AppSettings
 
     public bool StartupWithWindows { get; set; }
     public bool GlobalTopmost { get; set; } = true;
+
+    // 全局快捷键：隐藏/显示所有窗口（除设置窗口外），如 "Ctrl+Alt+H"；空字符串表示未设置
+    public string ToggleWindowsHotKey { get; set; } = string.Empty;
     public bool ForceShowAll { get; set; } = false;   // 全局强制所有便签不透明且始终显示（停用隐藏/透明效果）
     public string DefaultColor { get; set; } = "#FFF7A900";
     public double DefaultFontSize { get; set; } = 14;   // 初始默认字体大小（仅影响新建便签）

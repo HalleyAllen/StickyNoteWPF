@@ -25,6 +25,7 @@ public partial class App : System.Windows.Application
     private MainWindow? _manager;
     private TrayIconService? _tray;
     private bool _isExiting;
+    private HotKeyService? _hotKey;
     public AppSettings Settings { get; private set; } = new();
 
     public IReadOnlyList<StickyNoteModel> Notes => _notes;
@@ -99,6 +100,9 @@ public partial class App : System.Windows.Application
 
         ApplyTopmost(Settings.GlobalTopmost);
 
+        // 注册全局快捷键（隐藏/显示所有窗口），未设置则跳过
+        RegisterToggleHotKey(Settings.ToggleWindowsHotKey);
+
         // 管理器窗口关闭时不退出应用（托盘常驻）
         ShowManager();
         if (_manager != null)
@@ -132,6 +136,62 @@ public partial class App : System.Windows.Application
             win.Topmost = topmost;
         foreach (var win in _openTaskLists.Values)
             win.Topmost = topmost;
+    }
+
+    // ====== 全局快捷键：隐藏/显示所有窗口（设置窗口除外）======
+
+    /// <summary>注册「隐藏/显示全部窗口」全局快捷键；组合为空表示不注册，注册失败返回 false。</summary>
+    public bool RegisterToggleHotKey(string combination)
+    {
+        _hotKey?.Dispose();
+        _hotKey = null;
+        if (string.IsNullOrWhiteSpace(combination)) return true; // 未设置，视为成功（无操作）
+
+        var service = new HotKeyService();
+        if (!service.Register(combination, ToggleAllWindows))
+        {
+            service.Dispose();
+            return false;
+        }
+        _hotKey = service;
+        return true;
+    }
+
+    public void UnregisterToggleHotKey()
+    {
+        _hotKey?.Dispose();
+        _hotKey = null;
+    }
+
+    // 当前是否有任一便签/任务清单/管理器窗口可见（供托盘菜单动态显示文字）
+    internal bool HasVisibleWindows =>
+        _openWindows.Values.Any(w => w.IsVisible)
+        || _openTaskLists.Values.Any(w => w.IsVisible)
+        || (_manager?.IsVisible ?? false);
+
+    // 切换所有便签/任务清单/管理器窗口的显示状态；设置窗口（模态）不受影响
+    internal void ToggleAllWindows()
+    {
+        bool anyVisible = _openWindows.Values.Any(w => w.IsVisible)
+            || _openTaskLists.Values.Any(w => w.IsVisible)
+            || (_manager?.IsVisible ?? false);
+
+        if (anyVisible)
+        {
+            foreach (var win in _openWindows.Values) win.Hide();
+            foreach (var win in _openTaskLists.Values) win.Hide();
+            _manager?.Hide();
+        }
+        else
+        {
+            foreach (var win in _openWindows.Values) win.Show();
+            foreach (var win in _openTaskLists.Values) win.Show();
+            if (_manager != null)
+            {
+                _manager.Show();
+                _manager.RefreshLists();
+            }
+        }
     }
 
     // 主设置只作为新建便签的默认值，已创建的便签保留各自样式（见 CreateNote / StickyNoteWindow）
@@ -373,6 +433,8 @@ public partial class App : System.Windows.Application
             win.Close();
         foreach (var win in _openTaskLists.Values.ToList())
             win.Close();
+        _hotKey?.Dispose();
+        _hotKey = null;
         _tray?.Dispose();
         _tray = null;
         // 释放单实例互斥锁，交出新实例接管
@@ -394,6 +456,8 @@ public partial class App : System.Windows.Application
                 list.IsOpen = _openTaskLists.ContainsKey(list.Id);
             SaveAll();
         }
+        _hotKey?.Dispose();
+        _hotKey = null;
         _tray?.Dispose();
         base.OnExit(e);
     }
