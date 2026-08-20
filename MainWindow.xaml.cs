@@ -13,7 +13,6 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        NewNoteButton.Click += (_, _) => App.Current.CreateNote();
         AddNoteButton.Click += (_, _) => App.Current.CreateNote();
         ForceShowButton.Click += ForceShowButton_Click;
         SettingsButton.Click += (_, _) => App.Current.OpenSettings();

@@ -95,15 +95,8 @@
                                FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <!-- 新建按钮（放在标题栏） -->
-                <Button x:Name="NewNoteButton" Grid.Column="1" Content="＋"
-                        Margin="0,0,2,0" Padding="10,4"
-                        Background="#FF007ACC" Foreground="White"
-                        BorderThickness="0" Cursor="Hand" FontSize="13"
-                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-
                 <!-- 全部显示：停用/启用所有便签的隐藏与透明效果 -->
-                <Button x:Name="ForceShowButton" Grid.Column="2" Content="👁"
+                <Button x:Name="ForceShowButton" Grid.Column="1" Content="👁"
                         Width="34" Height="32" Margin="0,0,2,0"
                         Background="Transparent" Foreground="White"
                         BorderThickness="0" Cursor="Hand" FontSize="15"
@@ -111,20 +104,20 @@
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
                 <!-- 设置 -->
-                <Button x:Name="SettingsButton" Grid.Column="3" Content="⚙"
+                <Button x:Name="SettingsButton" Grid.Column="2" Content="⚙"
                         Width="34" Height="32" Margin="0,0,2,0"
                         Background="Transparent" Foreground="White"
                         BorderThickness="0" Cursor="Hand" FontSize="15"
                         ToolTip="设置" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
                 <!-- 最小化 -->
-                <Button x:Name="MinButton" Grid.Column="4" Content="—"
+                <Button x:Name="MinButton" Grid.Column="3" Content="—"
                         Width="34" Height="32" Background="Transparent"
                         Foreground="White" BorderThickness="0" Cursor="Hand"
                         FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
                 <!-- 关闭 -->
-                <Button x:Name="CloseButton" Grid.Column="5" Content="✕"
+                <Button x:Name="CloseButton" Grid.Column="4" Content="✕"
                         Width="40" Height="32" Background="Transparent"
                         Foreground="White" BorderThickness="0" Cursor="Hand"
                         FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
@@ -132,7 +125,7 @@
 
             <!-- 内容区 -->
             <TextBlock x:Name="EmptyHint" DockPanel.Dock="Top" Margin="20,30,20,0"
-                       Text="还没有便利贴，点击标题栏上的「＋ 新建」开始吧。"
+                       Text="还没有便利贴，点击右下角「＋」或托盘菜单新建一个吧。"
                        Foreground="#888" TextWrapping="Wrap" HorizontalAlignment="Center"/>
             <ListBox x:Name="NoteList" BorderThickness="0" Margin="8,8,0,8"
                      Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
