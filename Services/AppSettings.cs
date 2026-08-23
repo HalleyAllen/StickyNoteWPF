@@ -69,7 +69,9 @@ public class AppSettings
             if (key == null) return;
             if (enable)
             {
-                var exe = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                // 单文件发布下 Assembly.Location 为空字符串，需用 ProcessPath 获取 exe 路径
+                var exe = Environment.ProcessPath;
+                if (string.IsNullOrEmpty(exe)) return;
                 key.SetValue("StickyNoteWPF", exe);
             }
             else

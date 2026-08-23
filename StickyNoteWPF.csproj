@@ -9,6 +9,8 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>Resources\StickyNote.ico</ApplicationIcon>
+    <!-- 自包含发布时只保留简体中文语言包，去掉多余语言资源 -->
+    <SatelliteResourceLanguages>zh-Hans</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>

@@ -12,6 +12,9 @@ obj/
 publish/
 *.log
 
+# Visual Studio upgrade logs
+UpgradeLog*.htm
+
 # NuGet
 *.nupkg
 .vs/
