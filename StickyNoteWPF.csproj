@@ -20,4 +20,17 @@
     </Content>
   </ItemGroup>
 
+  <!-- 发布后自动把运行时 dll 收进 lib\ 子目录并清理 win-x86\ 中间产物，保持根目录整洁 -->
+  <Target Name="CleanPublishLayout" AfterTargets="Publish">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\publish-layout.ps1&quot; -ProjectDir &quot;$(MSBuildProjectDirectory)&quot; -PublishDir &quot;$(PublishDir.Replace('\','/'))&quot; -Rid &quot;$(RuntimeIdentifier)&quot;" />
+  </Target>
+
+  <!-- 普通生成（Build，无 RID）后清掉发布残留的运行时文件，让根目录保持像 Debug 一样干净 -->
+  <Target Name="CleanBuildExtras" AfterTargets="Build" Condition="'$(RuntimeIdentifier)' == ''">
+    <RemoveDir Directories="$(TargetDir)lib" Condition="Exists('$(TargetDir)lib')" />
+    <RemoveDir Directories="$(TargetDir)zh-Hans" Condition="Exists('$(TargetDir)zh-Hans')" />
+    <!-- 删除顶层除 StickyNote.* 应用文件外的残留（运行时核心库、原生库等） -->
+    <Exec Command="powershell -NoProfile -Command &quot;Get-ChildItem '$(TargetDir)' -File | Where-Object Name -notlike 'StickyNote.*' | Remove-Item -Force&quot;" />
+  </Target>
+
 </Project>
