@@ -4,7 +4,7 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="任务清单设置" Height="430" Width="360"
         WindowStartupLocation="Manual"
-        Icon="Resources/StickyNote.ico"
+        Icon="pack://application:,,,/Resources/StickyNote.png"
         WindowStyle="None"
         ResizeMode="CanResize"
         MinHeight="380" MinWidth="320"

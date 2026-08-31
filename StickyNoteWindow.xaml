@@ -14,7 +14,7 @@
         Topmost="True"
         MinWidth="160" MinHeight="120"
         SizeToContent="Manual"
-        Icon="Resources/StickyNote.ico">
+        Icon="pack://application:,,,/Resources/StickyNote.png">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome GlassFrameThickness="0"
                             CornerRadius="0"

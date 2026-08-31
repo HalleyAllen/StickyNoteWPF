@@ -1,5 +1,6 @@
 # 发布后布局整理脚本（由 StickyNoteWPF.csproj 的 AfterTargets=Publish 自动调用）
-# 作用：把运行时 dll 按包结构收进 lib\ 子目录，原生库留在顶层，使 publish 目录整洁
+# 作用：清理带 RID 的 build 中间产物目录（如 win-x86\）和残留的 lib\，避免重复副本留在根目录。
+# 注意：自包含 WPF 的托管 dll 必须平铺在发布根目录（deps.json 的加载路径指向根目录），不能收进子目录。
 param(
     [Parameter(Mandatory = $true)][string]$ProjectDir,
     [Parameter(Mandatory = $true)][string]$PublishDir,
@@ -11,64 +12,22 @@ $pub = [System.IO.Path]::GetFullPath((Join-Path $ProjectDir $PublishDir))
 $exe = Join-Path $pub "StickyNote.exe"
 if (-not (Test-Path $exe)) { throw "publish dir not found: $pub" }
 
-$lib = Join-Path $pub "lib"
-if (Test-Path $lib) { Remove-Item $lib -Recurse -Force }
-New-Item -ItemType Directory -Path $lib -Force | Out-Null
-
-$depsPath = Join-Path $pub "StickyNote.deps.json"
-$deps = Get-Content $depsPath -Raw | ConvertFrom-Json
-
-# 1) 把运行时托管程序集按 {packageId}/{version} 结构移进 lib\
-#    注意：deps.json 可能包含多个 target（含空 target），需遍历全部
-$moved = 0
-foreach ($target in $deps.targets.PSObject.Properties) {
-    if ($null -eq $target.Value) { continue }
-    foreach ($pkg in $target.Value.PSObject.Properties) {
-        $idVer = $pkg.Name -split '/'
-        if ($idVer.Count -ne 2) { continue }
-        if ($idVer[0] -eq "StickyNote") { continue }  # 应用主程序集留顶层
-        if ($null -eq $pkg.Value.runtime) { continue }
-        foreach ($rt in $pkg.Value.runtime.PSObject.Properties) {
-            $name = $rt.Name
-            # System.Private.CoreLib 是 host 从 app 目录硬加载的运行时核心，不能收进 lib\（否则启动即崩）
-            if ($name -eq "System.Private.CoreLib.dll") { continue }
-            $src = Join-Path $pub $name
-            if (-not (Test-Path $src)) { continue }
-            $destDir = Join-Path (Join-Path $lib $idVer[0]) $idVer[1]
-            New-Item -ItemType Directory -Path $destDir -Force | Out-Null
-            Move-Item $src (Join-Path $destDir $name) -Force
-            $moved++
-        }
-    }
-}
-
-# 2) 原生库（deps 的 native 资产）移回顶层，与 apphost 同级
-foreach ($target in $deps.targets.PSObject.Properties) {
-    if ($null -eq $target.Value) { continue }
-    foreach ($pkg in $target.Value.PSObject.Properties) {
-        if ($null -eq $pkg.Value.native) { continue }
-        foreach ($n in $pkg.Value.native.PSObject.Properties) {
-            $f = [System.IO.Path]::GetFileName($n.Name)
-            $src = Join-Path $lib $f
-            if (Test-Path $src) { Move-Item $src (Join-Path $pub $f) -Force }
-        }
-    }
-}
-
-# 3) runtimeconfig.json 增加 lib 探测路径（插在 configProperties 块之后）
-$rcPath = Join-Path $pub "StickyNote.runtimeconfig.json"
-$content = [System.IO.File]::ReadAllText($rcPath)
-if ($content -notmatch "additionalProbingPaths") {
-    $pattern = '("configProperties"\s*:\s*\{[^}]*\})'
-    $evaluator = [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $m.Value + ",`n    `"additionalProbingPaths`": [`"lib`"]" }
-    $content = [regex]::Replace($content, $pattern, $evaluator)
-    [System.IO.File]::WriteAllText($rcPath, $content)
-}
-
-# 4) 清理带 RID 的 build 中间产物目录（如 win-x86\），避免整套重复副本留在根目录
+# 1) 清理带 RID 的 build 中间产物目录（如 win-x86\），避免整套重复副本留在根目录
 if ($Rid) {
     $ridDir = Join-Path $pub $Rid
     if (Test-Path $ridDir) { Remove-Item $ridDir -Recurse -Force }
 }
 
-Write-Output "publish-layout: moved=$moved, top=$((Get-ChildItem $pub -File).Count) files"
+# 2) 清理历史方案遗留的 lib\ 子目录（托管 dll 必须平铺在根目录）
+$libDir = Join-Path $pub "lib"
+if (Test-Path $libDir) { Remove-Item $libDir -Recurse -Force }
+
+# 3) 确保 Resources\（托盘图标等）复制到发布目录：Content 复制在带 RID 发布时可能被跳过
+$srcRes = Join-Path $ProjectDir "Resources"
+$dstRes = Join-Path $pub "Resources"
+if (Test-Path $srcRes) {
+    New-Item -ItemType Directory -Path $dstRes -Force | Out-Null
+    Copy-Item (Join-Path $srcRes "*") $dstRes -Recurse -Force
+}
+
+Write-Output "publish-layout: cleaned, top=$((Get-ChildItem $pub -File).Count) files"

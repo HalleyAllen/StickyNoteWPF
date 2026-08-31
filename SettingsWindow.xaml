@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Title="设置" Height="560" Width="380"
         WindowStartupLocation="CenterOwner"
-        Icon="Resources/StickyNote.ico"
+        Icon="pack://application:,,,/Resources/StickyNote.png"
         WindowStyle="None"
         ResizeMode="CanResize"
         MinHeight="420" MinWidth="340"

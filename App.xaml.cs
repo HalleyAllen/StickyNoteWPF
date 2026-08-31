@@ -37,51 +37,30 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // 全局异常兜底日志：用于定位单文件发布等场景下的启动崩溃
+        DispatcherUnhandledException += (_, args) =>
+            Logger.LogException("DispatcherUnhandledException", args.Exception);
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            Logger.LogException("AppDomain.UnhandledException",
+                args.ExceptionObject as Exception ?? new Exception(args.ExceptionObject?.ToString()));
         Logger.Log($"=== App.OnStartup 开始，进程PID={System.Diagnostics.Process.GetCurrentProcess().Id} ===");
         // 单实例检测：若已有实例在运行，则请求旧实例退出并等待其释放文件，由新实例接管
         _singleMutex = new Mutex(true, MutexName, out bool createdNew);
         if (!createdNew)
         {
-            Logger.Log("OnStartup: 检测到已有实例，开始请求旧实例退出并接管");
-            // 1) 通知旧实例存盘退出
+            Logger.Log("OnStartup: 检测到已有实例，请求旧实例还原窗口，本次启动直接退出");
+            // 通知旧实例还原并激活窗口（不重启、不接管数据）
             NativeMethods.PostMessage(
                 (IntPtr)NativeMethods.HWND_BROADCAST,
-                ShutdownMessage,
+                ActivateMessage,
                 IntPtr.Zero,
                 IntPtr.Zero);
-
-            // 2) 找到其他 StickyNote 进程，请求其关闭主窗口（正常退出存盘），等待退出
-            var selfId = System.Diagnostics.Process.GetCurrentProcess().Id;
-            foreach (var p in System.Diagnostics.Process.GetProcessesByName("StickyNote"))
-            {
-                if (p.Id == selfId) continue;
-                try { p.CloseMainWindow(); } catch { }
-            }
-            // 等待旧实例退出（最多约 2.5 秒）
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            while (sw.ElapsedMilliseconds < 2500)
-            {
-                var stillAlive = System.Diagnostics.Process.GetProcessesByName("StickyNote")
-                    .Any(p => p.Id != selfId);
-                if (!stillAlive) break;
-                System.Threading.Thread.Sleep(150);
-            }
-            // 3) 仍有残留则强制结束，避免两个实例写同一文件
-            foreach (var p in System.Diagnostics.Process.GetProcessesByName("StickyNote"))
-            {
-                if (p.Id == selfId) continue;
-                try { p.Kill(); } catch { }
-            }
-
-            // 释放本实例占用的互斥锁引用，重新获取以确保独占
-            _singleMutex.Close();
-            System.Threading.Thread.Sleep(200);
-            _singleMutex = new Mutex(true, MutexName, out createdNew);
-            if (!createdNew)
-            {
-                _singleMutex.Close();
-                _singleMutex = null;
-            }
+            // 本实例不加载任何数据，直接退出；标记 _isExiting 防止 OnExit 兜底存盘覆盖旧实例数据
+            _singleMutex?.Close();
+            _singleMutex = null;
+            _isExiting = true;
+            Shutdown();
+            return;
         }
 
         base.OnStartup(e);
@@ -467,10 +446,29 @@ public partial class App : System.Windows.Application
         base.OnExit(e);
     }
 
-    // 收到其他实例发来的激活消息时，显示并前置管理器窗口
+    // 收到其他实例发来的激活消息时，还原并激活所有已打开的窗口
     internal void ActivateFromOtherInstance()
     {
-        ShowManager();
+        foreach (var win in _openWindows.Values)
+            RestoreAndActivate(win);
+        foreach (var win in _openTaskLists.Values)
+            RestoreAndActivate(win);
+        if (_manager != null)
+        {
+            RestoreAndActivate(_manager);
+            _manager.RefreshLists();
+        }
+        Logger.Log("ActivateFromOtherInstance: 已还原并激活所有窗口");
+    }
+
+    // 显示（若隐藏）、还原（若最小化）并激活窗口
+    private static void RestoreAndActivate(Window win)
+    {
+        if (!win.IsVisible)
+            win.Show();
+        if (win.WindowState == WindowState.Minimized)
+            win.WindowState = WindowState.Normal;
+        win.Activate();
     }
 }
 

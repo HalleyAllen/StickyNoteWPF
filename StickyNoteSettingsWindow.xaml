@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Title="便签设置" Height="470" Width="360"
         WindowStartupLocation="Manual"
-        Icon="Resources/StickyNote.ico"
+        Icon="pack://application:,,,/Resources/StickyNote.png"
         WindowStyle="None"
         ResizeMode="CanResize"
         MinHeight="420" MinWidth="320"
