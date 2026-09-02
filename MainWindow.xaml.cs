@@ -46,13 +46,10 @@ public partial class MainWindow : Window
         {
             UpdateForceShowButton();
             RefreshLists();
-            UpdateTabIndicator();
-            UpdateTabVisuals();
+            UpdateNavVisuals();
             var source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
             source.AddHook(WndProc);
         };
-        // 窗口尺寸变化时同步指示器宽度/位置，避免错位
-        SizeChanged += (_, _) => UpdateTabIndicator();
     }
 
     // 根据设置更新“全部显示”按钮状态（图标高亮表示已开启）
@@ -93,8 +90,8 @@ public partial class MainWindow : Window
         return IntPtr.Zero;
     }
 
-    private void TabNotes_Click(object sender, RoutedEventArgs e) => SwitchTab(false);
-    private void TabTasks_Click(object sender, RoutedEventArgs e) => SwitchTab(true);
+    private void NavNotes_Click(object sender, RoutedEventArgs e) => SwitchTab(false);
+    private void NavTasks_Click(object sender, RoutedEventArgs e) => SwitchTab(true);
 
     private void SwitchTab(bool showTasks)
     {
@@ -103,33 +100,21 @@ public partial class MainWindow : Window
         TaskListBox.Visibility = showTasks ? Visibility.Visible : Visibility.Collapsed;
         AddNoteButton.ToolTip = showTasks ? "新建任务清单" : "新建便利贴";
 
-        UpdateTabIndicator();
-        UpdateTabVisuals();
+        UpdateNavVisuals();
         RefreshLists();
     }
 
-    // 选中页签的文字高亮（蓝色 + 加粗），未选中为深灰
-    private void UpdateTabVisuals()
+    // 左侧导航选中态：选中项白色加粗 + 左侧蓝色指示条
+    private void UpdateNavVisuals()
     {
-        var selected = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x00, 0x7A, 0xCC));
-        var normal = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x44, 0x44, 0x44));
-        TabNotes.Foreground = _showTasks ? normal : selected;
-        TabNotes.FontWeight = _showTasks ? FontWeights.Normal : FontWeights.SemiBold;
-        TabTasks.Foreground = _showTasks ? selected : normal;
-        TabTasks.FontWeight = _showTasks ? FontWeights.SemiBold : FontWeights.Normal;
-    }
-
-    private void UpdateTabIndicator()
-    {
-        // 指示器横条滑动到当前选中的 Tab 下方
-        double tabWidth = (ActualWidth > 0 ? ActualWidth : Width) / 2;
-        TabIndicator.Width = tabWidth;
-        var tt = TabIndicator.RenderTransform as TranslateTransform
-                 ?? new TranslateTransform();
-        TabIndicator.RenderTransform = tt;
-        var targetLeft = _showTasks ? tabWidth : 0;
-        var anim = new DoubleAnimation(tt.X, targetLeft, new Duration(TimeSpan.FromMilliseconds(150)));
-        tt.BeginAnimation(TranslateTransform.XProperty, anim);
+        var selected = System.Windows.Media.Brushes.White;
+        var normal = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x9A, 0xA0, 0xA6));
+        NavNotes.Foreground = _showTasks ? normal : selected;
+        NavNotes.FontWeight = _showTasks ? FontWeights.Normal : FontWeights.SemiBold;
+        NavTasks.Foreground = _showTasks ? selected : normal;
+        NavTasks.FontWeight = _showTasks ? FontWeights.SemiBold : FontWeights.Normal;
+        NavIndicatorNotes.Opacity = _showTasks ? 0 : 1;
+        NavIndicatorTasks.Opacity = _showTasks ? 1 : 0;
     }
 
     private void DeleteNoteButton_Click(object sender, RoutedEventArgs e)

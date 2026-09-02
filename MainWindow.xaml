@@ -6,8 +6,8 @@
         xmlns:local="clr-namespace:StickyNoteWPF"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
-        Title="便利贴管理" Height="480" Width="360"
-        MinHeight="240" MinWidth="280"
+        Title="便利贴管理" Height="480" Width="440"
+        MinHeight="240" MinWidth="320"
         WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Resources/StickyNote.png"
         WindowStyle="None"
@@ -122,26 +122,40 @@
                         FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
             </Grid>
 
-            <!-- Tab 切换栏 -->
-            <Grid DockPanel.Dock="Top" Height="38" Background="#FFE8E8E8">
+            <!-- 主体：左侧导航 + 右侧内容 -->
+            <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="116"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <Button x:Name="TabNotes" Grid.Column="0" Content="便利贴"
-                        Background="Transparent" BorderThickness="0" Cursor="Hand"
-                        FontSize="13" FontWeight="SemiBold" Click="TabNotes_Click"/>
-                <Button x:Name="TabTasks" Grid.Column="1" Content="任务清单"
-                        Background="Transparent" BorderThickness="0" Cursor="Hand"
-                        FontSize="13" FontWeight="SemiBold" Click="TabTasks_Click"/>
-                <Rectangle x:Name="TabIndicator" Height="3" VerticalAlignment="Bottom"
-                           HorizontalAlignment="Left" Width="0" Fill="#FF007ACC"/>
-            </Grid>
 
-            <!-- 内容区 -->
-            <TextBlock x:Name="EmptyHint" DockPanel.Dock="Top" Margin="20,30,20,0"
-                       Text="还没有内容，点击右下角「＋」新建一个吧。"
-                       Foreground="#888" TextWrapping="Wrap" HorizontalAlignment="Center"/>
+                <!-- 左侧导航栏 -->
+                <Border Grid.Column="0" Background="#FF2D2D30">
+                    <StackPanel Margin="0,6,0,0">
+                        <Grid Height="44">
+                            <Rectangle x:Name="NavIndicatorNotes" Width="3" HorizontalAlignment="Left"
+                                       VerticalAlignment="Stretch" Fill="#FF007ACC" Opacity="1"/>
+                            <Button x:Name="NavNotes" Content="📝  便利贴" Click="NavNotes_Click"
+                                    Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                    Foreground="White" FontSize="13" FontWeight="SemiBold"
+                                    HorizontalContentAlignment="Left" Padding="18,0,0,0"/>
+                        </Grid>
+                        <Grid Height="44">
+                            <Rectangle x:Name="NavIndicatorTasks" Width="3" HorizontalAlignment="Left"
+                                       VerticalAlignment="Stretch" Fill="#FF007ACC" Opacity="0"/>
+                            <Button x:Name="NavTasks" Content="✅  任务清单" Click="NavTasks_Click"
+                                    Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                    Foreground="#FF9AA0A6" FontSize="13" FontWeight="Normal"
+                                    HorizontalContentAlignment="Left" Padding="18,0,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 右侧内容区 -->
+                <Grid Grid.Column="1">
+                    <TextBlock x:Name="EmptyHint" Margin="20,26,20,0" VerticalAlignment="Top"
+                               Text="还没有便利贴，点击右下角「＋」新建一个吧。"
+                               Foreground="#888" TextWrapping="Wrap" HorizontalAlignment="Center"/>
 
             <!-- 便利贴列表 -->
             <ListBox x:Name="NoteList" BorderThickness="0" Margin="8,8,0,8"
@@ -261,6 +275,8 @@
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
+                </Grid>
+            </Grid>
             </DockPanel>
 
             <!-- 悬浮“新建”按钮：右下角圆形 + 加号，不受列表内容影响位置 -->
