@@ -27,6 +27,7 @@ public partial class MainWindow : Window
                 App.Current.CreateNote();
         };
         ForceShowButton.Click += ForceShowButton_Click;
+        DefaultAppearanceButton.Click += (_, _) => App.Current.OpenDefaultAppearance();
         SettingsButton.Click += (_, _) => App.Current.OpenSettings();
         MinButton.Click += (_, _) => WindowState = WindowState.Minimized;
         CloseButton.Click += (_, _) => Close();

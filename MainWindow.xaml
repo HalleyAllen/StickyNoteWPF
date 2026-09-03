@@ -244,12 +244,13 @@
                         ToolTip="全部显示：关闭（点此开启，强制所有便签不透明且始终显示）"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
-                <!-- 设置 -->
+                <!-- 设置（全局） -->
                 <Button x:Name="SettingsButton" Grid.Column="2" Content="⚙"
                         Width="34" Height="32" Margin="0,0,2,0"
                         Background="Transparent" Foreground="White"
                         BorderThickness="0" Cursor="Hand" FontSize="15"
-                        ToolTip="设置" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                        ToolTip="设置：开机自启、窗口置顶、全局快捷键"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
                 <!-- 最小化 -->
                 <Button x:Name="MinButton" Grid.Column="3" Content="—"
@@ -310,6 +311,7 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
                             <!-- 搜索框 -->
@@ -353,8 +355,15 @@
                                     FontSize="12" Cursor="Hand"
                                     ToolTip="列表视图" Click="RowViewButton_Click"/>
 
+                            <!-- 默认外观（新建默认样式） -->
+                            <Button x:Name="DefaultAppearanceButton" Grid.Column="4" Content="🎨 默认"
+                                    Height="26" Margin="6,0,0,0" Padding="8,0"
+                                    Background="White" BorderBrush="#FFCCCCCC" BorderThickness="1"
+                                    FontSize="12" Cursor="Hand"
+                                    ToolTip="默认外观：设置新建便签与任务清单的默认样式（不影响已创建的）"/>
+
                             <!-- 新建 -->
-                            <Button x:Name="AddNoteButton" Grid.Column="4" Content="＋ 新建"
+                            <Button x:Name="AddNoteButton" Grid.Column="5" Content="＋ 新建"
                                     Height="26" Margin="6,0,0,0" Padding="12,0"
                                     Background="#FF007ACC" Foreground="White" BorderThickness="0"
                                     FontSize="12" FontWeight="SemiBold" Cursor="Hand"

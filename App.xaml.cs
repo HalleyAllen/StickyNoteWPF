@@ -188,6 +188,15 @@ public partial class App : System.Windows.Application
         w.ShowDialog();
     }
 
+    // 默认外观：新建便利贴/任务清单的默认样式（独立于全局设置窗口）
+    public void OpenDefaultAppearance()
+    {
+        var w = new DefaultAppearanceWindow();
+        if (_manager != null)
+            w.Owner = _manager;
+        w.ShowDialog();
+    }
+
     public void OpenNoteSettings(StickyNoteWindow noteWindow)
     {
         var w = new StickyNoteSettingsWindow(noteWindow);

@@ -5,12 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
-        Title="设置" Height="560" Width="380"
+        Title="设置" Height="340" Width="380"
         WindowStartupLocation="CenterOwner"
         Icon="pack://application:,,,/Resources/StickyNote.png"
         WindowStyle="None"
         ResizeMode="CanResize"
-        MinHeight="420" MinWidth="340"
+        MinHeight="300" MinWidth="340"
         Background="Transparent">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome GlassFrameThickness="0" CornerRadius="0"
@@ -69,41 +69,6 @@
                     <Button x:Name="ClearHotKeyButton" Content="删除" Width="56" Height="30"
                             Margin="8,0,0,0" Cursor="Hand" FontSize="13"/>
                 </StackPanel>
-
-                <!-- 窗口透明度（仅背景透明，文字不透明） -->
-                <DockPanel LastChildFill="True" Margin="0,0,0,6">
-                    <TextBlock Text="初始窗口透明度" FontSize="14" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="OpacityValue" DockPanel.Dock="Right"
-                               Text="100%" FontSize="13" Foreground="#666"
-                               VerticalAlignment="Center" HorizontalAlignment="Right"/>
-                </DockPanel>
-                <Slider x:Name="OpacitySlider" Minimum="0" Maximum="1.0"
-                        SmallChange="0.01" LargeChange="0.05" TickFrequency="0.01"
-                        IsSnapToTickEnabled="True" Margin="0,0,0,18"
-                        ValueChanged="OpacitySlider_ValueChanged"/>
-
-                <!-- 初始字体大小（仅影响新建便签） -->
-                <DockPanel LastChildFill="True" Margin="0,0,0,6">
-                    <TextBlock Text="初始字体大小" FontSize="14" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="FontSizeValue" DockPanel.Dock="Right"
-                               Text="14" FontSize="13" Foreground="#666"
-                               VerticalAlignment="Center" HorizontalAlignment="Right"/>
-                </DockPanel>
-                <Slider x:Name="FontSizeSlider" Minimum="8" Maximum="48"
-                        SmallChange="1" LargeChange="2" TickFrequency="1"
-                        IsSnapToTickEnabled="True" Margin="0,0,0,18"
-                        ValueChanged="FontSizeSlider_ValueChanged"/>
-
-                <!-- 默认便签颜色 -->
-                <TextBlock Text="初始背景颜色" FontSize="14" Margin="0,0,0,8"/>
-                <WrapPanel x:Name="ColorPanel" Margin="0,0,0,18"/>
-
-                <!-- 文字与按钮颜色（统一控制便签文字/标题文字/按钮） -->
-                <TextBlock Text="初始文字与按钮颜色" FontSize="14" Margin="0,0,0,8"/>
-                <WrapPanel x:Name="TextColorPanel" Margin="0,0,0,18"/>
-
-                <TextBlock x:Name="Hint" Text="" FontSize="12" Foreground="#C0392B"
-                           TextWrapping="Wrap" Margin="0,4,0,0"/>
             </StackPanel>
             </ScrollViewer>
         </DockPanel>
