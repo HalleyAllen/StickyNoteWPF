@@ -12,6 +12,9 @@ namespace StickyNoteWPF;
 public partial class MainWindow : Window
 {
     private bool _showTasks;
+    private bool _rowView;              // false=卡片视图, true=列表视图
+    private string _searchText = "";
+    private string _sortTag = "none";   // none | titleAsc | titleDesc
 
     public MainWindow()
     {
@@ -47,6 +50,8 @@ public partial class MainWindow : Window
             UpdateForceShowButton();
             RefreshLists();
             UpdateNavVisuals();
+            UpdateViewButtons();
+            UpdateSortCheck();
             var source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
             source.AddHook(WndProc);
         };
@@ -143,18 +148,130 @@ public partial class MainWindow : Window
 
     public void RefreshLists()
     {
-        var notes = App.Current.Notes;
-        var lists = App.Current.TaskLists;
+        var kw = _searchText.Trim();
+        bool empty = _showTasks
+            ? App.Current.TaskLists.Count == 0
+            : App.Current.Notes.Count == 0;
 
-        NoteList.ItemsSource = null;
-        NoteList.ItemsSource = notes;
-        TaskListBox.ItemsSource = null;
-        TaskListBox.ItemsSource = lists;
+        var noteView = FilterNotes(App.Current.Notes, kw);
+        var listView = FilterLists(App.Current.TaskLists, kw);
 
-        bool empty = _showTasks ? lists.Count == 0 : notes.Count == 0;
-        EmptyHint.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
-        EmptyHint.Text = _showTasks
-            ? "还没有任务清单，点击右下角「＋」新建一个吧。"
-            : "还没有便利贴，点击右下角「＋」新建一个吧。";
+        NoteList.ItemsSource = noteView;
+        TaskListBox.ItemsSource = listView;
+
+        bool showHint = _showTasks ? !listView.Any() : !noteView.Any();
+        EmptyHint.Visibility = showHint ? Visibility.Visible : Visibility.Collapsed;
+        if (empty)
+            EmptyHint.Text = _showTasks
+                ? "还没有任务清单，点击右上角「＋ 新建」创建第一个吧。"
+                : "还没有便利贴，点击右上角「＋ 新建」创建第一张吧。";
+        else
+            EmptyHint.Text = _showTasks
+                ? "没有找到匹配的任务清单"
+                : "没有找到匹配的便利贴";
+    }
+
+    // ====== 搜索 / 排序 ======
+
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        _searchText = SearchBox.Text;
+        RefreshLists();
+    }
+
+    private void SortButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (SortButton.ContextMenu is System.Windows.Controls.ContextMenu menu)
+        {
+            menu.PlacementTarget = SortButton;
+            menu.IsOpen = true;
+        }
+    }
+
+    private void SortMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.MenuItem mi && mi.Tag is string tag)
+        {
+            _sortTag = tag;
+            RefreshLists();
+            UpdateSortCheck();
+        }
+    }
+
+    private void UpdateSortCheck()
+    {
+        if (SortButton.ContextMenu is not System.Windows.Controls.ContextMenu menu) return;
+        foreach (var item in menu.Items)
+            if (item is System.Windows.Controls.MenuItem mi)
+                mi.IsChecked = string.Equals(mi.Tag as string, _sortTag, StringComparison.Ordinal);
+    }
+
+    private IEnumerable<StickyNoteModel> FilterNotes(IEnumerable<StickyNoteModel> source, string kw)
+    {
+        IEnumerable<StickyNoteModel> q = source;
+        if (!string.IsNullOrEmpty(kw))
+            q = q.Where(n => ContainsIgnoreCase(n.Title, kw) || ContainsIgnoreCase(n.Text, kw));
+        return ApplySort(q, n => n.Title);
+    }
+
+    private IEnumerable<TaskListModel> FilterLists(IEnumerable<TaskListModel> source, string kw)
+    {
+        IEnumerable<TaskListModel> q = source;
+        if (!string.IsNullOrEmpty(kw))
+            q = q.Where(l => TaskMatches(l, kw));
+        return ApplySort(q, l => l.Title);
+    }
+
+    private IEnumerable<T> ApplySort<T>(IEnumerable<T> q, Func<T, string?> key)
+        => _sortTag switch
+        {
+            "titleAsc" => q.OrderBy(key, StringComparer.OrdinalIgnoreCase),
+            "titleDesc" => q.OrderByDescending(key, StringComparer.OrdinalIgnoreCase),
+            _ => q
+        };
+
+    private static bool TaskMatches(TaskListModel list, string kw)
+        => ContainsIgnoreCase(list.Title, kw) || TaskItemsMatch(list.Items, kw);
+
+    private static bool TaskItemsMatch(IEnumerable<TaskItem> items, string kw)
+    {
+        foreach (var item in items)
+            if (ContainsIgnoreCase(item.Text, kw) || TaskItemsMatch(item.SubItems, kw))
+                return true;
+        return false;
+    }
+
+    private static bool ContainsIgnoreCase(string? text, string kw)
+        => !string.IsNullOrEmpty(text) && text.Contains(kw, StringComparison.OrdinalIgnoreCase);
+
+    // ====== 卡片 / 列表视图切换 ======
+
+    private void CardViewButton_Click(object sender, RoutedEventArgs e) => SetViewMode(false);
+    private void RowViewButton_Click(object sender, RoutedEventArgs e) => SetViewMode(true);
+
+    private void SetViewMode(bool rowView)
+    {
+        if (_rowView == rowView) return;
+        _rowView = rowView;
+
+        NoteList.ItemTemplate = (DataTemplate)FindResource(rowView ? "NoteRowTemplate" : "NoteCardTemplate");
+        TaskListBox.ItemTemplate = (DataTemplate)FindResource(rowView ? "TaskRowTemplate" : "TaskCardTemplate");
+        NoteList.ItemsPanel = (ItemsPanelTemplate)FindResource(rowView ? "RowViewPanel" : "CardViewPanel");
+        TaskListBox.ItemsPanel = (ItemsPanelTemplate)FindResource(rowView ? "RowViewPanel" : "CardViewPanel");
+
+        UpdateViewButtons();
+    }
+
+    private void UpdateViewButtons()
+    {
+        var activeBg = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x00, 0x7A, 0xCC));
+        var activeFg = System.Windows.Media.Brushes.White;
+        var idleBg = System.Windows.Media.Brushes.White;
+        var idleFg = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x33, 0x33, 0x33));
+
+        CardViewButton.Background = _rowView ? idleBg : activeBg;
+        CardViewButton.Foreground = _rowView ? idleFg : activeFg;
+        RowViewButton.Background = _rowView ? activeBg : idleBg;
+        RowViewButton.Foreground = _rowView ? activeFg : idleFg;
     }
 }

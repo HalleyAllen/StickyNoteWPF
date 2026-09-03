@@ -6,8 +6,8 @@
         xmlns:local="clr-namespace:StickyNoteWPF"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
-        Title="便利贴管理" Height="480" Width="440"
-        MinHeight="240" MinWidth="320"
+        Title="便利贴管理" Height="480" Width="600"
+        MinHeight="320" MinWidth="420"
         WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Resources/StickyNote.png"
         WindowStyle="None"
@@ -64,6 +64,148 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- 视图切换面板：卡片视图用 WrapPanel，列表视图用 StackPanel -->
+        <ItemsPanelTemplate x:Key="CardViewPanel">
+            <WrapPanel Orientation="Horizontal"/>
+        </ItemsPanelTemplate>
+        <ItemsPanelTemplate x:Key="RowViewPanel">
+            <StackPanel Orientation="Vertical"/>
+        </ItemsPanelTemplate>
+
+        <!-- ===== 便签：卡片视图 ===== -->
+        <DataTemplate x:Key="NoteCardTemplate">
+            <Border Margin="6" Padding="10" CornerRadius="6" Width="180"
+                    Background="{Binding Color}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBox Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
+                                 FontWeight="Bold" FontSize="13"
+                                 BorderThickness="0" Background="Transparent"
+                                 Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
+                                 ToolTip="点击修改便签标题"
+                                 TextChanged="TitleTextBox_TextChanged"/>
+                        <TextBlock Text="{Binding CreatedAt, StringFormat='创建于 {0:g}'}"
+                                   FontSize="10"
+                                   Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="🗑"
+                            Width="28" Height="28" Margin="8,0,0,0"
+                            Background="Transparent" Foreground="#C0392B"
+                            BorderThickness="0" Cursor="Hand" FontSize="14"
+                            ToolTip="删除便签"
+                            Click="DeleteNoteButton_Click"/>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!-- ===== 便签：列表视图 ===== -->
+        <DataTemplate x:Key="NoteRowTemplate">
+            <Border Margin="6,3" Padding="12,8" CornerRadius="6"
+                    HorizontalAlignment="Stretch" Background="{Binding Color}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <DockPanel LastChildFill="True">
+                            <TextBlock DockPanel.Dock="Right" Margin="8,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding CreatedAt, StringFormat='{}{0:MM-dd HH:mm}'}"
+                                       FontSize="10"
+                                       Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
+                                       Opacity="0.7"/>
+                            <TextBox Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
+                                     FontWeight="Bold" FontSize="13"
+                                     BorderThickness="0" Background="Transparent"
+                                     Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
+                                     ToolTip="点击修改便签标题"
+                                     TextChanged="TitleTextBox_TextChanged"/>
+                        </DockPanel>
+                        <TextBlock Margin="0,3,8,0" Text="{Binding Text}"
+                                   FontSize="11" TextTrimming="CharacterEllipsis"
+                                   Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
+                                   Opacity="0.75"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="🗑"
+                            Width="28" Height="28" Margin="10,0,0,0" VerticalAlignment="Center"
+                            Background="Transparent" Foreground="#C0392B"
+                            BorderThickness="0" Cursor="Hand" FontSize="14"
+                            ToolTip="删除便签"
+                            Click="DeleteNoteButton_Click"/>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!-- ===== 任务清单：卡片视图 ===== -->
+        <DataTemplate x:Key="TaskCardTemplate">
+            <Border Margin="6" Padding="10" CornerRadius="6" Width="180"
+                    Background="{Binding Color}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBox Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
+                                 FontWeight="Bold" FontSize="13"
+                                 BorderThickness="0" Background="Transparent"
+                                 Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
+                                 ToolTip="点击修改清单标题"
+                                 TextChanged="TaskTitleTextBox_TextChanged"/>
+                        <TextBlock FontSize="10"
+                                   Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
+                                   Margin="0,4,0,0"
+                                   Text="{Binding Items, Converter={StaticResource TaskProgress}}"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="🗑"
+                            Width="28" Height="28" Margin="8,0,0,0"
+                            Background="Transparent" Foreground="#C0392B"
+                            BorderThickness="0" Cursor="Hand" FontSize="14"
+                            ToolTip="删除清单"
+                            Click="DeleteTaskListButton_Click"/>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!-- ===== 任务清单：列表视图 ===== -->
+        <DataTemplate x:Key="TaskRowTemplate">
+            <Border Margin="6,3" Padding="12,8" CornerRadius="6"
+                    HorizontalAlignment="Stretch" Background="{Binding Color}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <DockPanel Grid.Column="0" LastChildFill="True">
+                        <TextBlock DockPanel.Dock="Right" Margin="8,0,0,0"
+                                   VerticalAlignment="Center"
+                                   Text="{Binding Items, Converter={StaticResource TaskProgress}}"
+                                   FontSize="11"
+                                   Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
+                                   Opacity="0.75"/>
+                        <TextBox Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
+                                 FontWeight="Bold" FontSize="13"
+                                 BorderThickness="0" Background="Transparent"
+                                 Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
+                                 ToolTip="点击修改清单标题"
+                                 TextChanged="TaskTitleTextBox_TextChanged"/>
+                    </DockPanel>
+                    <Button Grid.Column="1" Content="🗑"
+                            Width="28" Height="28" Margin="10,0,0,0" VerticalAlignment="Center"
+                            Background="Transparent" Foreground="#C0392B"
+                            BorderThickness="0" Cursor="Hand" FontSize="14"
+                            ToolTip="删除清单"
+                            Click="DeleteTaskListButton_Click"/>
+                </Grid>
+            </Border>
+        </DataTemplate>
     </Window.Resources>
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome GlassFrameThickness="0"
@@ -153,157 +295,139 @@
 
                 <!-- 右侧内容区 -->
                 <Grid Grid.Column="1">
-                    <TextBlock x:Name="EmptyHint" Margin="20,26,20,0" VerticalAlignment="Top"
-                               Text="还没有便利贴，点击右下角「＋」新建一个吧。"
-                               Foreground="#888" TextWrapping="Wrap" HorizontalAlignment="Center"/>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-            <!-- 便利贴列表 -->
-            <ListBox x:Name="NoteList" BorderThickness="0" Margin="8,8,0,8"
-                     Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                <ListBox.Resources>
-                    <Style TargetType="{x:Type ScrollViewer}">
-                        <Setter Property="Padding" Value="0"/>
-                    </Style>
-                </ListBox.Resources>
-                <ListBox.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel Orientation="Horizontal" />
-                    </ItemsPanelTemplate>
-                </ListBox.ItemsPanel>
-                <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem">
-                        <Setter Property="Padding" Value="0"/>
-                        <Setter Property="Margin" Value="0"/>
-                        <Setter Property="Background" Value="Transparent"/>
-                        <Setter Property="BorderThickness" Value="0"/>
-                        <Style.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="Transparent"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </ListBox.ItemContainerStyle>
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <Border Margin="6" Padding="10" CornerRadius="6" Width="180"
-                                Background="{Binding Color}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBox Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
-                                             FontWeight="Bold" FontSize="13"
-                                             BorderThickness="0" Background="Transparent"
-                                             Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
-                                             ToolTip="点击修改便签标题"
-                                             TextChanged="TitleTextBox_TextChanged"/>
-                                    <TextBlock Text="{Binding CreatedAt, StringFormat='创建于 {0:g}'}"
-                                               FontSize="10"
-                                               Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
-                                               Margin="0,4,0,0"/>
-                                </StackPanel>
-                                <Button Grid.Column="1" Content="🗑"
-                                        Width="28" Height="28" Margin="8,0,0,0"
-                                        Background="Transparent" Foreground="#C0392B"
-                                        BorderThickness="0" Cursor="Hand" FontSize="14"
-                                        ToolTip="删除便签"
-                                        Click="DeleteNoteButton_Click"/>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+                    <!-- 顶部工具栏：搜索 / 排序 / 视图切换 / 新建 -->
+                    <Border Grid.Row="0" Height="40" Background="#FFECECEC"
+                            BorderBrush="#FFDCDCDC" BorderThickness="0,0,0,1">
+                        <Grid Margin="10,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-            <!-- 任务清单列表 -->
-            <ListBox x:Name="TaskListBox" BorderThickness="0" Margin="8,8,0,8"
-                     Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     Visibility="Collapsed">
-                <ListBox.Resources>
-                    <Style TargetType="{x:Type ScrollViewer}">
-                        <Setter Property="Padding" Value="0"/>
-                    </Style>
-                </ListBox.Resources>
-                <ListBox.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel Orientation="Horizontal" />
-                    </ItemsPanelTemplate>
-                </ListBox.ItemsPanel>
-                <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem">
-                        <Setter Property="Padding" Value="0"/>
-                        <Setter Property="Margin" Value="0"/>
-                        <Setter Property="Background" Value="Transparent"/>
-                        <Setter Property="BorderThickness" Value="0"/>
-                        <Style.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="Transparent"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </ListBox.ItemContainerStyle>
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <Border Margin="6" Padding="10" CornerRadius="6" Width="180"
-                                Background="{Binding Color}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBox Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
-                                             FontWeight="Bold" FontSize="13"
-                                             BorderThickness="0" Background="Transparent"
-                                             Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
-                                             ToolTip="点击修改清单标题"
-                                             TextChanged="TaskTitleTextBox_TextChanged"/>
-                                    <TextBlock FontSize="10"
-                                               Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
-                                               Margin="0,4,0,0"
-                                               Text="{Binding Items, Converter={StaticResource TaskProgress}}"/>
-                                </StackPanel>
-                                <Button Grid.Column="1" Content="🗑"
-                                        Width="28" Height="28" Margin="8,0,0,0"
-                                        Background="Transparent" Foreground="#C0392B"
-                                        BorderThickness="0" Cursor="Hand" FontSize="14"
-                                        ToolTip="删除清单"
-                                        Click="DeleteTaskListButton_Click"/>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+                            <!-- 搜索框 -->
+                            <Border Grid.Column="0" Height="26" VerticalAlignment="Center"
+                                    CornerRadius="13" Background="White"
+                                    BorderBrush="#FFD5D5D5" BorderThickness="1">
+                                <DockPanel Margin="10,0,6,0" LastChildFill="True">
+                                    <TextBlock DockPanel.Dock="Left" Text="🔍" FontSize="11"
+                                               VerticalAlignment="Center" Margin="0,1,5,0"/>
+                                    <TextBox x:Name="SearchBox" BorderThickness="0" Background="Transparent"
+                                             VerticalContentAlignment="Center" FontSize="12"
+                                             TextChanged="SearchBox_TextChanged"
+                                             ToolTip="按标题或内容关键字搜索"/>
+                                </DockPanel>
+                            </Border>
+
+                            <!-- 排序 -->
+                            <Button x:Name="SortButton" Grid.Column="1" Content="排序 ▾"
+                                    Height="26" Margin="6,0,0,0" Padding="8,0"
+                                    Background="White" BorderBrush="#FFCCCCCC" BorderThickness="1"
+                                    FontSize="12" Cursor="Hand"
+                                    ToolTip="排序方式" Click="SortButton_Click">
+                                <Button.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="默认排序" Tag="none" IsCheckable="True" Click="SortMenuItem_Click"/>
+                                        <MenuItem Header="按标题 A→Z" Tag="titleAsc" IsCheckable="True" Click="SortMenuItem_Click"/>
+                                        <MenuItem Header="按标题 Z→A" Tag="titleDesc" IsCheckable="True" Click="SortMenuItem_Click"/>
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                            </Button>
+
+                            <!-- 视图切换 -->
+                            <Button x:Name="CardViewButton" Grid.Column="2" Content="卡片"
+                                    Height="26" Margin="6,0,0,0" Padding="10,0"
+                                    Background="White" BorderBrush="#FFCCCCCC" BorderThickness="1"
+                                    FontSize="12" Cursor="Hand"
+                                    ToolTip="卡片视图" Click="CardViewButton_Click"/>
+                            <Button x:Name="RowViewButton" Grid.Column="3" Content="列表"
+                                    Height="26" Margin="4,0,0,0" Padding="10,0"
+                                    Background="White" BorderBrush="#FFCCCCCC" BorderThickness="1"
+                                    FontSize="12" Cursor="Hand"
+                                    ToolTip="列表视图" Click="RowViewButton_Click"/>
+
+                            <!-- 新建 -->
+                            <Button x:Name="AddNoteButton" Grid.Column="4" Content="＋ 新建"
+                                    Height="26" Margin="6,0,0,0" Padding="12,0"
+                                    Background="#FF007ACC" Foreground="White" BorderThickness="0"
+                                    FontSize="12" FontWeight="SemiBold" Cursor="Hand"
+                                    ToolTip="新建便利贴"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- 内容列表 -->
+                    <Grid Grid.Row="1">
+                        <TextBlock x:Name="EmptyHint" Margin="24,0" VerticalAlignment="Center"
+                                   Text="还没有便利贴，点击右上角「＋ 新建」创建第一张吧。"
+                                   Foreground="#FF888888" TextWrapping="Wrap"
+                                   HorizontalAlignment="Center" TextAlignment="Center"/>
+
+                        <!-- 便利贴列表（卡片/列表视图由代码切换模板） -->
+                        <ListBox x:Name="NoteList" BorderThickness="0" Margin="8"
+                                 Background="Transparent"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ItemTemplate="{StaticResource NoteCardTemplate}"
+                                 ItemsPanel="{StaticResource CardViewPanel}">
+                            <ListBox.Resources>
+                                <Style TargetType="{x:Type ScrollViewer}">
+                                    <Setter Property="Padding" Value="0"/>
+                                </Style>
+                            </ListBox.Resources>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="Transparent"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                        </ListBox>
+
+                        <!-- 任务清单列表 -->
+                        <ListBox x:Name="TaskListBox" BorderThickness="0" Margin="8"
+                                 Background="Transparent"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 Visibility="Collapsed"
+                                 ItemTemplate="{StaticResource TaskCardTemplate}"
+                                 ItemsPanel="{StaticResource CardViewPanel}">
+                            <ListBox.Resources>
+                                <Style TargetType="{x:Type ScrollViewer}">
+                                    <Setter Property="Padding" Value="0"/>
+                                </Style>
+                            </ListBox.Resources>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="Transparent"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                        </ListBox>
+                    </Grid>
                 </Grid>
             </Grid>
             </DockPanel>
 
-            <!-- 悬浮“新建”按钮：右下角圆形 + 加号，不受列表内容影响位置 -->
-            <Button x:Name="AddNoteButton" Width="46" Height="46"
-                    HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                    Margin="0,0,26,16"
-                    Background="#FF007ACC" BorderThickness="0"
-                    Cursor="Hand" ToolTip="新建便利贴"
-                    shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                <Grid>
-                    <Rectangle Width="20" Height="3" RadiusX="1.5" RadiusY="1.5" Fill="White"/>
-                    <Rectangle Width="3" Height="20" RadiusX="1.5" RadiusY="1.5" Fill="White"/>
-                </Grid>
-                <Button.Template>
-                    <ControlTemplate TargetType="Button">
-                        <Grid>
-                            <Ellipse x:Name="Circle" Fill="{TemplateBinding Background}"/>
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Circle" Property="Fill" Value="#FF1E8FE0"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Button.Template>
-            </Button>
         </Grid>
     </Border>
 </Window>
