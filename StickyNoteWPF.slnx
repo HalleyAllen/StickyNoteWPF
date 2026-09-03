@@ -1,6 +1,3 @@
 <Solution>
-  <Project Path="../Setup StickyNoteWPF/Setup StickyNoteWPF.vdproj" Type="Installer">
-    <Build />
-  </Project>
   <Project Path="StickyNoteWPF.csproj" />
 </Solution>
