@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.Linq;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -125,14 +126,28 @@ public partial class MainWindow : Window
 
     private void DeleteNoteButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is System.Windows.Controls.Button btn && btn.DataContext is StickyNoteModel note)
+        if (sender is System.Windows.Controls.Button { DataContext: StickyNoteModel note })
+        {
+            Logger.Log($"主窗口点击删除便签：标题=\"{note.Title}\" Id={note.Id}");
             App.Current.DeleteNote(note);
+        }
+        else
+        {
+            Logger.Log($"主窗口删除便签按钮点击但未识别数据上下文（sender 类型={sender?.GetType().Name}）");
+        }
     }
 
     private void DeleteTaskListButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is System.Windows.Controls.Button btn && btn.DataContext is TaskListModel list)
+        if (sender is System.Windows.Controls.Button { DataContext: TaskListModel list })
+        {
+            Logger.Log($"主窗口点击删除任务清单：标题=\"{list.Title}\" Id={list.Id}");
             App.Current.DeleteTaskList(list);
+        }
+        else
+        {
+            Logger.Log($"主窗口删除清单按钮点击但未识别数据上下文（sender 类型={sender?.GetType().Name}）");
+        }
     }
 
     private void TitleTextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -154,8 +169,10 @@ public partial class MainWindow : Window
             ? App.Current.TaskLists.Count == 0
             : App.Current.Notes.Count == 0;
 
-        var noteView = FilterNotes(App.Current.Notes, kw);
-        var listView = FilterLists(App.Current.TaskLists, kw);
+        // 物化为新集合再赋给 ItemsSource：若直接返回源 List（无搜索/默认排序时引用不变），
+        // WPF 会认为 ItemsSource 没变而不重建列表，导致增删后界面不刷新（需切视图/重启才生效）。
+        var noteView = FilterNotes(App.Current.Notes, kw).ToList();
+        var listView = FilterLists(App.Current.TaskLists, kw).ToList();
 
         NoteList.ItemsSource = noteView;
         TaskListBox.ItemsSource = listView;

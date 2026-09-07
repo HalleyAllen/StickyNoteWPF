@@ -5,12 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
-        Title="默认外观" Height="500" Width="380"
+        Title="默认外观" Height="560" Width="380"
         WindowStartupLocation="CenterOwner"
         Icon="pack://application:,,,/Resources/StickyNote.png"
         WindowStyle="None"
         ResizeMode="CanResize"
-        MinHeight="420" MinWidth="340"
+        MinHeight="470" MinWidth="340"
         Background="Transparent">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome GlassFrameThickness="0" CornerRadius="0"
@@ -37,10 +37,33 @@
 
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="20,16" Orientation="Vertical">
-                <!-- 说明：仅作用于新建项 -->
-                <TextBlock Text="以下设置仅作为新建便利贴与任务清单的默认外观，不影响已创建的便签与清单。"
+                <!-- 说明：仅作用于新建项（随所选类型变化） -->
+                <TextBlock x:Name="HeaderText"
+                           Text="以下设置仅作为新建便利贴的默认外观，不影响已创建的便利贴与任务清单。"
                            FontSize="11" Foreground="#FF999999" TextWrapping="Wrap"
-                           Margin="0,0,0,18"/>
+                           Margin="0,0,0,14"/>
+
+                <!-- 默认作用对象：便利贴 / 任务清单（各自独立） -->
+                <Grid Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <RadioButton x:Name="NoteRadio" GroupName="DefaultTarget" Content="📝 便利贴"
+                                     FontSize="13" IsChecked="True" Cursor="Hand"
+                                     Click="Target_Click"/>
+                        <RadioButton x:Name="TaskRadio" GroupName="DefaultTarget" Content="✅ 任务清单"
+                                     FontSize="13" Margin="18,0,0,0" Cursor="Hand"
+                                     ToolTip="单独设置新建任务清单的默认外观，不影响便利贴"
+                                     Click="Target_Click"/>
+                    </StackPanel>
+                    <Button x:Name="FollowNoteButton" Grid.Column="1" Content="跟随便利贴默认"
+                            Visibility="Collapsed" FontSize="11" Padding="8,3" Cursor="Hand"
+                            Background="Transparent" BorderBrush="#FFCCCCCC" BorderThickness="1"
+                            ToolTip="取消任务清单已单独设置的默认值，改为跟随便利贴默认"
+                            Click="FollowNoteButton_Click"/>
+                </Grid>
 
                 <!-- 窗口透明度（仅背景透明，文字不透明） -->
                 <DockPanel LastChildFill="True" Margin="0,0,0,6">

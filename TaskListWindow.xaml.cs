@@ -311,14 +311,20 @@ public partial class TaskListWindow : Window
 
     private void DeleteTask_Click(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is not TaskItem item) return;
+        if ((sender as FrameworkElement)?.DataContext is not TaskItem item)
+        {
+            Logger.Log($"删除任务按钮点击但未识别任务项（sender 类型={sender?.GetType().Name}）");
+            return;
+        }
         var ic = (sender as DependencyObject)?.FindAncestor<ItemsControl>();
         if (ic is System.Windows.Controls.ListBox)
         {
+            Logger.Log($"删除根任务：\"{item.Text}\"");
             List.Items.Remove(item);
         }
         else if (ic?.DataContext is TaskItem parent)
         {
+            Logger.Log($"删除子任务：\"{item.Text}\"（属于 \"{parent.Text}\"）");
             parent.SubItems.Remove(item);
             parent.RefreshHasSubItems();
         }

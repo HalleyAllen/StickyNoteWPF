@@ -323,9 +323,12 @@ public partial class App : System.Windows.Application
     public void CreateTaskList()
     {
         var list = new TaskListModel();
-        list.TextColor = Settings.NoteTextColor;
-        list.Opacity = Settings.WindowOpacity;
-        list.FontSize = Settings.DefaultFontSize;
+        // 任务清单默认外观：若已在「默认外观」中单独设置任务清单默认则用之，
+        // 否则回退便利贴默认（保持历史行为：两类新建共用一套默认）
+        list.Color = Settings.TaskListColor ?? Settings.DefaultColor;
+        list.TextColor = Settings.TaskListTextColor ?? Settings.NoteTextColor;
+        list.Opacity = Settings.TaskListOpacity ?? Settings.WindowOpacity;
+        list.FontSize = Settings.TaskListFontSize ?? Settings.DefaultFontSize;
         list.Left = 200 + (_taskLists.Count % 5) * 30;
         list.Top = 150 + (_taskLists.Count % 5) * 30;
         list.Items.Add(new TaskItem { Text = "新任务" });

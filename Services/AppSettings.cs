@@ -16,12 +16,20 @@ public class AppSettings
     // 全局快捷键：隐藏/显示所有窗口（除设置窗口外），如 "Ctrl+Alt+H"；空字符串表示未设置
     public string ToggleWindowsHotKey { get; set; } = string.Empty;
     public bool ForceShowAll { get; set; } = false;   // 全局强制所有便签不透明且始终显示（停用隐藏/透明效果）
+
+    // ===== 新建便利贴的默认外观（仅影响之后新建的便利贴）=====
     public string DefaultColor { get; set; } = "#FFF7A900";
-    public double DefaultFontSize { get; set; } = 14;   // 初始默认字体大小（仅影响新建便签）
+    public double DefaultFontSize { get; set; } = 14;   // 初始默认字体大小（仅影响新建便利贴）
     public double WindowOpacity { get; set; } = 1.0;
     public string NoteTextColor { get; set; } = "#FF222222";   // 便签编辑区文字
     public string TitleTextColor { get; set; } = "#FF333333";  // 标题栏文字
     public string ButtonColor { get; set; } = "#FF333333";     // 标题栏按钮(🎨/✕)
+
+    // ===== 新建任务清单的默认外观（null 表示当前跟随便利贴默认；一旦单独设置即独立）=====
+    public string? TaskListColor { get; set; }
+    public double? TaskListFontSize { get; set; }
+    public double? TaskListOpacity { get; set; }
+    public string? TaskListTextColor { get; set; }
 
     // 最近使用颜色（MRU，最多 8 个，第一位为最近选中）；初始为预置色板
     public List<string> RecentColors { get; set; } = new(AppearanceHelper.DefaultColors);
