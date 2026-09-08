@@ -28,7 +28,7 @@ public partial class MainWindow : Window
                 App.Current.CreateNote();
         };
         ForceShowButton.Click += ForceShowButton_Click;
-        DefaultAppearanceButton.Click += (_, _) => App.Current.OpenDefaultAppearance();
+        DefaultAppearanceButton.Click += (_, _) => App.Current.OpenDefaultAppearance(_showTasks);
         SettingsButton.Click += (_, _) => App.Current.OpenSettings();
         MinButton.Click += (_, _) => WindowState = WindowState.Minimized;
         CloseButton.Click += (_, _) => Close();
@@ -122,6 +122,9 @@ public partial class MainWindow : Window
         NavTasks.FontWeight = _showTasks ? FontWeights.SemiBold : FontWeights.Normal;
         NavIndicatorNotes.Opacity = _showTasks ? 0 : 1;
         NavIndicatorTasks.Opacity = _showTasks ? 1 : 0;
+        DefaultAppearanceButton.ToolTip = _showTasks
+            ? "默认外观：设置新建任务清单的默认样式（不影响便利贴与已创建的任务清单）"
+            : "默认外观：设置新建便利贴的默认样式（不影响任务清单与已创建的便利贴）";
     }
 
     private void DeleteNoteButton_Click(object sender, RoutedEventArgs e)

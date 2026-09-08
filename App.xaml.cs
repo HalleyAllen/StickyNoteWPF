@@ -188,10 +188,11 @@ public partial class App : System.Windows.Application
         w.ShowDialog();
     }
 
-    // 默认外观：新建便利贴/任务清单的默认样式（独立于全局设置窗口）
-    public void OpenDefaultAppearance()
+    // 默认外观：按入口类型单独打开 —— forTaskOnly=true 只设置新建任务清单的默认，
+    // 反之只设置新建便利贴的默认，两套互不影响（见 DefaultAppearanceWindow）
+    public void OpenDefaultAppearance(bool forTaskOnly)
     {
-        var w = new DefaultAppearanceWindow();
+        var w = new DefaultAppearanceWindow(forTaskOnly);
         if (_manager != null)
             w.Owner = _manager;
         w.ShowDialog();
@@ -323,12 +324,12 @@ public partial class App : System.Windows.Application
     public void CreateTaskList()
     {
         var list = new TaskListModel();
-        // 任务清单默认外观：若已在「默认外观」中单独设置任务清单默认则用之，
-        // 否则回退便利贴默认（保持历史行为：两类新建共用一套默认）
-        list.Color = Settings.TaskListColor ?? Settings.DefaultColor;
-        list.TextColor = Settings.TaskListTextColor ?? Settings.NoteTextColor;
-        list.Opacity = Settings.TaskListOpacity ?? Settings.WindowOpacity;
-        list.FontSize = Settings.TaskListFontSize ?? Settings.DefaultFontSize;
+        // 任务清单默认外观：使用「默认外观」中独立设置的任务清单默认（与便利贴互不影响）。
+        // 常量兜底仅在理论上字段缺失时生效（Load() 已对旧数据完成迁移固化）。
+        list.Color = Settings.TaskListColor ?? AppSettings.TaskListDefaultColorHex;
+        list.TextColor = Settings.TaskListTextColor ?? AppSettings.TaskListDefaultTextColorHex;
+        list.Opacity = Settings.TaskListOpacity ?? AppSettings.TaskListDefaultOpacity;
+        list.FontSize = Settings.TaskListFontSize ?? AppSettings.TaskListDefaultFontSize;
         list.Left = 200 + (_taskLists.Count % 5) * 30;
         list.Top = 150 + (_taskLists.Count % 5) * 30;
         list.Items.Add(new TaskItem { Text = "新任务" });

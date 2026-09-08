@@ -360,7 +360,7 @@
                                     Height="26" Margin="6,0,0,0" Padding="8,0"
                                     Background="White" BorderBrush="#FFCCCCCC" BorderThickness="1"
                                     FontSize="12" Cursor="Hand"
-                                    ToolTip="默认外观：设置新建便签与任务清单的默认样式（不影响已创建的）"/>
+                                    ToolTip="默认外观：设置新建便利贴的默认样式（不影响任务清单与已创建的便利贴）"/>
 
                             <!-- 新建 -->
                             <Button x:Name="AddNoteButton" Grid.Column="5" Content="＋ 新建"

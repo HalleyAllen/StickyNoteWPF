@@ -25,7 +25,15 @@ public class AppSettings
     public string TitleTextColor { get; set; } = "#FF333333";  // 标题栏文字
     public string ButtonColor { get; set; } = "#FF333333";     // 标题栏按钮(🎨/✕)
 
-    // ===== 新建任务清单的默认外观（null 表示当前跟随便利贴默认；一旦单独设置即独立）=====
+    // ===== 新建任务清单的默认外观 =====
+    // 与便利贴默认完全独立、互不影响。字段可空仅为兼容旧版 settings.json：
+    // 旧版未单独设置时存 null（表示“跟随便利贴默认”），Load() 时会一次性固化为当时的
+    // 便利贴默认值，之后便利贴默认的修改不会再影响新建任务清单。
+    public const string TaskListDefaultColorHex = "#FFF7A900";
+    public const string TaskListDefaultTextColorHex = "#FF222222";
+    public const double TaskListDefaultOpacity = 1.0;
+    public const double TaskListDefaultFontSize = 14;
+
     public string? TaskListColor { get; set; }
     public double? TaskListFontSize { get; set; }
     public double? TaskListOpacity { get; set; }
@@ -48,11 +56,22 @@ public class AppSettings
             {
                 var json = File.ReadAllText(FilePath);
                 var s = JsonSerializer.Deserialize<AppSettings>(json);
-                if (s != null) return s;
+                if (s != null) return EnsureTaskListDefaults(s);
             }
         }
         catch { }
-        return new AppSettings();
+        return EnsureTaskListDefaults(new AppSettings());
+    }
+
+    // 一次性迁移旧数据：TaskList* 为 null（旧版“跟随便利贴默认”）时，固化为当时的便利贴
+    // 默认值。此后任务清单默认完全独立，便利贴默认的修改不再影响新建任务清单。
+    private static AppSettings EnsureTaskListDefaults(AppSettings s)
+    {
+        s.TaskListColor ??= s.DefaultColor;
+        s.TaskListTextColor ??= s.NoteTextColor;
+        s.TaskListOpacity ??= s.WindowOpacity;
+        s.TaskListFontSize ??= s.DefaultFontSize;
+        return s;
     }
 
     public void Save()
