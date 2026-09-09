@@ -13,6 +13,7 @@ public partial class TaskListSettingsWindow : Window
     private readonly TaskListWindow _owner;
     private readonly TaskListModel _list;
     private bool _suppressSliderEvents = true;
+    private bool _suppressUiEvents = true;
 
     public TaskListSettingsWindow(TaskListWindow owner)
     {
@@ -52,9 +53,12 @@ public partial class TaskListSettingsWindow : Window
         Loaded += (_, _) =>
         {
             _suppressSliderEvents = true;
+            _suppressUiEvents = true;
             FontSizeSlider.Value = Math.Clamp(_list.FontSize, FontSizeSlider.Minimum, FontSizeSlider.Maximum);
             OpacitySlider.Value = Math.Clamp(_list.Opacity, OpacitySlider.Minimum, OpacitySlider.Maximum);
+            ShowCompletedCheck.IsChecked = _list.ShowCompleted;
             _suppressSliderEvents = false;
+            _suppressUiEvents = false;
 
             FontSizeValue.Text = $"{Math.Round(FontSizeSlider.Value)}";
             OpacityValue.Text = $"{Math.Round(OpacitySlider.Value * 100)}%";
@@ -98,6 +102,15 @@ public partial class TaskListSettingsWindow : Window
         _list.Opacity = v;
         OpacityValue.Text = $"{Math.Round(v * 100)}%";
         Commit();
+    }
+
+    // “显示已完成任务”：逐清单修改，立即作用到该清单窗口（默认开关只影响新建清单）
+    private void ShowCompletedCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_suppressUiEvents) return;
+        _list.ShowCompleted = ShowCompletedCheck.IsChecked == true;
+        _owner.ApplyShowCompleted();
+        App.Current.SaveAll();
     }
 
     private void TitleBox_TextChanged(object sender, TextChangedEventArgs e)

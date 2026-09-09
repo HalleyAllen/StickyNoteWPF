@@ -69,6 +69,7 @@ public class TaskListModel : INotifyPropertyChanged
     private string _fontFamily = "Microsoft YaHei";
     private bool _forceShow;
     private bool _hoverToShow;
+    private bool _showCompleted = true;
     private bool _isLocked;
     private bool _isOpen;
 
@@ -123,6 +124,14 @@ public class TaskListModel : INotifyPropertyChanged
     {
         get => _hoverToShow;
         set { _hoverToShow = value; OnPropertyChanged(); }
+    }
+
+    // 是否显示已勾选完成的任务。新建清单的初始值来自「默认外观（任务清单）」的开关，
+    // 创建后可在该清单的 ⚙ 设置中单独修改。旧数据缺省为 true（始终显示）。
+    public bool ShowCompleted
+    {
+        get => _showCompleted;
+        set { _showCompleted = value; OnPropertyChanged(); }
     }
 
     public double Left { get; set; } = double.NaN;

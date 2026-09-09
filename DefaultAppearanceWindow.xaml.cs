@@ -56,6 +56,9 @@ public partial class DefaultAppearanceWindow : Window
             TaskRadio.Visibility = Visibility.Collapsed;
         }
 
+        // “是否显示已完成任务”仅对任务清单默认有意义，便利贴默认窗口不显示
+        ShowCompletedCheck.Visibility = _isTask ? Visibility.Visible : Visibility.Collapsed;
+
         // 关键：Slider 必须在模板应用/布局完成后再赋值，
         // 否则构造函数中的赋值会被钳制回 Minimum，导致每次打开都显示最小值。
         Loaded += (_, _) =>
@@ -63,6 +66,7 @@ public partial class DefaultAppearanceWindow : Window
             _suppressSliderEvents = true;
             OpacitySlider.Value = Math.Clamp(CurrentOpacity, OpacitySlider.Minimum, OpacitySlider.Maximum);
             FontSizeSlider.Value = Math.Clamp(CurrentFontSize, FontSizeSlider.Minimum, FontSizeSlider.Maximum);
+            ShowCompletedCheck.IsChecked = _settings.TaskListShowCompleted;
             _suppressSliderEvents = false;
 
             UpdateOpacityLabel(OpacitySlider.Value);
@@ -155,5 +159,13 @@ public partial class DefaultAppearanceWindow : Window
     private void UpdateOpacityLabel(double v)
     {
         OpacityValue.Text = $"{Math.Round(v * 100)}%";
+    }
+
+    // “是否显示已完成任务”：仅写入任务清单的默认值（便利贴窗口无此开关）
+    private void ShowCompletedCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_isTask || _suppressSliderEvents) return;
+        _settings.TaskListShowCompleted = ShowCompletedCheck.IsChecked == true;
+        _settings.Save();
     }
 }

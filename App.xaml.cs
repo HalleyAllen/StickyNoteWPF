@@ -330,6 +330,8 @@ public partial class App : System.Windows.Application
         list.TextColor = Settings.TaskListTextColor ?? AppSettings.TaskListDefaultTextColorHex;
         list.Opacity = Settings.TaskListOpacity ?? AppSettings.TaskListDefaultOpacity;
         list.FontSize = Settings.TaskListFontSize ?? AppSettings.TaskListDefaultFontSize;
+        // 新建任务清单默认是否显示已完成任务（来自任务清单“默认外观”开关）
+        list.ShowCompleted = Settings.TaskListShowCompleted;
         list.Left = 200 + (_taskLists.Count % 5) * 30;
         list.Top = 150 + (_taskLists.Count % 5) * 30;
         list.Items.Add(new TaskItem { Text = "新任务" });

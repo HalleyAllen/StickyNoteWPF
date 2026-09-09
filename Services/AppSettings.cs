@@ -38,6 +38,9 @@ public class AppSettings
     public double? TaskListFontSize { get; set; }
     public double? TaskListOpacity { get; set; }
     public string? TaskListTextColor { get; set; }
+    // 新建任务清单默认是否显示已勾选完成的任务（仅影响之后新建的清单；
+    // 旧版 settings.json 无此字段时由属性初始化器保持 true，无需额外迁移）
+    public bool TaskListShowCompleted { get; set; } = true;
 
     // 最近使用颜色（MRU，最多 8 个，第一位为最近选中）；初始为预置色板
     public List<string> RecentColors { get; set; } = new(AppearanceHelper.DefaultColors);

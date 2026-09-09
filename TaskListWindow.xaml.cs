@@ -36,6 +36,7 @@ public partial class TaskListWindow : Window
         view.SortDescriptions.Add(new SortDescription(nameof(TaskItem.Order), ListSortDirection.Descending));
         TaskList.ItemsSource = view;
         EnsureSubSorting(list.Items);
+        ApplyShowCompleted();
 
         RefreshFromModel();
         ApplyTitle();
@@ -427,6 +428,33 @@ public partial class TaskListWindow : Window
         }
         return null;
     }
+
+    // ====== 是否显示已完成任务（默认值来自任务清单“默认外观”开关，可在 ⚙ 设置中逐清单修改）======
+
+    // 依据 List.ShowCompleted 设置根级及所有层级的过滤视图，隐藏已勾选完成的任务
+    public void ApplyShowCompleted()
+    {
+        var root = CollectionViewSource.GetDefaultView(List.Items);
+        root.Filter = List.ShowCompleted ? null : HideDoneFilter;
+        root.Refresh();
+        ApplyShowCompletedInSubtrees(List.Items);
+    }
+
+    private void ApplyShowCompletedInSubtrees(ObservableCollection<TaskItem> items)
+    {
+        foreach (var item in items)
+        {
+            if (item.SubItems.Count == 0) continue;
+            var view = CollectionViewSource.GetDefaultView(item.SubItems);
+            view.Filter = List.ShowCompleted ? null : HideDoneFilter;
+            view.Refresh();
+            ApplyShowCompletedInSubtrees(item.SubItems);
+        }
+    }
+
+    // 过滤谓词：ShowCompleted=false 时隐藏已完成的任务项（其下子任务随父项一并隐藏）
+    private static bool HideDoneFilter(object obj)
+        => obj is not TaskItem item || !item.IsDone;
 
     // 为子任务集合设置与根级一致的排序（IsDone 升序 + Order 降序），幂等可重复调用
     private static void EnsureSubSorting(ObservableCollection<TaskItem> items)
