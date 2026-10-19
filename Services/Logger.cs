@@ -6,20 +6,16 @@ namespace StickyNoteWPF.Services;
 
 public static class Logger
 {
-    private static readonly string LogPath =
-        Path.Combine(AppContext.BaseDirectory, "app.log");
-
-    private static readonly object _lock = new();
+    public static string LogPath { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "StickyNoteWPF", "logs", "app.log");
+    private static readonly RollingLogWriter Writer = new(LogPath);
 
     public static void Log(string message)
     {
         try
         {
             var line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}{Environment.NewLine}";
-            lock (_lock)
-            {
-                File.AppendAllText(LogPath, line, Encoding.UTF8);
-            }
+            Writer.Append(line);
         }
         catch
         {

@@ -8,6 +8,7 @@ namespace StickyNoteWPF;
 public partial class SettingsWindow : Window
 {
     private readonly AppSettings _settings;
+    private bool _updatingStartup;
 
     public SettingsWindow(AppSettings settings)
     {
@@ -22,8 +23,8 @@ public partial class SettingsWindow : Window
         {
             if (e.LeftButton == MouseButtonState.Pressed) DragMove();
         };
-        StartupCheck.Checked += (_, _) => { AppSettings.SetStartupWithWindows(true); _settings.StartupWithWindows = true; _settings.Save(); };
-        StartupCheck.Unchecked += (_, _) => { AppSettings.SetStartupWithWindows(false); _settings.StartupWithWindows = false; _settings.Save(); };
+        StartupCheck.Checked += StartupCheck_Changed;
+        StartupCheck.Unchecked += StartupCheck_Changed;
         TopmostCheck.Checked += (_, _) => { _settings.GlobalTopmost = true; _settings.Save(); App.Current.ApplyTopmost(true); };
         TopmostCheck.Unchecked += (_, _) => { _settings.GlobalTopmost = false; _settings.Save(); App.Current.ApplyTopmost(false); };
 
@@ -37,6 +38,23 @@ public partial class SettingsWindow : Window
     }
 
     // ====== 全局快捷键设置 ======
+
+    private void StartupCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_updatingStartup) return;
+        bool requested = StartupCheck.IsChecked == true;
+        if (AppSettings.SetStartupWithWindows(requested))
+        {
+            _settings.StartupWithWindows = requested;
+            _settings.Save();
+            return;
+        }
+        _updatingStartup = true;
+        try { StartupCheck.IsChecked = AppSettings.IsStartupEnabled(); }
+        finally { _updatingStartup = false; }
+        System.Windows.MessageBox.Show(this, "开机自启设置未能更新。请检查注册表权限。\n日志：" + Logger.LogPath,
+            "设置失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
 
     private bool _capturingHotKey;
 

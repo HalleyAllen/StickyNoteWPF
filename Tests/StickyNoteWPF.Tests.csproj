@@ -20,5 +20,6 @@
     <Compile Include="../Services/HotKeyGesture.cs" Link="Services/HotKeyGesture.cs" />
     <Compile Include="../Services/WindowAppearance.cs" Link="Services/WindowAppearance.cs" />
     <Compile Include="../Services/WindowGeometry.cs" Link="Services/WindowGeometry.cs" />
+    <Compile Include="../Services/RollingLogWriter.cs" Link="Services/RollingLogWriter.cs" />
   </ItemGroup>
 </Project>

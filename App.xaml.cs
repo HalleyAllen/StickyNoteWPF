@@ -31,6 +31,7 @@ public partial class App : System.Windows.Application
     private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(400) };
     private readonly SaveQueue<string> _saveQueue = new(NoteStore.SaveJson);
     private bool _saveWarningShown;
+    private bool _settingsWarningShown;
     private HotKeyService? _hotKey;
     public AppSettings Settings { get; private set; } = new();
 
@@ -71,11 +72,13 @@ public partial class App : System.Windows.Application
 
         _saveTimer.Tick += SaveTimer_Tick;
         _saveQueue.SaveFailed += () => Dispatcher.BeginInvoke(new Action(ShowSaveError));
+        AppSettings.SaveFailed += ShowSettingsSaveError;
 
         Settings = AppSettings.Load();
         var data = NoteStore.Load();
         _notes = new(data.Notes);
         _taskLists = new(data.TaskLists);
+        if (!NoteStore.LoadSucceeded) ShowSaveError();
         _tray = new TrayIconService(this);
 
         // 启动时只打开上次处于打开状态的便利贴与任务清单（其余保持关闭，可在管理界面打开）
@@ -426,6 +429,14 @@ public partial class App : System.Windows.Application
             MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
+    private void ShowSettingsSaveError()
+    {
+        if (_settingsWarningShown) return;
+        _settingsWarningShown = true;
+        System.Windows.MessageBox.Show("设置未能保存。请检查磁盘空间和目录权限。\n设置文件：" + AppSettings.SavePath +
+            "\n日志：" + Logger.LogPath, "保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
     public void ExitApp()
     {
         _isExiting = true;
@@ -466,6 +477,7 @@ public partial class App : System.Windows.Application
         }
         FlushSaves();
         _saveTimer.Tick -= SaveTimer_Tick;
+        AppSettings.SaveFailed -= ShowSettingsSaveError;
         _hotKey?.Dispose();
         _hotKey = null;
         _tray?.Dispose();

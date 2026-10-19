@@ -20,6 +20,7 @@ public static class NoteStore
     private static bool _loadSucceeded;
 
     public static string SavePath => FilePath;
+    public static bool LoadSucceeded => _loadSucceeded;
 
     public static StoreData Load()
     {

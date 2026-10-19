@@ -10,6 +10,9 @@ public class AppSettings
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "StickyNoteWPF", "settings.json");
 
+    public static string SavePath => FilePath;
+    public static event Action? SaveFailed;
+
     public bool StartupWithWindows { get; set; }
     public bool GlobalTopmost { get; set; } = true;
 
@@ -108,31 +111,38 @@ public class AppSettings
         catch (Exception ex)
         {
             Logger.LogException("AppSettings.Save", ex);
+            SaveFailed?.Invoke();
             return false;
         }
     }
 
-    public static void SetStartupWithWindows(bool enable)
+    public static bool SetStartupWithWindows(bool enable)
     {
         try
         {
-            using var key = Registry.CurrentUser.OpenSubKey(
-                @"Software\Microsoft\Windows\CurrentVersion\Run", true);
-            if (key == null) return;
+            const string runKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+            using var key = enable ? Registry.CurrentUser.CreateSubKey(runKey)
+                : Registry.CurrentUser.OpenSubKey(runKey, true);
+            if (key == null) return !enable;
             if (enable)
             {
                 // 单文件发布下 Assembly.Location 为空字符串，需用 ProcessPath 获取 exe 路径
                 var exe = Environment.ProcessPath;
-                if (string.IsNullOrEmpty(exe)) return;
-                key.SetValue("StickyNoteWPF", exe);
+                if (string.IsNullOrEmpty(exe)) return false;
+                key.SetValue("StickyNoteWPF", "\"" + exe + "\"");
             }
             else
             {
                 if (key.GetValue("StickyNoteWPF") != null)
                     key.DeleteValue("StickyNoteWPF");
             }
+            return true;
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Logger.LogException("AppSettings.SetStartupWithWindows", ex);
+            return false;
+        }
     }
 
     public static bool IsStartupEnabled()
@@ -143,6 +153,10 @@ public class AppSettings
                 @"Software\Microsoft\Windows\CurrentVersion\Run", false);
             return key?.GetValue("StickyNoteWPF") != null;
         }
-        catch { return false; }
+        catch (Exception ex)
+        {
+            Logger.LogException("AppSettings.IsStartupEnabled", ex);
+            return false;
+        }
     }
 }
