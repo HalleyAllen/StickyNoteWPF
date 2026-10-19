@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   windows:
     runs-on: windows-latest
@@ -16,6 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
+        timeout-minutes: 3
         with:
           dotnet-version: '10.0.402'
       - name: Core regression tests
@@ -23,6 +28,7 @@ jobs:
       - name: Build desktop app
         run: dotnet build StickyNoteWPF.csproj -c Release
       - name: WPF smoke checks
+        timeout-minutes: 3
         run: dotnet run --project Tests/Windows/StickyNoteWPF.WindowsSmoke.csproj -c Release
       - name: Publish self-contained Windows app
         run: |
