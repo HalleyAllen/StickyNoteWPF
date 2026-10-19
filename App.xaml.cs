@@ -130,18 +130,13 @@ public partial class App : System.Windows.Application
     /// <summary>注册「隐藏/显示全部窗口」全局快捷键；组合为空表示不注册，注册失败返回 false。</summary>
     public bool RegisterToggleHotKey(string combination)
     {
-        _hotKey?.Dispose();
-        _hotKey = null;
-        if (string.IsNullOrWhiteSpace(combination)) return true; // 未设置，视为成功（无操作）
-
-        var service = new HotKeyService();
-        if (!service.Register(combination, ToggleAllWindows))
+        if (string.IsNullOrWhiteSpace(combination))
         {
-            service.Dispose();
-            return false;
+            UnregisterToggleHotKey();
+            return true;
         }
-        _hotKey = service;
-        return true;
+        _hotKey ??= new HotKeyService();
+        return _hotKey.Register(combination, ToggleAllWindows);
     }
 
     public void UnregisterToggleHotKey()
