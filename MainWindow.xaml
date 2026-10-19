@@ -9,7 +9,7 @@
         Title="便利贴管理" Height="480" Width="600"
         MinHeight="320" MinWidth="420"
         WindowStartupLocation="CenterScreen"
-        Icon="pack://application:,,,/Resources/StickyNote.png"
+        Icon="pack://application:,,,/StickyNote;component/Resources/StickyNote.png"
         WindowStyle="None"
         ResizeMode="CanResize"
         Background="Transparent">
@@ -231,7 +231,7 @@
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center"
                             Margin="8,0,0,0">
-                    <Image Source="pack://application:,,,/Resources/StickyNote.png" Width="16" Height="16" Margin="0,0,6,0"/>
+                    <Image Source="pack://application:,,,/StickyNote;component/Resources/StickyNote.png" Width="16" Height="16" Margin="0,0,6,0"/>
                     <TextBlock Text="我的便利贴" Foreground="White"
                                FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 </StackPanel>

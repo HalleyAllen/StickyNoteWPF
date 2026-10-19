@@ -20,7 +20,6 @@ internal static class Program
     {
         try
         {
-            Application.ResourceAssembly = typeof(App).Assembly;
             var app = new App { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             app.InitializeComponent();
             CheckTemplatesAndOpacity(app);
@@ -148,6 +147,7 @@ internal static class Program
             button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             manager.UpdateLayout();
             manager.RefreshLists();
+            manager.UpdateLayout();
             Check(ReferenceEquals(source, list.ItemsSource), "Manager replaced its collection view.");
             int realized = Enumerable.Range(0, list.Items.Count).Count(i => list.ItemContainerGenerator.ContainerFromIndex(i) != null);
             Check(realized > 0 && realized < 100, $"Row virtualization failed: {realized} of {list.Items.Count} containers realized.");
