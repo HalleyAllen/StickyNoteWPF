@@ -17,5 +17,6 @@
     <Compile Include="../Services/AtomicFile.cs" Link="Services/AtomicFile.cs" />
     <Compile Include="../Services/SaveQueue.cs" Link="Services/SaveQueue.cs" />
     <Compile Include="../Services/HotKeyGesture.cs" Link="Services/HotKeyGesture.cs" />
+    <Compile Include="../Services/WindowAppearance.cs" Link="Services/WindowAppearance.cs" />
   </ItemGroup>
 </Project>

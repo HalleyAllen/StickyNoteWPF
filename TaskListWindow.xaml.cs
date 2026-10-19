@@ -139,17 +139,8 @@ public partial class TaskListWindow : Window
 
     public void ApplyForceShowAll()
     {
-        if (App.Current?.Settings.ForceShowAll == true)
-        {
-            StopHoverTimer();
-            Opacity = 1;
-            IsHitTestVisible = true;
-            Topmost = App.Current?.Settings.GlobalTopmost ?? true;
-        }
-        else
-        {
-            ApplyHoverState();
-        }
+        ApplyBackground();
+        ApplyHoverState();
     }
 
     private DispatcherTimer? _hoverTimer;
@@ -205,7 +196,7 @@ public partial class TaskListWindow : Window
 
     public void ApplyBackground()
     {
-        var o = Math.Clamp(List.Opacity, 0.0, 1.0);
+        var o = WindowAppearance.EffectiveOpacity(List.Opacity, App.Current.Settings.ForceShowAll);
         try
         {
             if (!string.IsNullOrEmpty(List.BackgroundImagePath) && File.Exists(List.BackgroundImagePath))

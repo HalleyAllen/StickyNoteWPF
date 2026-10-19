@@ -128,18 +128,8 @@ public partial class StickyNoteWindow : Window
     // 全局“全部显示”开关：开启时强制所有便签不透明且始终可见（停用各自的隐藏/透明效果）
     public void ApplyForceShowAll()
     {
-        if (App.Current?.Settings.ForceShowAll == true)
-        {
-            StopHoverTimer();
-            Opacity = 1;
-            IsHitTestVisible = true;
-            Topmost = App.Current?.Settings.GlobalTopmost ?? true;
-        }
-        else
-        {
-            // 恢复该便签自身设置
-            ApplyHoverState();
-        }
+        ApplyBackground();
+        ApplyHoverState();
     }
 
     private DispatcherTimer? _hoverTimer;
@@ -205,7 +195,7 @@ public partial class StickyNoteWindow : Window
     // 不再叠加纯色层，否则透明度拉满时纯色不透明会盖住图片。
     public void ApplyBackground()
     {
-        var o = Math.Clamp(Note.Opacity, 0.0, 1.0);
+        var o = WindowAppearance.EffectiveOpacity(Note.Opacity, App.Current.Settings.ForceShowAll);
         try
         {
             if (!string.IsNullOrEmpty(Note.BackgroundImagePath) && File.Exists(Note.BackgroundImagePath))
