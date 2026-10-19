@@ -107,13 +107,13 @@ public static class NoteStore
         }
     }
 
-    public static bool Save(StoreData data)
+    public static string Serialize(StoreData data) => JsonSerializer.Serialize(data,
+        new JsonSerializerOptions { WriteIndented = true });
+
+    public static bool SaveJson(string json)
     {
         try
         {
-            int notes = data.Notes?.Count ?? 0;
-            int lists = data.TaskLists?.Count ?? 0;
-
             // 加载失败且未能恢复时禁止覆盖原文件，包括之后新建的数据。
             if (!_loadSucceeded)
             {
@@ -125,10 +125,8 @@ public static class NoteStore
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
 
-            var json = JsonSerializer.Serialize(data,
-                new JsonSerializerOptions { WriteIndented = true });
             AtomicFile.WriteAllText(FilePath, json);
-            Logger.Log($"NoteStore.Save: 写入成功，便利贴数={notes}，任务清单数={lists}，长度={json.Length}");
+            Logger.Log($"NoteStore.Save: 写入成功，长度={json.Length}");
             return true;
         }
         catch (Exception ex)
