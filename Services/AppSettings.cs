@@ -76,7 +76,7 @@ public class AppSettings
                     var restored = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath + ".bak"));
                     if (restored != null)
                     {
-                        File.Delete(FilePath);
+                        AtomicFile.WriteAllText(FilePath, File.ReadAllText(FilePath + ".bak"), backupExisting: false);
                         return EnsureTaskListDefaults(restored);
                     }
                 }

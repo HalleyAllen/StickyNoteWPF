@@ -76,9 +76,8 @@ public static class NoteStore
                             ?? throw new JsonException("备份根对象不能为空");
                     data.Notes ??= new();
                     data.TaskLists ??= new();
-                    // Remove the corrupt primary only after its unique archive is safely written.
-                    // The next atomic save must not replace the valid .bak with corrupt contents.
-                    File.Delete(FilePath);
+                    // Restore immediately without rotating the corrupt primary into the good backup.
+                    AtomicFile.WriteAllText(FilePath, backup, backupExisting: false);
                     _loadSucceeded = true;
                     Logger.Log("NoteStore.Load: 已从最近有效备份恢复");
                 }

@@ -5,7 +5,7 @@ namespace StickyNoteWPF.Services;
 
 public static class AtomicFile
 {
-    public static void WriteAllText(string path, string contents)
+    public static void WriteAllText(string path, string contents, bool backupExisting = true)
     {
         string fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
@@ -24,7 +24,7 @@ public static class AtomicFile
             }
 
             if (File.Exists(fullPath))
-                File.Replace(temporaryPath, fullPath, fullPath + ".bak");
+                File.Replace(temporaryPath, fullPath, backupExisting ? fullPath + ".bak" : null);
             else
                 File.Move(temporaryPath, fullPath);
         }

@@ -30,6 +30,20 @@ public class AtomicFileTests : IDisposable
     }
 
     [Fact]
+    public void RecoveryImmediatelyRestoresPrimaryWithoutReplacingGoodBackup()
+    {
+        string path = Path.Combine(_directory, "notes.json");
+        AtomicFile.WriteAllText(path, "valid");
+        File.WriteAllText(path, "corrupt");
+        File.WriteAllText(path + ".bak", "valid backup");
+        string archive = AtomicFile.PreserveCorruptedFile(path);
+        AtomicFile.WriteAllText(path, File.ReadAllText(path + ".bak"), backupExisting: false);
+        Assert.Equal("valid backup", File.ReadAllText(path));
+        Assert.Equal("valid backup", File.ReadAllText(path + ".bak"));
+        Assert.Equal("corrupt", File.ReadAllText(archive));
+    }
+
+    [Fact]
     public void CorruptionArchivesNeverOverwriteLastGoodBackupOrEachOther()
     {
         string path = Path.Combine(_directory, "notes.json");
