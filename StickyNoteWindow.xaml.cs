@@ -21,10 +21,7 @@ public partial class StickyNoteWindow : Window
         InitializeComponent();
         Note = note;
 
-        Left = note.Left;
-        Top = note.Top;
-        Width = note.Width;
-        Height = note.Height;
+        WindowPlacement.Restore(this, new(note.Left, note.Top, note.Width, note.Height), 220, 220);
         NoteTextBox.Text = note.Text;
         // 兼容旧数据：若字体大小无效（<=0），回退到默认字体大小并写回模型
         if (note.FontSize <= 0)

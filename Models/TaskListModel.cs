@@ -134,8 +134,10 @@ public class TaskListModel : INotifyPropertyChanged
         set { if (_showCompleted == value) return; _showCompleted = value; OnPropertyChanged(); }
     }
 
-    public double Left { get; set; } = double.NaN;
-    public double Top { get; set; } = double.NaN;
+    public double Left { get; set; } = 200;
+    public double Top { get; set; } = 150;
+    public double Width { get; set; } = 320;
+    public double Height { get; set; } = 360;
 
     public bool IsLocked
     {

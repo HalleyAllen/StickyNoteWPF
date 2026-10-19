@@ -27,10 +27,7 @@ public partial class TaskListWindow : Window
         List = list;
         _taskObserver = new TaskTreeObserver(list.Items, OnTaskTreeChanged);
 
-        Left = double.IsNaN(list.Left) ? 200 : list.Left;
-        Top = double.IsNaN(list.Top) ? 150 : list.Top;
-        Width = 320;
-        Height = 360;
+        WindowPlacement.Restore(this, new(list.Left, list.Top, list.Width, list.Height), 320, 360);
 
         var view = CollectionViewSource.GetDefaultView(list.Items);
         view.SortDescriptions.Clear();
@@ -491,6 +488,8 @@ public partial class TaskListWindow : Window
 
     protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
     {
+        List.Width = Width;
+        List.Height = Height;
         Persist();
         base.OnRenderSizeChanged(sizeInfo);
     }
