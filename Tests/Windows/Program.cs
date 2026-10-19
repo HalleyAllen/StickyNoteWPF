@@ -15,19 +15,35 @@ using Application = System.Windows.Application;
 
 internal static class Program
 {
+    private static string _phase = "initialization";
+
+    // Application queues OnStartup on its dispatcher even when the test never calls Run().
+    // Exercise real controls without loading user data, acquiring the single-instance mutex
+    // or installing the production persistence/exit handlers in the test host.
+    private sealed class SmokeApp : App
+    {
+        protected override void OnStartup(StartupEventArgs e) { }
+        protected override void OnExit(ExitEventArgs e) { }
+    }
+
     [STAThread]
     private static int Main(string[] args)
     {
+        using var watchdog = new System.Threading.Timer(_ =>
+        {
+            Console.WriteLine("::error::Windows smoke timed out during " + Volatile.Read(ref _phase));
+            Environment.Exit(1);
+        }, null, TimeSpan.FromSeconds(120), Timeout.InfiniteTimeSpan);
         try
         {
-            var app = new App { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+            var app = new SmokeApp { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             app.InitializeComponent();
-            CheckTemplatesAndOpacity(app);
-            CheckHoverTimers();
-            CheckImageCache();
-            CheckHotKeyReplacement();
-            CheckManagerVirtualization(app);
-            if (args.Length == 1) CheckPublishedApplication(args[0]);
+            RunCheck("templates and opacity", () => CheckTemplatesAndOpacity(app));
+            RunCheck("hover timers", CheckHoverTimers);
+            RunCheck("image cache", CheckImageCache);
+            RunCheck("hotkey replacement", CheckHotKeyReplacement);
+            RunCheck("manager virtualization", () => CheckManagerVirtualization(app));
+            if (args.Length == 1) RunCheck("published application", () => CheckPublishedApplication(args[0]));
             Console.WriteLine("PASS: Windows WPF smoke checks completed.");
             return 0;
         }
@@ -39,6 +55,15 @@ internal static class Program
                     .Replace("\r", "%0D").Replace("\n", "%0A"));
             return 1;
         }
+        finally { Application.Current?.Shutdown(); }
+    }
+
+    private static void RunCheck(string phase, Action check)
+    {
+        Volatile.Write(ref _phase, phase);
+        Console.WriteLine("::notice::Starting " + phase);
+        check();
+        Console.WriteLine("::notice::Passed " + phase);
     }
 
     private static void CheckTemplatesAndOpacity(App app)
