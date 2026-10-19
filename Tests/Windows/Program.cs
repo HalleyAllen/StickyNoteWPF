@@ -37,7 +37,11 @@ internal static class Program
         try
         {
             var app = new SmokeApp { ShutdownMode = ShutdownMode.OnExplicitShutdown };
-            app.InitializeComponent();
+            app.Resources.MergedDictionaries.Add(new ResourceDictionary
+            {
+                Source = new Uri("/StickyNote;component/Resources/TextBoxStyles.xaml", UriKind.Relative)
+            });
+            app.DispatcherUnhandledException += (_, e) => ReportError(e.Exception);
             RunCheck("templates and opacity", () => CheckTemplatesAndOpacity(app));
             RunCheck("hover timers", CheckHoverTimers);
             RunCheck("image cache", CheckImageCache);
@@ -50,12 +54,17 @@ internal static class Program
         catch (Exception ex)
         {
             Console.Error.WriteLine(ex);
-            if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true")
-                Console.WriteLine("::error::" + ex.ToString().Replace("%", "%25")
-                    .Replace("\r", "%0D").Replace("\n", "%0A"));
+            ReportError(ex);
             return 1;
         }
         finally { Application.Current?.Shutdown(); }
+    }
+
+    private static void ReportError(Exception ex)
+    {
+        if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true")
+            Console.WriteLine("::error::" + ex.ToString().Replace("%", "%25")
+                .Replace("\r", "%0D").Replace("\n", "%0A"));
     }
 
     private static void RunCheck(string phase, Action check)
