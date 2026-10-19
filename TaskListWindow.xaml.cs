@@ -52,7 +52,22 @@ public partial class TaskListWindow : Window
         EyeButton.Click += (_, _) => ToggleHover();
         LockButton.Click += (_, _) => ToggleLock();
 
+        IsVisibleChanged += Window_IsVisibleChanged;
         ApplyHoverState();
+    }
+
+    private void Window_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (IsVisible) ApplyHoverState();
+        else StopHoverTimer();
+    }
+
+    private void StopHoverTimer()
+    {
+        if (_hoverTimer == null) return;
+        _hoverTimer.Stop();
+        _hoverTimer.Tick -= HoverTick;
+        _hoverTimer = null;
     }
 
     // 眼睛按钮：切换是否启用“鼠标移入才显示”
@@ -88,13 +103,17 @@ public partial class TaskListWindow : Window
 
     private void ApplyHoverState()
     {
+        if (!IsVisible)
+        {
+            StopHoverTimer();
+            return;
+        }
         EyeButton.Content = List.HoverToShow ? "👁" : "🚫";
         EyeButton.ToolTip = List.HoverToShow ? "鼠标移入才显示（点此关闭）" : "始终显示（点此开启悬停）";
 
         if (App.Current?.Settings.ForceShowAll == true)
         {
-            _hoverTimer?.Stop();
-            _hoverTimer = null;
+            StopHoverTimer();
             Opacity = 1;
             IsHitTestVisible = true;
             Topmost = App.Current?.Settings.GlobalTopmost ?? true;
@@ -114,8 +133,7 @@ public partial class TaskListWindow : Window
         }
         else
         {
-            _hoverTimer?.Stop();
-            _hoverTimer = null;
+            StopHoverTimer();
             Opacity = 1;
             IsHitTestVisible = true;
             Topmost = App.Current?.Settings.GlobalTopmost ?? true;
@@ -126,8 +144,7 @@ public partial class TaskListWindow : Window
     {
         if (App.Current?.Settings.ForceShowAll == true)
         {
-            _hoverTimer?.Stop();
-            _hoverTimer = null;
+            StopHoverTimer();
             Opacity = 1;
             IsHitTestVisible = true;
             Topmost = App.Current?.Settings.GlobalTopmost ?? true;
@@ -514,6 +531,8 @@ public partial class TaskListWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        IsVisibleChanged -= Window_IsVisibleChanged;
+        StopHoverTimer();
         _taskObserver.Dispose();
         bool pending = _textSaveTimer.IsEnabled;
         _textSaveTimer.Stop();
