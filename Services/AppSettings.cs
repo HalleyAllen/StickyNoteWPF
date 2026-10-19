@@ -62,7 +62,24 @@ public class AppSettings
                 if (s != null) return EnsureTaskListDefaults(s);
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Logger.LogException("AppSettings.Load", ex);
+            try
+            {
+                AtomicFile.PreserveCorruptedFile(FilePath);
+                if (File.Exists(FilePath + ".bak"))
+                {
+                    var restored = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath + ".bak"));
+                    if (restored != null)
+                    {
+                        File.Delete(FilePath);
+                        return EnsureTaskListDefaults(restored);
+                    }
+                }
+            }
+            catch (Exception recoveryError) { Logger.LogException("AppSettings.RecoverBackup", recoveryError); }
+        }
         return EnsureTaskListDefaults(new AppSettings());
     }
 
@@ -77,17 +94,22 @@ public class AppSettings
         return s;
     }
 
-    public void Save()
+    public bool Save()
     {
         try
         {
             var dir = Path.GetDirectoryName(FilePath);
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
-            File.WriteAllText(FilePath,
+            AtomicFile.WriteAllText(FilePath,
                 JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+            return true;
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Logger.LogException("AppSettings.Save", ex);
+            return false;
+        }
     }
 
     public static void SetStartupWithWindows(bool enable)

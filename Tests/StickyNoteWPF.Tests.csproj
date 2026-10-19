@@ -14,5 +14,6 @@
     </PackageReference>
     <Compile Include="../Models/TaskListModel.cs" Link="Models/TaskListModel.cs" />
     <Compile Include="../Services/TaskTreeObserver.cs" Link="Services/TaskTreeObserver.cs" />
+    <Compile Include="../Services/AtomicFile.cs" Link="Services/AtomicFile.cs" />
   </ItemGroup>
 </Project>

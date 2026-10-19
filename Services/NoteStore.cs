@@ -49,7 +49,8 @@ public static class NoteStore
                 }
             }
 
-            var parsed = JsonSerializer.Deserialize<StoreData>(json);
+            var parsed = JsonSerializer.Deserialize<StoreData>(json)
+                ?? throw new JsonException("便签文件的根对象不能为空");
             if (parsed is not null)
             {
                 data.Notes = parsed.Notes ?? new List<StickyNoteModel>();
@@ -62,38 +63,62 @@ public static class NoteStore
         {
             Logger.LogException("NoteStore.Load", ex);
             _loadSucceeded = false;
-            BackupCorruptedFile();
+            if (BackupCorruptedFile() && File.Exists(FilePath + ".bak"))
+            {
+                try
+                {
+                    var backup = File.ReadAllText(FilePath + ".bak");
+                    using var doc = JsonDocument.Parse(backup);
+                    data = doc.RootElement.ValueKind == JsonValueKind.Array
+                        ? new StoreData { Notes = JsonSerializer.Deserialize<List<StickyNoteModel>>(backup)! }
+                        : JsonSerializer.Deserialize<StoreData>(backup)
+                            ?? throw new JsonException("备份根对象不能为空");
+                    data.Notes ??= new();
+                    data.TaskLists ??= new();
+                    // Remove the corrupt primary only after its unique archive is safely written.
+                    // The next atomic save must not replace the valid .bak with corrupt contents.
+                    File.Delete(FilePath);
+                    _loadSucceeded = true;
+                    Logger.Log("NoteStore.Load: 已从最近有效备份恢复");
+                }
+                catch (Exception recoveryError)
+                {
+                    Logger.LogException("NoteStore.RecoverBackup", recoveryError);
+                    data = new();
+                }
+            }
         }
         return data;
     }
 
     // 加载失败时把原文件备份一份，防止后续保存把损坏文件覆盖后无法恢复
-    private static void BackupCorruptedFile()
+    private static bool BackupCorruptedFile()
     {
         try
         {
-            var bakPath = FilePath + ".bak";
-            File.Copy(FilePath, bakPath, overwrite: true);
+            var bakPath = AtomicFile.PreserveCorruptedFile(FilePath);
             Logger.Log($"NoteStore.Load: 检测到文件损坏，已备份原文件到 {bakPath}");
+            return true;
         }
         catch (Exception ex)
         {
             Logger.LogException("NoteStore.BackupCorruptedFile", ex);
+            return false;
         }
     }
 
-    public static void Save(StoreData data)
+    public static bool Save(StoreData data)
     {
         try
         {
             int notes = data.Notes?.Count ?? 0;
             int lists = data.TaskLists?.Count ?? 0;
 
-            // 防御：加载失败且内存为空时跳过保存，保留原文件，避免空数据清空用户数据
-            if (!_loadSucceeded && notes == 0 && lists == 0)
+            // 加载失败且未能恢复时禁止覆盖原文件，包括之后新建的数据。
+            if (!_loadSucceeded)
             {
-                Logger.Log("NoteStore.Save: 加载失败且内存为空，跳过保存，保留原文件");
-                return;
+                Logger.Log("NoteStore.Save: 加载未成功，拒绝覆盖原文件，请先恢复备份");
+                return false;
             }
 
             var dir = Path.GetDirectoryName(FilePath);
@@ -102,12 +127,14 @@ public static class NoteStore
 
             var json = JsonSerializer.Serialize(data,
                 new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(FilePath, json);
+            AtomicFile.WriteAllText(FilePath, json);
             Logger.Log($"NoteStore.Save: 写入成功，便利贴数={notes}，任务清单数={lists}，长度={json.Length}");
+            return true;
         }
         catch (Exception ex)
         {
             Logger.LogException("NoteStore.Save", ex);
+            return false;
         }
     }
 }
