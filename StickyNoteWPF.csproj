@@ -14,6 +14,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Tests\**\*.cs" />
+    <EmbeddedResource Remove="Tests\**\*" />
+    <None Remove="Tests\**\*" />
     <Resource Include="Resources\StickyNote.png" />
     <!-- 图标同时嵌入程序集（供 pack://application 引用，单文件发布下可用）与复制到输出目录（供托盘文件加载） -->
     <Resource Include="Resources\StickyNote.ico" />

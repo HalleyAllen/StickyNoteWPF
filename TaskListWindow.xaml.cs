@@ -18,11 +18,16 @@ namespace StickyNoteWPF;
 public partial class TaskListWindow : Window
 {
     public TaskListModel List { get; }
+    private readonly TaskTreeObserver _taskObserver;
+    private readonly DispatcherTimer _textSaveTimer;
 
     public TaskListWindow(TaskListModel list)
     {
         InitializeComponent();
         List = list;
+        _textSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+        _textSaveTimer.Tick += TextSaveTimer_Tick;
+        _taskObserver = new TaskTreeObserver(list.Items, ScheduleTextSave);
 
         Left = double.IsNaN(list.Left) ? 200 : list.Left;
         Top = double.IsNaN(list.Top) ? 150 : list.Top;
@@ -494,6 +499,28 @@ public partial class TaskListWindow : Window
     }
 
     public event EventHandler? ClosedByUser;
+
+    private void ScheduleTextSave()
+    {
+        _textSaveTimer.Stop();
+        _textSaveTimer.Start();
+    }
+
+    private void TextSaveTimer_Tick(object? sender, EventArgs e)
+    {
+        _textSaveTimer.Stop();
+        Persist();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _taskObserver.Dispose();
+        bool pending = _textSaveTimer.IsEnabled;
+        _textSaveTimer.Stop();
+        _textSaveTimer.Tick -= TextSaveTimer_Tick;
+        if (pending) Persist();
+        base.OnClosed(e);
+    }
 
     private void Persist()
     {
