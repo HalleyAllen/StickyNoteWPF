@@ -18,6 +18,7 @@ namespace StickyNoteWPF;
 public partial class TaskListWindow : Window
 {
     public TaskListModel List { get; }
+    private readonly BackgroundImageLoader _backgroundImage = new();
     private readonly TaskTreeObserver _taskObserver;
 
     public TaskListWindow(TaskListModel list)
@@ -201,11 +202,7 @@ public partial class TaskListWindow : Window
         {
             if (!string.IsNullOrEmpty(List.BackgroundImagePath) && File.Exists(List.BackgroundImagePath))
             {
-                var bmp = new System.Windows.Media.Imaging.BitmapImage();
-                bmp.BeginInit();
-                bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                bmp.UriSource = new Uri(List.BackgroundImagePath, UriKind.Absolute);
-                bmp.EndInit();
+                var bmp = _backgroundImage.Load(List.BackgroundImagePath);
 
                 var stretch = List.BackgroundImageMode switch
                 {
@@ -250,7 +247,7 @@ public partial class TaskListWindow : Window
             RootBorder.Background = new SolidColorBrush(Colors.White);
         }
 
-        RootBorder.Effect = new DropShadowEffect
+        RootBorder.Effect ??= new DropShadowEffect
         {
             Color = Colors.Black,
             BlurRadius = 12,

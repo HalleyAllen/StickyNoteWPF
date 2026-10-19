@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -168,13 +168,13 @@ public partial class MainWindow : Window
     private void TitleTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         if (sender is System.Windows.Controls.TextBox box && box.DataContext is StickyNoteModel note)
-            App.Current.RefreshNote(note);
+            App.Current.RefreshNote(note, titleOnly: true);
     }
 
     private void TaskTitleTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         if (sender is System.Windows.Controls.TextBox box && box.DataContext is TaskListModel list)
-            App.Current.RefreshTaskList(list);
+            App.Current.RefreshTaskList(list, titleOnly: true);
     }
 
     public void RefreshLists()

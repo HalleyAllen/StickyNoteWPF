@@ -285,10 +285,13 @@ public partial class App : System.Windows.Application
     }
 
     // 外观/标题等修改后，刷新已打开的便签窗口显示；refreshManager=true 时同步刷新管理界面列表
-    public void RefreshNote(StickyNoteModel note, bool refreshManager = false)
+    public void RefreshNote(StickyNoteModel note, bool refreshManager = false, bool titleOnly = false)
     {
         if (_openWindows.TryGetValue(note.Id, out var win) && win.IsLoaded)
-            win.RefreshFromModel();
+        {
+            if (titleOnly) win.ApplyTitle();
+            else win.RefreshFromModel();
+        }
         SaveAll();
         if (refreshManager) _manager?.RefreshLists();
     }
@@ -361,10 +364,13 @@ public partial class App : System.Windows.Application
         win.ApplyForceShowAll();
     }
 
-    public void RefreshTaskList(TaskListModel list, bool refreshManager = false)
+    public void RefreshTaskList(TaskListModel list, bool refreshManager = false, bool titleOnly = false)
     {
         if (_openTaskLists.TryGetValue(list.Id, out var win) && win.IsLoaded)
-            win.RefreshFromModel();
+        {
+            if (titleOnly) win.ApplyTitle();
+            else win.RefreshFromModel();
+        }
         SaveAll();
         if (refreshManager) _manager?.RefreshLists();
     }

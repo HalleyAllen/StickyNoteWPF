@@ -120,7 +120,7 @@ public partial class StickyNoteSettingsWindow : Window
             ? string.Empty
             : TitleBox.Text;
         // 刷新便签窗口标题 + 保存 + 同步管理界面列表
-        App.Current.RefreshNote(_note, true);
+        App.Current.RefreshNote(_note, true, titleOnly: true);
     }
 
     private void PickImageButton_Click(object sender, RoutedEventArgs e)

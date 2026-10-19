@@ -118,7 +118,7 @@ public partial class TaskListSettingsWindow : Window
         _list.Title = string.Equals(TitleBox.Text.Trim(), "任务清单", System.StringComparison.Ordinal)
             ? string.Empty
             : TitleBox.Text;
-        App.Current.RefreshTaskList(_list, true);
+        App.Current.RefreshTaskList(_list, true, titleOnly: true);
     }
 
     private void PickImageButton_Click(object sender, RoutedEventArgs e)
