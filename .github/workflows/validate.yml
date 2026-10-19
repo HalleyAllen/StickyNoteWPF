@@ -22,8 +22,18 @@ jobs:
         run: dotnet test Tests/StickyNoteWPF.Tests.csproj -c Release --logger "trx;LogFileName=core.trx"
       - name: Build desktop app
         run: dotnet build StickyNoteWPF.csproj -c Release
+      - name: WPF smoke checks
+        run: dotnet run --project Tests/Windows/StickyNoteWPF.WindowsSmoke.csproj -c Release
       - name: Publish self-contained Windows app
-        run: dotnet publish StickyNoteWPF.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o "${{ runner.temp }}/StickyNote-publish"
+        run: |
+          dotnet publish StickyNoteWPF.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o "${{ runner.temp }}/StickyNote-publish" 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/publish.log"
+          $publishExitCode = $LASTEXITCODE
+          if ($publishExitCode -ne 0) {
+            $details = (Get-Content "$env:RUNNER_TEMP/publish.log" -Tail 25) -join "`n"
+            $details = $details.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error::$details"
+            exit $publishExitCode
+          }
       - name: WPF and published application smoke checks
         run: dotnet run --project Tests/Windows/StickyNoteWPF.WindowsSmoke.csproj -c Release -- "${{ runner.temp }}/StickyNote-publish/StickyNote.exe"
       - uses: actions/upload-artifact@v4

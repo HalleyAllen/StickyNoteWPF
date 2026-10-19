@@ -8,7 +8,11 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$pub = [System.IO.Path]::GetFullPath((Join-Path $ProjectDir $PublishDir))
+$pub = if ([System.IO.Path]::IsPathRooted($PublishDir)) {
+    [System.IO.Path]::GetFullPath($PublishDir)
+} else {
+    [System.IO.Path]::GetFullPath((Join-Path $ProjectDir $PublishDir))
+}
 $exe = Join-Path $pub "StickyNote.exe"
 if (-not (Test-Path $exe)) { throw "publish dir not found: $pub" }
 
