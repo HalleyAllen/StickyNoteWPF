@@ -38,6 +38,25 @@ dotnet build StickyNoteWPF.csproj
 dotnet run --project StickyNoteWPF.csproj
 ```
 
+## 开发验证
+
+```bash
+# 跨平台核心回归测试（保存队列、备份、任务通知、快捷键解析、窗口位置和日志）
+dotnet test Tests/StickyNoteWPF.Tests.csproj
+
+# Linux 云环境：仅交叉编译 Windows 目标；WPF 界面仍须在 Windows 上运行
+dotnet build StickyNoteWPF.csproj -p:EnableWindowsTargeting=true -r win-x64 --self-contained false
+
+# Windows：实际加载控件，检查模板、透明度、定时器、快捷键冲突和列表虚拟化
+dotnet run --project Tests/Windows/StickyNoteWPF.WindowsSmoke.csproj
+```
+
+GitHub Actions 会执行核心测试、Windows 构建、自包含发布和界面冒烟检查。
+发布包的界面检查会通过管理器新建一张便签，退出后验证已写入数据文件；应在隔离的 Windows 测试账户中执行。
+
+数据和设置使用原子替换写入，`.bak` 保留上一版；损坏文件会另存为 `.corrupt-*.json`。
+日志位于 `%LOCALAPPDATA%\StickyNoteWPF\logs\app.log`，单文件最多 1 MiB，保留 3 份轮转日志。
+
 ## 发布
 
 项目内置发布整理脚本（`publish-layout.ps1`），发布后自动将运行时 DLL 收进 `lib\` 并清理中间产物，保持输出目录整洁：

@@ -1,0 +1,33 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.402'
+      - name: Core regression tests
+        run: dotnet test Tests/StickyNoteWPF.Tests.csproj -c Release --logger "trx;LogFileName=core.trx"
+      - name: Build desktop app
+        run: dotnet build StickyNoteWPF.csproj -c Release
+      - name: Publish self-contained Windows app
+        run: dotnet publish StickyNoteWPF.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o "${{ runner.temp }}/StickyNote-publish"
+      - name: WPF and published application smoke checks
+        run: dotnet run --project Tests/Windows/StickyNoteWPF.WindowsSmoke.csproj -c Release -- "${{ runner.temp }}/StickyNote-publish/StickyNote.exe"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: Tests/TestResults/*.trx
