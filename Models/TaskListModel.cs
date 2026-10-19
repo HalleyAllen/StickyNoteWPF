@@ -17,20 +17,20 @@ public class TaskItem : INotifyPropertyChanged
     public string Text
     {
         get => _text;
-        set { _text = value; OnPropertyChanged(); }
+        set { if (_text == value) return; _text = value; OnPropertyChanged(); }
     }
 
     public bool IsDone
     {
         get => _isDone;
-        set { _isDone = value; OnPropertyChanged(); }
+        set { if (_isDone == value) return; _isDone = value; OnPropertyChanged(); }
     }
 
     // 创建顺序序号：用于排序，未完成区内序号最大（最新）的排在最前（置顶）
     public long Order
     {
         get => _order;
-        set { _order = value; OnPropertyChanged(); }
+        set { if (_order == value) return; _order = value; OnPropertyChanged(); }
     }
 
     // 子任务集合（可嵌套多层）
@@ -46,7 +46,7 @@ public class TaskItem : INotifyPropertyChanged
     public bool IsExpanded
     {
         get => _isExpanded;
-        set { _isExpanded = value; OnPropertyChanged(); }
+        set { if (_isExpanded == value) return; _isExpanded = value; OnPropertyChanged(); }
     }
 
     // 子任务增减后调用，刷新 HasSubItems 相关绑定
@@ -77,53 +77,53 @@ public class TaskListModel : INotifyPropertyChanged
     public string Title
     {
         get => _title;
-        set { _title = value; OnPropertyChanged(); }
+        set { if (_title == value) return; _title = value; OnPropertyChanged(); }
     }
 
     public string Color
     {
         get => _color;
-        set { _color = value; OnPropertyChanged(); }
+        set { if (_color == value) return; _color = value; OnPropertyChanged(); }
     }
     public string TextColor
     {
         get => _textColor;
-        set { _textColor = value; OnPropertyChanged(); }
+        set { if (_textColor == value) return; _textColor = value; OnPropertyChanged(); }
     }
     public string? BackgroundImagePath
     {
         get => _backgroundImagePath;
-        set { _backgroundImagePath = value; OnPropertyChanged(); }
+        set { if (_backgroundImagePath == value) return; _backgroundImagePath = value; OnPropertyChanged(); }
     }
     public string BackgroundImageMode
     {
         get => _backgroundImageMode;
-        set { _backgroundImageMode = value; OnPropertyChanged(); }
+        set { if (_backgroundImageMode == value) return; _backgroundImageMode = value; OnPropertyChanged(); }
     }
     public double Opacity
     {
         get => _opacity;
-        set { _opacity = value; OnPropertyChanged(); }
+        set { if (_opacity == value) return; _opacity = value; OnPropertyChanged(); }
     }
     public double FontSize
     {
         get => _fontSize;
-        set { _fontSize = value; OnPropertyChanged(); }
+        set { if (_fontSize == value) return; _fontSize = value; OnPropertyChanged(); }
     }
     public string FontFamily
     {
         get => _fontFamily;
-        set { _fontFamily = value; OnPropertyChanged(); }
+        set { if (_fontFamily == value) return; _fontFamily = value; OnPropertyChanged(); }
     }
     public bool ForceShow
     {
         get => _forceShow;
-        set { _forceShow = value; OnPropertyChanged(); }
+        set { if (_forceShow == value) return; _forceShow = value; OnPropertyChanged(); }
     }
     public bool HoverToShow
     {
         get => _hoverToShow;
-        set { _hoverToShow = value; OnPropertyChanged(); }
+        set { if (_hoverToShow == value) return; _hoverToShow = value; OnPropertyChanged(); }
     }
 
     // 是否显示已勾选完成的任务。新建清单的初始值来自「默认外观（任务清单）」的开关，
@@ -131,7 +131,7 @@ public class TaskListModel : INotifyPropertyChanged
     public bool ShowCompleted
     {
         get => _showCompleted;
-        set { _showCompleted = value; OnPropertyChanged(); }
+        set { if (_showCompleted == value) return; _showCompleted = value; OnPropertyChanged(); }
     }
 
     public double Left { get; set; } = double.NaN;
@@ -140,17 +140,23 @@ public class TaskListModel : INotifyPropertyChanged
     public bool IsLocked
     {
         get => _isLocked;
-        set { _isLocked = value; OnPropertyChanged(); }
+        set { if (_isLocked == value) return; _isLocked = value; OnPropertyChanged(); }
     }
     public bool IsOpen
     {
         get => _isOpen;
-        set { _isOpen = value; OnPropertyChanged(); }
+        set { if (_isOpen == value) return; _isOpen = value; OnPropertyChanged(); }
     }
 
     [JsonInclude]
     public ObservableCollection<TaskItem> Items { get; set; } = new();
 
+    [JsonIgnore]
+    public string ProgressText => Items.Count == 0 ? "暂无任务" : $"已完成 {Items.Count(i => i.IsDone)}/{Items.Count}";
+
+    public void NotifyTaskChanges() => OnPropertyChanged(nameof(ProgressText));
+
     public event PropertyChangedEventHandler? PropertyChanged;
-    private void OnPropertyChanged() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
+    private void OnPropertyChanged([CallerMemberName] string? name = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

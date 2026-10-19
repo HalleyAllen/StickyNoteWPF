@@ -1,4 +1,4 @@
-﻿<Window x:Class="StickyNoteWPF.MainWindow"
+<Window x:Class="StickyNoteWPF.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -70,7 +70,7 @@
             <WrapPanel Orientation="Horizontal"/>
         </ItemsPanelTemplate>
         <ItemsPanelTemplate x:Key="RowViewPanel">
-            <StackPanel Orientation="Vertical"/>
+            <VirtualizingStackPanel Orientation="Vertical"/>
         </ItemsPanelTemplate>
 
         <!-- ===== 便签：卡片视图 ===== -->
@@ -162,7 +162,7 @@
                         <TextBlock FontSize="10"
                                    Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
                                    Margin="0,4,0,0"
-                                   Text="{Binding Items, Converter={StaticResource TaskProgress}}"/>
+                                   Text="{Binding ProgressText}"/>
                     </StackPanel>
                     <Button Grid.Column="1" Content="🗑"
                             Width="28" Height="28" Margin="8,0,0,0"
@@ -186,7 +186,7 @@
                     <DockPanel Grid.Column="0" LastChildFill="True">
                         <TextBlock DockPanel.Dock="Right" Margin="8,0,0,0"
                                    VerticalAlignment="Center"
-                                   Text="{Binding Items, Converter={StaticResource TaskProgress}}"
+                                   Text="{Binding ProgressText}"
                                    FontSize="11"
                                    Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
                                    Opacity="0.75"/>
@@ -381,6 +381,9 @@
                         <!-- 便利贴列表（卡片/列表视图由代码切换模板） -->
                         <ListBox x:Name="NoteList" BorderThickness="0" Margin="8"
                                  Background="Transparent"
+                                 VirtualizingPanel.IsVirtualizing="True"
+                                 VirtualizingPanel.VirtualizationMode="Recycling"
+                                 ScrollViewer.CanContentScroll="True"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  ItemTemplate="{StaticResource NoteCardTemplate}"
                                  ItemsPanel="{StaticResource CardViewPanel}">
@@ -408,6 +411,9 @@
                         <!-- 任务清单列表 -->
                         <ListBox x:Name="TaskListBox" BorderThickness="0" Margin="8"
                                  Background="Transparent"
+                                 VirtualizingPanel.IsVirtualizing="True"
+                                 VirtualizingPanel.VirtualizationMode="Recycling"
+                                 ScrollViewer.CanContentScroll="True"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  Visibility="Collapsed"
                                  ItemTemplate="{StaticResource TaskCardTemplate}"

@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 ﻿using System.Configuration;
 using System.Data;
 using System.Threading;
@@ -20,8 +21,8 @@ public partial class App : System.Windows.Application
     // 用于通知已运行实例退出的自定义窗口消息（新实例接管时发送）
     internal static readonly int ShutdownMessage = NativeMethods.RegisterWindowMessage("StickyNoteWPF_Shutdown");
 
-    private List<StickyNoteModel> _notes = new();
-    private List<TaskListModel> _taskLists = new();
+    private ObservableCollection<StickyNoteModel> _notes = new();
+    private ObservableCollection<TaskListModel> _taskLists = new();
     private readonly Dictionary<Guid, StickyNoteWindow> _openWindows = new();
     private readonly Dictionary<Guid, TaskListWindow> _openTaskLists = new();
     private MainWindow? _manager;
@@ -73,8 +74,8 @@ public partial class App : System.Windows.Application
 
         Settings = AppSettings.Load();
         var data = NoteStore.Load();
-        _notes = data.Notes;
-        _taskLists = data.TaskLists;
+        _notes = new(data.Notes);
+        _taskLists = new(data.TaskLists);
         _tray = new TrayIconService(this);
 
         // 启动时只打开上次处于打开状态的便利贴与任务清单（其余保持关闭，可在管理界面打开）
@@ -413,6 +414,12 @@ public partial class App : System.Windows.Application
         _manager.RefreshLists();
     }
 
+    public void NotifyTaskContentChanged()
+    {
+        SaveAll();
+        _manager?.ScheduleRefresh();
+    }
+
     public void SaveAll()
     {
         _saveTimer.Stop();
@@ -430,7 +437,7 @@ public partial class App : System.Windows.Application
         try
         {
             // Serialize on the UI thread; the background writer never touches mutable models.
-            _saveQueue.Enqueue(NoteStore.Serialize(new StoreData { Notes = _notes, TaskLists = _taskLists }));
+            _saveQueue.Enqueue(NoteStore.Serialize(new StoreData { Notes = _notes.ToList(), TaskLists = _taskLists.ToList() }));
         }
         catch (Exception ex)
         {

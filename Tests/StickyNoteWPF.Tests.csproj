@@ -13,6 +13,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <Compile Include="../Models/TaskListModel.cs" Link="Models/TaskListModel.cs" />
+    <Compile Include="../Models/StickyNoteModel.cs" Link="Models/StickyNoteModel.cs" />
     <Compile Include="../Services/TaskTreeObserver.cs" Link="Services/TaskTreeObserver.cs" />
     <Compile Include="../Services/AtomicFile.cs" Link="Services/AtomicFile.cs" />
     <Compile Include="../Services/SaveQueue.cs" Link="Services/SaveQueue.cs" />

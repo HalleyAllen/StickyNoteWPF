@@ -1,3 +1,7 @@
+using System.Collections;
+using System.ComponentModel;
+using System.Windows.Data;
+using System.Windows.Threading;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -13,6 +17,11 @@ namespace StickyNoteWPF;
 public partial class MainWindow : Window
 {
     private bool _showTasks;
+    private ListCollectionView? _noteView;
+    private ListCollectionView? _taskView;
+    private readonly DispatcherTimer _searchTimer = new() { Interval = TimeSpan.FromMilliseconds(180) };
+    private bool _refreshing;
+
     // ===== 便利贴 / 任务清单 各自独立的浏览状态（与「默认外观」一致，互不影响）=====
     private bool _rowViewNotes;                 // 便利贴页视图：false=卡片, true=列表
     private bool _rowViewTasks;                 // 任务清单页视图：false=卡片, true=列表
@@ -29,6 +38,16 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        _noteView = new ListCollectionView((IList)App.Current.Notes);
+        _taskView = new ListCollectionView((IList)App.Current.TaskLists);
+        _noteView.Filter = item => item is StickyNoteModel note &&
+            (string.IsNullOrWhiteSpace(_searchNoteText) || ContainsIgnoreCase(note.Title, _searchNoteText.Trim())
+                || ContainsIgnoreCase(note.Text, _searchNoteText.Trim()));
+        _taskView.Filter = item => item is TaskListModel list &&
+            (string.IsNullOrWhiteSpace(_searchTaskText) || TaskMatches(list, _searchTaskText.Trim()));
+        NoteList.ItemsSource = _noteView;
+        TaskListBox.ItemsSource = _taskView;
+        _searchTimer.Tick += SearchTimer_Tick;
         AddNoteButton.Click += (_, _) =>
         {
             if (_showTasks)
@@ -167,44 +186,55 @@ public partial class MainWindow : Window
 
     private void TitleTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (sender is System.Windows.Controls.TextBox box && box.DataContext is StickyNoteModel note)
+        if (!_refreshing && sender is System.Windows.Controls.TextBox { IsKeyboardFocusWithin: true } box && box.DataContext is StickyNoteModel note)
             App.Current.RefreshNote(note, titleOnly: true);
     }
 
     private void TaskTitleTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (sender is System.Windows.Controls.TextBox box && box.DataContext is TaskListModel list)
+        if (!_refreshing && sender is System.Windows.Controls.TextBox { IsKeyboardFocusWithin: true } box && box.DataContext is TaskListModel list)
             App.Current.RefreshTaskList(list, titleOnly: true);
+    }
+
+    public void ScheduleRefresh()
+    {
+        _searchTimer.Stop();
+        _searchTimer.Start();
+    }
+
+    private void SearchTimer_Tick(object? sender, EventArgs e)
+    {
+        _searchTimer.Stop();
+        RefreshLists();
     }
 
     public void RefreshLists()
     {
-        if (_showTasks)
+        if (_noteView == null || _taskView == null || _refreshing) return;
+        _searchTimer.Stop();
+        _refreshing = true;
+        try
         {
-            var kw = _searchTaskText.Trim();
-            bool totalEmpty = App.Current.TaskLists.Count == 0;
-            var view = FilterLists(App.Current.TaskLists, kw).ToList();
-            TaskListBox.ItemsSource = view;
-
-            EmptyHint.Visibility = view.Any() ? Visibility.Collapsed : Visibility.Visible;
-            EmptyHint.Text = totalEmpty
-                ? "还没有任务清单，点击右上角「＋ 新建」创建第一个吧。"
-                : "没有找到匹配的任务清单";
+            var view = _showTasks ? _taskView : _noteView;
+            using (view.DeferRefresh())
+            {
+                string sortTag = CurrentSortTag;
+                view.CustomSort = sortTag == "none" ? null : Comparer<object>.Create((a, b) =>
+                {
+                    string? left = a is StickyNoteModel note ? note.Title : ((TaskListModel)a).Title;
+                    string? right = b is StickyNoteModel other ? other.Title : ((TaskListModel)b).Title;
+                    int comparison = StringComparer.OrdinalIgnoreCase.Compare(left, right);
+                    return sortTag == "titleDesc" ? -comparison : comparison;
+                });
+                view.Refresh();
+            }
+            bool totalEmpty = _showTasks ? App.Current.TaskLists.Count == 0 : App.Current.Notes.Count == 0;
+            EmptyHint.Visibility = view.IsEmpty ? Visibility.Visible : Visibility.Collapsed;
+            EmptyHint.Text = _showTasks
+                ? totalEmpty ? "还没有任务清单，点击右上角「＋ 新建」创建第一个吧。" : "没有找到匹配的任务清单"
+                : totalEmpty ? "还没有便利贴，点击右上角「＋ 新建」创建第一张吧。" : "没有找到匹配的便利贴";
         }
-        else
-        {
-            var kw = _searchNoteText.Trim();
-            bool totalEmpty = App.Current.Notes.Count == 0;
-            // 物化为新集合再赋给 ItemsSource：若直接返回源 List（无搜索/默认排序时引用不变），
-            // WPF 会认为 ItemsSource 没变而不重建列表，导致增删后界面不刷新（需切视图/重启才生效）。
-            var view = FilterNotes(App.Current.Notes, kw).ToList();
-            NoteList.ItemsSource = view;
-
-            EmptyHint.Visibility = view.Any() ? Visibility.Collapsed : Visibility.Visible;
-            EmptyHint.Text = totalEmpty
-                ? "还没有便利贴，点击右上角「＋ 新建」创建第一张吧。"
-                : "没有找到匹配的便利贴";
-        }
+        finally { _refreshing = false; }
     }
 
     // ====== 搜索 / 排序 ======
@@ -214,7 +244,7 @@ public partial class MainWindow : Window
         // 只写入当前标签页的搜索关键字，切换标签后另一类目不会被此关键字过滤
         if (_showTasks) _searchTaskText = SearchBox.Text;
         else _searchNoteText = SearchBox.Text;
-        RefreshLists();
+        ScheduleRefresh();
     }
 
     private void SortButton_Click(object sender, RoutedEventArgs e)
@@ -245,30 +275,6 @@ public partial class MainWindow : Window
             if (item is System.Windows.Controls.MenuItem mi)
                 mi.IsChecked = string.Equals(mi.Tag as string, CurrentSortTag, StringComparison.Ordinal);
     }
-
-    private IEnumerable<StickyNoteModel> FilterNotes(IEnumerable<StickyNoteModel> source, string kw)
-    {
-        IEnumerable<StickyNoteModel> q = source;
-        if (!string.IsNullOrEmpty(kw))
-            q = q.Where(n => ContainsIgnoreCase(n.Title, kw) || ContainsIgnoreCase(n.Text, kw));
-        return ApplySort(q, n => n.Title, _sortNoteTag);
-    }
-
-    private IEnumerable<TaskListModel> FilterLists(IEnumerable<TaskListModel> source, string kw)
-    {
-        IEnumerable<TaskListModel> q = source;
-        if (!string.IsNullOrEmpty(kw))
-            q = q.Where(l => TaskMatches(l, kw));
-        return ApplySort(q, l => l.Title, _sortTaskTag);
-    }
-
-    private IEnumerable<T> ApplySort<T>(IEnumerable<T> q, Func<T, string?> key, string sortTag)
-        => sortTag switch
-        {
-            "titleAsc" => q.OrderBy(key, StringComparer.OrdinalIgnoreCase),
-            "titleDesc" => q.OrderByDescending(key, StringComparer.OrdinalIgnoreCase),
-            _ => q
-        };
 
     private static bool TaskMatches(TaskListModel list, string kw)
         => ContainsIgnoreCase(list.Title, kw) || TaskItemsMatch(list.Items, kw);
@@ -313,6 +319,13 @@ public partial class MainWindow : Window
             NoteList.ItemsPanel = (ItemsPanelTemplate)FindResource(row ? "RowViewPanel" : "CardViewPanel");
         }
         UpdateViewButtons();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _searchTimer.Stop();
+        _searchTimer.Tick -= SearchTimer_Tick;
+        base.OnClosed(e);
     }
 
     private void UpdateViewButtons()

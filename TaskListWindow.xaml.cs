@@ -25,7 +25,7 @@ public partial class TaskListWindow : Window
     {
         InitializeComponent();
         List = list;
-        _taskObserver = new TaskTreeObserver(list.Items, Persist);
+        _taskObserver = new TaskTreeObserver(list.Items, OnTaskTreeChanged);
 
         Left = double.IsNaN(list.Left) ? 200 : list.Left;
         Top = double.IsNaN(list.Top) ? 150 : list.Top;
@@ -508,6 +508,12 @@ public partial class TaskListWindow : Window
         StopHoverTimer();
         _taskObserver.Dispose();
         base.OnClosed(e);
+    }
+
+    private void OnTaskTreeChanged()
+    {
+        List.NotifyTaskChanges();
+        App.Current?.NotifyTaskContentChanged();
     }
 
     private void Persist()
