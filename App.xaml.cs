@@ -261,7 +261,7 @@ public partial class App : System.Windows.Application
     {
         if (_openWindows.TryGetValue(note.Id, out var existing))
         {
-            existing.Activate();
+            RestoreAndActivate(existing);
             return;
         }
 
@@ -351,7 +351,7 @@ public partial class App : System.Windows.Application
     {
         if (_openTaskLists.TryGetValue(list.Id, out var existing))
         {
-            existing.Activate();
+            RestoreAndActivate(existing);
             return;
         }
 
@@ -407,10 +407,7 @@ public partial class App : System.Windows.Application
         {
             _manager = new MainWindow();
         }
-        if (_manager.IsVisible)
-            _manager.Activate();
-        else
-            _manager.Show();
+        RestoreAndActivate(_manager);
         _manager.RefreshLists();
     }
 
