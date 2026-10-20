@@ -211,17 +211,46 @@ internal static class Program
 
     private static void CheckPublishedApplication(string executable)
     {
-        using var process = Process.Start(new ProcessStartInfo(executable) { UseShellExecute = false })
+        using var process = Process.Start(new ProcessStartInfo(executable)
+        {
+            UseShellExecute = false,
+            WorkingDirectory = System.IO.Path.GetDirectoryName(executable)!,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        })
             ?? throw new Exception("Published application did not start.");
+        var output = process.StandardOutput.ReadToEndAsync();
+        var errors = process.StandardError.ReadToEndAsync();
         try
         {
-            Check(process.WaitForInputIdle(20000), "Published application did not finish initialization.");
-            process.Refresh();
-            Check(!process.HasExited && process.MainWindowHandle != IntPtr.Zero, "Published manager window is missing.");
-            var root = AutomationElement.FromHandle(process.MainWindowHandle);
-            var create = root.FindFirst(TreeScope.Descendants,
-                new PropertyCondition(AutomationElement.AutomationIdProperty, "AddNoteButton"));
-            Check(create != null, "Published manager's New button is missing.");
+            // A tray/system-events thread can become idle before WPF's manager is ready.
+            // Wait for the actual control instead of treating MainWindowHandle as readiness.
+            AutomationElement? root = null;
+            AutomationElement? create = null;
+            var startup = Stopwatch.StartNew();
+            while (startup.Elapsed < TimeSpan.FromSeconds(20))
+            {
+                Check(!process.HasExited, "Published application exited before displaying its manager.");
+                var windows = AutomationElement.RootElement.FindAll(TreeScope.Children,
+                    new PropertyCondition(AutomationElement.ProcessIdProperty, process.Id));
+                foreach (AutomationElement window in windows)
+                {
+                    try
+                    {
+                        var button = window.FindFirst(TreeScope.Descendants,
+                            new PropertyCondition(AutomationElement.AutomationIdProperty, "AddNoteButton"));
+                        if (button == null) continue;
+                        root = window;
+                        create = button;
+                        break;
+                    }
+                    catch (ElementNotAvailableException) { }
+                }
+                if (create != null) break;
+                Thread.Sleep(100);
+            }
+            Check(create != null, "Published manager's New button did not become available within 20 seconds.");
+            var managerHandle = (IntPtr)root!.Current.NativeWindowHandle;
             ((InvokePattern)create!.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
             var deadline = Stopwatch.StartNew();
             bool noteOpened = false;
@@ -235,13 +264,23 @@ internal static class Program
             }
             Check(noteOpened, "Published application did not create a note through its UI.");
             int shutdown = RegisterWindowMessage("StickyNoteWPF_Shutdown");
-            PostMessage(process.MainWindowHandle, shutdown, IntPtr.Zero, IntPtr.Zero);
+            PostMessage(managerHandle, shutdown, IntPtr.Zero, IntPtr.Zero);
             Check(process.WaitForExit(15000), "Published application did not exit and flush saves.");
             Check(process.ExitCode == 0, "Published application exited with an error.");
             string data = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "StickyNoteWPF", "notes.json");
             using var saved = System.Text.Json.JsonDocument.Parse(System.IO.File.ReadAllText(data));
             Check(saved.RootElement.GetProperty("Notes").GetArrayLength() > 0, "UI-created note was not persisted.");
+        }
+        catch (Exception ex)
+        {
+            if (!process.HasExited) process.Kill(entireProcessTree: true);
+            process.WaitForExit(5000);
+            string stdout = output.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();
+            string stderr = errors.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();
+            string log = System.IO.File.Exists(Logger.LogPath)
+                ? string.Join("\n", System.IO.File.ReadLines(Logger.LogPath).TakeLast(30)) : "No application log was written.";
+            throw new InvalidOperationException($"Published smoke failed: {ex.Message}\nstdout: {stdout}\nstderr: {stderr}\nlog: {log}", ex);
         }
         finally { if (!process.HasExited) process.Kill(entireProcessTree: true); }
         Console.WriteLine("PASS: published application starts, creates a note through UI automation and saves on exit.");
