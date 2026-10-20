@@ -185,9 +185,28 @@ internal static class Program
             Check(ReferenceEquals(source, list.ItemsSource), "Manager replaced its collection view.");
             int realized = Enumerable.Range(0, list.Items.Count).Count(i => list.ItemContainerGenerator.ContainerFromIndex(i) != null);
             Check(realized > 0 && realized < 100, $"Row virtualization failed: {realized} of {list.Items.Count} containers realized.");
+
+            // Search-only changes must refresh even when CustomSort stays null.
+            var search = (TextBox)manager.FindName("SearchBox");
+            search.Text = "Note 499";
+            manager.RefreshLists();
+            Check(list.Items.Count == 1 && ((StickyNoteModel)list.Items[0]).Title == "Note 499",
+                "Search did not refresh an unsorted view.");
+            search.Text = "no-matching-note";
+            manager.RefreshLists();
+            Check(list.Items.Count == 0 && ((TextBlock)manager.FindName("EmptyHint")).Visibility == Visibility.Visible,
+                "Empty search results did not update the view and hint.");
+            search.Clear();
+            manager.RefreshLists();
+            Check(list.Items.Count == 500, "Clearing search did not restore the collection.");
+            var sortMenu = ((Button)manager.FindName("SortButton")).ContextMenu;
+            var descending = sortMenu.Items.OfType<MenuItem>().Single(item => (string)item.Tag == "titleDesc");
+            descending.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Check(((StickyNoteModel)list.Items[0]).Title == "Note 99", "Descending title sort did not refresh.");
+            Check(ReferenceEquals(source, list.ItemsSource), "Filtering or sorting replaced the manager view.");
         }
         finally { manager.Close(); notes.Clear(); }
-        Console.WriteLine("PASS: stable manager view and bounded realized rows for 500 notes.");
+        Console.WriteLine("PASS: manager startup, repeated refresh, filtering, sorting and virtualized rows for 500 notes.");
     }
 
     private static void CheckPublishedApplication(string executable)

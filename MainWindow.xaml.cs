@@ -226,7 +226,8 @@ public partial class MainWindow : Window
                     int comparison = StringComparer.OrdinalIgnoreCase.Compare(left, right);
                     return sortTag == "titleDesc" ? -comparison : comparison;
                 });
-                view.Refresh();
+                // CustomSort marks the view for refresh, including when set to null.
+                // DeferRefresh performs that refresh once when this scope ends.
             }
             bool totalEmpty = _showTasks ? App.Current.TaskLists.Count == 0 : App.Current.Notes.Count == 0;
             EmptyHint.Visibility = view.IsEmpty ? Visibility.Visible : Visibility.Collapsed;
