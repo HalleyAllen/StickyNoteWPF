@@ -20,10 +20,12 @@ public partial class TaskListWindow : Window
     public TaskListModel List { get; }
     private readonly BackgroundImageLoader _backgroundImage = new();
     private readonly TaskTreeObserver _taskObserver;
+    private readonly Action? _depthLimitWarning;
 
-    public TaskListWindow(TaskListModel list)
+    public TaskListWindow(TaskListModel list, Action? depthLimitWarning = null)
     {
         InitializeComponent();
+        _depthLimitWarning = depthLimitWarning;
         List = list;
         _taskObserver = new TaskTreeObserver(list.Items, OnTaskTreeChanged);
 
@@ -407,9 +409,13 @@ public partial class TaskListWindow : Window
         FocusItemTextBox(sub);
     }
 
-    protected virtual void ShowTaskDepthLimit() => System.Windows.MessageBox.Show(this,
-        $"任务最多支持 {TaskTreeLimits.MaximumDepth} 层嵌套。请在同级添加任务。",
-        "已达到任务层级上限", MessageBoxButton.OK, MessageBoxImage.Information);
+    private void ShowTaskDepthLimit()
+    {
+        if (_depthLimitWarning != null) { _depthLimitWarning(); return; }
+        System.Windows.MessageBox.Show(this,
+            $"任务最多支持 {TaskTreeLimits.MaximumDepth} 层嵌套。请在同级添加任务。",
+            "已达到任务层级上限", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
 
     // 聚焦到指定任务项的文本框（可用于任意层级）
     private void FocusItemTextBox(TaskItem item)

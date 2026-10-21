@@ -43,12 +43,6 @@ internal static class Program
         protected override void OnExit(ExitEventArgs e) { }
     }
 
-    private sealed class DepthTestWindow(TaskListModel list) : TaskListWindow(list)
-    {
-        public int LimitWarnings { get; private set; }
-        protected override void ShowTaskDepthLimit() => LimitWarnings++;
-    }
-
     [STAThread]
     private static int Main(string[] args)
     {
@@ -295,12 +289,13 @@ internal static class Program
             task.SubItems.Add(child);
             task = child;
         }
-        var window = new DepthTestWindow(model);
+        int warnings = 0;
+        var window = new TaskListWindow(model, () => warnings++);
         try
         {
             typeof(TaskListWindow).GetMethod("AddSubTask", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .Invoke(window, new object[] { task });
-            Check(task.SubItems.Count == 0 && window.LimitWarnings == 1,
+            Check(task.SubItems.Count == 0 && warnings == 1,
                 "Depth limit mutated the tree or failed to explain the limit.");
             var data = StoreDataCodec.Parse(StoreDataCodec.Serialize(new StoreData { TaskLists = [model] }));
             Check(data.TaskLists.Count == 1, "Depth-limited tree could not be saved and reopened.");
