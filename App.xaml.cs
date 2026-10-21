@@ -448,7 +448,7 @@ public partial class App : System.Windows.Application
         return _saveQueue.LastSaveSucceeded;
     }
 
-    private void ShowSaveError()
+    protected virtual void ShowSaveError()
     {
         if (_saveWarningShown || _exitInProgress) return;
         _saveWarningShown = true;
@@ -519,17 +519,18 @@ public partial class App : System.Windows.Application
 
     protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
     {
-        if (!_isExiting)
-        {
-            UpdateOpenStates();
-            SaveAll();
-            if (!FlushSaves())
-            {
-                e.Cancel = true;
-                ShowSaveError();
-            }
-        }
         base.OnSessionEnding(e);
+        if (e.Cancel || _isExiting) return;
+        UpdateOpenStates();
+        SaveAll();
+        if (!FlushSaves())
+        {
+            e.Cancel = true;
+            ShowSaveError();
+            return;
+        }
+        // OnExit runs after WPF closes windows; preserve the open states saved above.
+        _isExiting = true;
     }
 
     protected override void OnExit(ExitEventArgs e)

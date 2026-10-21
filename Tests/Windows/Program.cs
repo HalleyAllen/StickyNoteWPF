@@ -26,6 +26,16 @@ internal static class Program
         public Func<string, bool> SnapshotWriter { get; set; } = _ => true;
         public Func<bool> RetryDecision { get; set; } = () => throw new Exception("Unexpected save failure.");
         public bool ExitCompleted { get; private set; }
+        public int SaveWarnings { get; private set; }
+        protected override void ShowSaveError() => SaveWarnings++;
+        public bool CancelSessionEnding()
+        {
+            var args = (SessionEndingCancelEventArgs)Activator.CreateInstance(
+                typeof(SessionEndingCancelEventArgs), BindingFlags.Instance | BindingFlags.NonPublic,
+                binder: null, args: new object[] { ReasonSessionEnding.Logoff }, culture: null)!;
+            base.OnSessionEnding(args);
+            return args.Cancel;
+        }
         protected override bool WriteSnapshot(string json) => SnapshotWriter(json);
         protected override bool ConfirmSaveRetry() => RetryDecision();
         protected override void ShutdownAfterSave() => ExitCompleted = true;
@@ -297,6 +307,8 @@ internal static class Program
         {
             int prompts = 0;
             app.SnapshotWriter = _ => false;
+            Check(app.CancelSessionEnding() && app.SaveWarnings == 1 && windows.All(window => window.IsVisible),
+                "A failed save allowed Windows logoff or closed editing windows.");
             app.RetryDecision = () =>
             {
                 prompts++;
