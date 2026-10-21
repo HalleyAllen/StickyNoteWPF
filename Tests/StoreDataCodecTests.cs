@@ -5,6 +5,53 @@ namespace StickyNoteWPF.Tests;
 
 public class StoreDataCodecTests
 {
+    [Theory]
+    [InlineData(31)]
+    [InlineData(TaskTreeLimits.MaximumDepth)]
+    public void DeepTasksRoundTripWithoutBlockingOtherNotes(int depth)
+    {
+        var data = DeepStore(depth);
+        var restored = StoreDataCodec.Parse(StoreDataCodec.Serialize(data));
+        Assert.Equal("other note", Assert.Single(restored.Notes).Text);
+        var task = Assert.Single(Assert.Single(restored.TaskLists).Items);
+        for (int i = 1; i < depth; i++) task = Assert.Single(task.SubItems);
+        Assert.Equal($"level {depth}", task.Text);
+    }
+
+    [Fact]
+    public void DepthBoundaryRejectsFurtherChildrenAndUnsupportedDocuments()
+    {
+        var data = DeepStore(TaskTreeLimits.MaximumDepth);
+        var roots = data.TaskLists[0].Items;
+        var parent = roots[0];
+        for (int i = 1; i < TaskTreeLimits.MaximumDepth - 1; i++) parent = parent.SubItems[0];
+        Assert.True(TaskTreeLimits.CanAddChild(roots, parent));
+        Assert.False(TaskTreeLimits.CanAddChild(roots, parent.SubItems[0]));
+        Assert.False(TaskTreeLimits.CanAddChild(roots, new()));
+        var tooDeep = DeepStore(TaskTreeLimits.MaximumDepth + 1);
+        Assert.Throws<System.Text.Json.JsonException>(() => StoreDataCodec.Serialize(tooDeep));
+        var json = System.Text.Json.JsonSerializer.Serialize(tooDeep,
+            new System.Text.Json.JsonSerializerOptions { MaxDepth = TaskTreeLimits.JsonMaximumDepth });
+        Assert.Throws<System.Text.Json.JsonException>(() => StoreDataCodec.Parse(json));
+    }
+
+    private static StoreData DeepStore(int depth)
+    {
+        var data = new StoreData();
+        data.Notes.Add(new() { Text = "other note" });
+        var list = new StickyNoteWPF.Models.TaskListModel();
+        data.TaskLists.Add(list);
+        var task = new StickyNoteWPF.Models.TaskItem { Text = "level 1" };
+        list.Items.Add(task);
+        for (int i = 2; i <= depth; i++)
+        {
+            var child = new StickyNoteWPF.Models.TaskItem { Text = $"level {i}" };
+            task.SubItems.Add(child);
+            task = child;
+        }
+        return data;
+    }
+
     [Fact]
     public void RepairsNullTreesAndPreservesRecoverableText()
     {

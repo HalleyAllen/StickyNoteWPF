@@ -43,6 +43,12 @@ internal static class Program
         protected override void OnExit(ExitEventArgs e) { }
     }
 
+    private sealed class DepthTestWindow(TaskListModel list) : TaskListWindow(list)
+    {
+        public int LimitWarnings { get; private set; }
+        protected override void ShowTaskDepthLimit() => LimitWarnings++;
+    }
+
     [STAThread]
     private static int Main(string[] args)
     {
@@ -66,6 +72,7 @@ internal static class Program
             RunCheck("hotkey replacement", CheckHotKeyReplacement);
             RunCheck("manager virtualization", () => CheckManagerVirtualization(app));
             RunCheck("locked task editing", CheckLockedTaskEditing);
+            RunCheck("task depth limit", CheckTaskDepthLimit);
             RunCheck("save failure exit protection", () => CheckExitProtection(app));
             if (args.Length == 1) RunCheck("published application", () => CheckPublishedApplication(args[0]));
             Console.WriteLine("PASS: Windows WPF smoke checks completed.");
@@ -227,6 +234,30 @@ internal static class Program
         }
         finally { manager.Close(); notes.Clear(); }
         Console.WriteLine("PASS: manager startup, repeated refresh, filtering, sorting and virtualized rows for 500 notes.");
+    }
+
+    private static void CheckTaskDepthLimit()
+    {
+        var model = new TaskListModel();
+        var task = new TaskItem { IsExpanded = false };
+        model.Items.Add(task);
+        for (int i = 1; i < TaskTreeLimits.MaximumDepth; i++)
+        {
+            var child = new TaskItem { IsExpanded = false };
+            task.SubItems.Add(child);
+            task = child;
+        }
+        var window = new DepthTestWindow(model);
+        try
+        {
+            typeof(TaskListWindow).GetMethod("AddSubTask", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(window, new object[] { task });
+            Check(task.SubItems.Count == 0 && window.LimitWarnings == 1,
+                "Depth limit mutated the tree or failed to explain the limit.");
+            var data = StoreDataCodec.Parse(StoreDataCodec.Serialize(new StoreData { TaskLists = [model] }));
+            Check(data.TaskLists.Count == 1, "Depth-limited tree could not be saved and reopened.");
+        }
+        finally { window.Close(); }
     }
 
     private static void CheckLockedTaskEditing()

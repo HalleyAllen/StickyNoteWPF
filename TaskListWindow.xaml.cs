@@ -392,6 +392,11 @@ public partial class TaskListWindow : Window
     private void AddSubTask(TaskItem parent)
     {
         if (List.IsLocked) return;
+        if (!TaskTreeLimits.CanAddChild(List.Items, parent))
+        {
+            ShowTaskDepthLimit();
+            return;
+        }
         long maxOrder = parent.SubItems.Count == 0 ? 0 : parent.SubItems.Max(i => i.Order);
         var sub = new TaskItem { Text = "新子任务", Order = maxOrder + 1 };
         parent.SubItems.Add(sub);
@@ -401,6 +406,10 @@ public partial class TaskListWindow : Window
         Persist();
         FocusItemTextBox(sub);
     }
+
+    protected virtual void ShowTaskDepthLimit() => System.Windows.MessageBox.Show(this,
+        $"任务最多支持 {TaskTreeLimits.MaximumDepth} 层嵌套。请在同级添加任务。",
+        "已达到任务层级上限", MessageBoxButton.OK, MessageBoxImage.Information);
 
     // 聚焦到指定任务项的文本框（可用于任意层级）
     private void FocusItemTextBox(TaskItem item)

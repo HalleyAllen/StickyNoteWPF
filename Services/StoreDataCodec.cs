@@ -6,18 +6,21 @@ namespace StickyNoteWPF.Services;
 
 public static class StoreDataCodec
 {
-    private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions Options = new()
+    {
+        WriteIndented = true, MaxDepth = TaskTreeLimits.JsonMaximumDepth
+    };
 
     public static StoreData Parse(string json)
     {
-        using var document = JsonDocument.Parse(json);
+        using var document = JsonDocument.Parse(json, new JsonDocumentOptions { MaxDepth = TaskTreeLimits.JsonMaximumDepth });
         var root = document.RootElement;
         StoreData data;
         if (root.ValueKind == JsonValueKind.Array)
-            data = new() { Notes = JsonSerializer.Deserialize<List<StickyNoteModel>>(json)! };
+            data = new() { Notes = JsonSerializer.Deserialize<List<StickyNoteModel>>(json, Options)! };
         else if (root.ValueKind == JsonValueKind.Object &&
             (root.TryGetProperty(nameof(StoreData.Notes), out _) || root.TryGetProperty(nameof(StoreData.TaskLists), out _)))
-            data = JsonSerializer.Deserialize<StoreData>(json)!;
+            data = JsonSerializer.Deserialize<StoreData>(json, Options)!;
         else
             throw new JsonException("无法识别便签数据格式");
 
@@ -25,7 +28,12 @@ public static class StoreDataCodec
         return data;
     }
 
-    public static string Serialize(StoreData data) => JsonSerializer.Serialize(data, Options);
+    public static string Serialize(StoreData data)
+    {
+        foreach (var list in data.TaskLists)
+            if (list != null && list.Items != null) TaskTreeLimits.Validate(list.Items);
+        return JsonSerializer.Serialize(data, Options);
+    }
 
     private static void Normalize(StoreData data)
     {
@@ -65,6 +73,7 @@ public static class StoreDataCodec
             list.Width = Dimension(list.Width, 320, 160);
             list.Height = Dimension(list.Height, 360, 120);
             list.Items ??= new();
+            TaskTreeLimits.Validate(list.Items);
             NormalizeTasks(list.Items, ids);
         }
     }
