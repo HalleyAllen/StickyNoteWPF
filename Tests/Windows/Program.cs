@@ -73,6 +73,7 @@ internal static class Program
             RunCheck("manager virtualization", () => CheckManagerVirtualization(app));
             RunCheck("locked task editing", CheckLockedTaskEditing);
             RunCheck("task depth limit", CheckTaskDepthLimit);
+            RunCheck("settings validation", () => CheckSettingsValidation(app));
             RunCheck("save failure exit protection", () => CheckExitProtection(app));
             if (args.Length == 1) RunCheck("published application", () => CheckPublishedApplication(args[0]));
             Console.WriteLine("PASS: Windows WPF smoke checks completed.");
@@ -234,6 +235,53 @@ internal static class Program
         }
         finally { manager.Close(); notes.Clear(); }
         Console.WriteLine("PASS: manager startup, repeated refresh, filtering, sorting and virtualized rows for 500 notes.");
+    }
+
+    private static void CheckSettingsValidation(App app)
+    {
+        var invalid = AppSettings.Parse("""
+            {"DefaultFontSize":-20,"WindowOpacity":4,"TaskListFontSize":0,"TaskListOpacity":-1,
+             "DefaultColor":null,"NoteTextColor":"bad color","TitleTextColor":"bad color",
+             "ButtonColor":null,"TaskListColor":"bad color","TaskListTextColor":null,
+             "ToggleWindowsHotKey":null,"RecentColors":[null,"bad color","#FF112233","#ff112233"],
+             "NoteSettingsWidth":-1,"NoteSettingsHeight":1e300,"SettingsWindowWidth":0,"SettingsWindowHeight":-1}
+            """);
+        Check(invalid.DefaultFontSize == 14 && invalid.TaskListFontSize == 14 && invalid.WindowOpacity == 1
+            && invalid.TaskListOpacity == 0, "Invalid font/opacity values survived validation.");
+        Check(invalid.NoteSettingsWidth == 360 && invalid.NoteSettingsHeight == 4096
+            && invalid.SettingsWindowWidth == 380 && invalid.SettingsWindowHeight == 470,
+            "Invalid window dimensions survived validation.");
+        Check(invalid.RecentColors.SequenceEqual(new[] { "#FF112233" }) && invalid.ToggleWindowsHotKey == "",
+            "Null/invalid/duplicate palette or hotkey values survived validation.");
+        foreach (var color in new[] { invalid.DefaultColor, invalid.NoteTextColor, invalid.TitleTextColor,
+            invalid.ButtonColor, invalid.TaskListColor, invalid.TaskListTextColor })
+            Check(AppearanceHelper.TryParseColor(color, out _), "An invalid color survived validation.");
+        var legacy = AppSettings.Parse("""{"DefaultFontSize":24,"WindowOpacity":0.4,"DefaultColor":"#FF123456","RecentColors":null}""");
+        Check(legacy.TaskListFontSize == 24 && legacy.TaskListOpacity == 0.4
+            && legacy.TaskListColor == "#FF123456" && legacy.RecentColors.Count == AppearanceHelper.MaxRecentColors,
+            "Legacy task defaults did not migrate from validated note defaults.");
+        legacy.DefaultFontSize = 20;
+        legacy.Normalize();
+        Check(legacy.TaskListFontSize == 24, "Independent task defaults changed with note defaults.");
+        invalid.DefaultFontSize = double.NaN;
+        invalid.WindowOpacity = double.PositiveInfinity;
+        invalid.NoteSettingsWidth = double.PositiveInfinity;
+        invalid.Normalize();
+        Check(invalid.DefaultFontSize == 14 && invalid.WindowOpacity == 1 && invalid.NoteSettingsWidth == 360,
+            "Non-finite values survived validation.");
+        var upper = AppSettings.Parse("""{"DefaultFontSize":1e300,"TaskListFontSize":0.1,"RecentColors":[]}""");
+        Check(upper.DefaultFontSize == 48 && upper.TaskListFontSize == 8 && upper.RecentColors.Count > 0,
+            "Extreme fonts or empty palettes survived validation.");
+
+        // New notes use validated defaults directly. Exercise their real WPF font assignment.
+        var note = new StickyNoteWindow(new StickyNoteModel { FontSize = invalid.DefaultFontSize,
+            Color = invalid.DefaultColor, Opacity = invalid.WindowOpacity });
+        try
+        {
+            note.Show();
+            Check(((TextBox)note.FindName("NoteTextBox")).FontSize == 14, "Validated defaults could not create a note.");
+        }
+        finally { note.Close(); }
     }
 
     private static void CheckTaskDepthLimit()
