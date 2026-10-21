@@ -48,4 +48,40 @@ public class SaveQueueTests
         await queue.FlushAsync();
         Assert.True(queue.LastSaveSucceeded);
     }
+    [Fact]
+    public async Task FailedSnapshotIsRetainedForExplicitRetry()
+    {
+        bool available = false;
+        var attempts = new List<string>();
+        var queue = new SaveQueue<string>(text => { attempts.Add(text); return available; });
+        queue.Enqueue("unsaved content");
+        await queue.FlushAsync();
+        Assert.False(queue.LastSaveSucceeded);
+        Assert.Single(attempts); // A disk failure must not start an automatic retry loop.
+        available = true;
+        queue.RetryFailed();
+        await queue.FlushAsync();
+        Assert.True(queue.LastSaveSucceeded);
+        Assert.Equal(new[] { "unsaved content", "unsaved content" }, attempts);
+        queue.RetryFailed();
+        await queue.FlushAsync();
+        Assert.Equal(2, attempts.Count);
+    }
+
+    [Fact]
+    public async Task NewerSnapshotSupersedesRetainedFailureEvenWhenReporterThrows()
+    {
+        var attempts = new List<string>();
+        var queue = new SaveQueue<string>(text => { attempts.Add(text); return text == "new"; });
+        queue.SaveFailed += () => throw new InvalidOperationException("reporter failed");
+        queue.Enqueue("old");
+        await queue.FlushAsync();
+        queue.Enqueue("new");
+        await queue.FlushAsync();
+        queue.RetryFailed();
+        await queue.FlushAsync();
+        Assert.True(queue.LastSaveSucceeded);
+        Assert.Equal(new[] { "old", "new" }, attempts);
+    }
+
 }

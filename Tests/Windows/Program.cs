@@ -22,6 +22,12 @@ internal static class Program
     // or installing the production persistence/exit handlers in the test host.
     private sealed class SmokeApp : App
     {
+        public Func<string, bool> SnapshotWriter { get; set; } = _ => true;
+        public Func<bool> RetryDecision { get; set; } = () => throw new Exception("Unexpected save failure.");
+        public bool ExitCompleted { get; private set; }
+        protected override bool WriteSnapshot(string json) => SnapshotWriter(json);
+        protected override bool ConfirmSaveRetry() => RetryDecision();
+        protected override void ShutdownAfterSave() => ExitCompleted = true;
         protected override void OnStartup(StartupEventArgs e) { }
         protected override void OnExit(ExitEventArgs e) { }
     }
@@ -37,6 +43,7 @@ internal static class Program
         try
         {
             var app = new SmokeApp { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+            SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(app.Dispatcher));
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
                 Source = new Uri("/StickyNote;component/Resources/TextBoxStyles.xaml", UriKind.Relative)
@@ -47,6 +54,7 @@ internal static class Program
             RunCheck("image cache", CheckImageCache);
             RunCheck("hotkey replacement", CheckHotKeyReplacement);
             RunCheck("manager virtualization", () => CheckManagerVirtualization(app));
+            RunCheck("save failure exit protection", () => CheckExitProtection(app));
             if (args.Length == 1) RunCheck("published application", () => CheckPublishedApplication(args[0]));
             Console.WriteLine("PASS: Windows WPF smoke checks completed.");
             return 0;
@@ -207,6 +215,95 @@ internal static class Program
         }
         finally { manager.Close(); notes.Clear(); }
         Console.WriteLine("PASS: manager startup, repeated refresh, filtering, sorting and virtualized rows for 500 notes.");
+    }
+
+    private static void CheckExitProtection(SmokeApp app)
+    {
+        var notes = (System.Collections.ObjectModel.ObservableCollection<StickyNoteModel>)app.Notes;
+        var lists = (System.Collections.ObjectModel.ObservableCollection<TaskListModel>)app.TaskLists;
+        var note = new StickyNoteModel { Text = "unsaved text" };
+        var list = new TaskListModel();
+        notes.Add(note);
+        lists.Add(list);
+        app.OpenNote(note);
+        app.OpenTaskList(list);
+        var windows = app.Windows.Cast<Window>().ToArray();
+        try
+        {
+            int prompts = 0;
+            app.SnapshotWriter = _ => false;
+            app.RetryDecision = () =>
+            {
+                prompts++;
+                Check(windows.All(window => window.IsVisible), "Windows closed before the retry/cancel decision.");
+                return false;
+            };
+            Check(!AwaitOnDispatcher(app.RequestExitAsync()), "Failed write allowed exit.");
+            Check(!app.ExitCompleted && prompts == 1 && windows.All(window => window.IsVisible),
+                "Canceling exit discarded the open editing session.");
+            Check(notes.Contains(note) && lists.Contains(list) && note.Text == "unsaved text",
+                "Canceling exit discarded in-memory models.");
+
+            app.SnapshotWriter = _ => true;
+            note.FontSize = double.NaN; // Serialization failure must also prevent shutdown.
+            Check(!AwaitOnDispatcher(app.RequestExitAsync()) && !app.ExitCompleted && prompts == 2,
+                "Serialization failure allowed exit.");
+            note.FontSize = 14;
+
+            int writes = 0;
+            var snapshots = new System.Collections.Concurrent.ConcurrentQueue<string>();
+            using var started = new ManualResetEventSlim();
+            using var release = new ManualResetEventSlim();
+            app.SnapshotWriter = json =>
+            {
+                snapshots.Enqueue(json);
+                int attempt = Interlocked.Increment(ref writes);
+                if (attempt == 1)
+                {
+                    started.Set();
+                    if (!release.Wait(TimeSpan.FromSeconds(10))) throw new TimeoutException();
+                    return false;
+                }
+                return attempt > 2;
+            };
+            app.RetryDecision = () => { prompts++; return true; };
+            var exit = app.RequestExitAsync();
+            try
+            {
+                Check(started.Wait(TimeSpan.FromSeconds(10)), "Exit did not start saving.");
+                Check(!AwaitOnDispatcher(app.RequestExitAsync()), "A second exit request was accepted while saving.");
+                note.Text = "edited while saving";
+                app.SaveAll();
+            }
+            finally { release.Set(); }
+            Check(AwaitOnDispatcher(exit) && app.ExitCompleted, "Exit did not recover when saving became available.");
+            var saved = StoreDataCodec.Parse(snapshots.Last());
+            Check(AssertSingle(saved.Notes).Text == "edited while saving" && AssertSingle(saved.Notes).IsOpen,
+                "Exit lost edits made during saving or the original open state.");
+            Check(AssertSingle(saved.TaskLists).IsOpen && writes >= 3 && prompts == 3,
+                "Retry did not save successfully or task list open state was lost.");
+        }
+        finally
+        {
+            foreach (var window in windows) window.Close();
+            notes.Clear();
+            lists.Clear();
+        }
+        Console.WriteLine("PASS: write/serialization failure cancels exit, preserves windows and models, and later saves include concurrent edits.");
+    }
+
+    private static T AssertSingle<T>(IEnumerable<T> items) => items.Single();
+
+    private static T AwaitOnDispatcher<T>(Task<T> task)
+    {
+        if (!task.IsCompleted)
+        {
+            var frame = new DispatcherFrame();
+            _ = task.ContinueWith(_ => Application.Current.Dispatcher.BeginInvoke(
+                new Action(() => frame.Continue = false)), TaskScheduler.Default);
+            Dispatcher.PushFrame(frame);
+        }
+        return task.GetAwaiter().GetResult();
     }
 
     private static void CheckPublishedApplication(string executable)

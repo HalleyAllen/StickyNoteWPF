@@ -28,12 +28,18 @@ public partial class App : System.Windows.Application
     private MainWindow? _manager;
     private TrayIconService? _tray;
     private bool _isExiting;
+    private bool _exitInProgress;
+    private long _saveRevision;
     private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(400) };
-    private readonly SaveQueue<string> _saveQueue = new(NoteStore.SaveJson);
+    private readonly SaveQueue<string> _saveQueue;
     private bool _saveWarningShown;
     private bool _settingsWarningShown;
     private HotKeyService? _hotKey;
     public AppSettings Settings { get; private set; } = new();
+
+    public App() => _saveQueue = new SaveQueue<string>(WriteSnapshot);
+
+    protected virtual bool WriteSnapshot(string json) => NoteStore.SaveJson(json);
 
     public IReadOnlyList<StickyNoteModel> Notes => _notes;
     public IReadOnlyList<TaskListModel> TaskLists => _taskLists;
@@ -385,6 +391,8 @@ public partial class App : System.Windows.Application
 
     public void SaveAll()
     {
+        if (_isExiting) return;
+        _saveRevision++;
         _saveTimer.Stop();
         _saveTimer.Start();
     }
@@ -395,34 +403,54 @@ public partial class App : System.Windows.Application
         QueueSnapshot();
     }
 
-    private void QueueSnapshot()
+    private bool QueueSnapshot()
     {
         try
         {
             // Serialize on the UI thread; the background writer never touches mutable models.
             _saveQueue.Enqueue(NoteStore.Serialize(new StoreData { Notes = _notes.ToList(), TaskLists = _taskLists.ToList() }));
+            return true;
         }
         catch (Exception ex)
         {
             Logger.LogException("App.QueueSnapshot", ex);
             ShowSaveError();
+            return false;
         }
     }
 
-    private void FlushSaves()
+    private async Task<bool> FlushSavesAsync()
+    {
+        long revision;
+        do
+        {
+            revision = _saveRevision;
+            if (_saveTimer.IsEnabled)
+            {
+                _saveTimer.Stop();
+                if (!QueueSnapshot()) return false;
+            }
+            await _saveQueue.FlushAsync();
+            // Editing can continue while disk I/O runs. Include those edits before exiting.
+        } while (_saveTimer.IsEnabled || revision != _saveRevision);
+        return _saveQueue.LastSaveSucceeded;
+    }
+
+    // The dispatcher cannot await during OnExit/OnSessionEnding. Queue workers never use it.
+    private bool FlushSaves()
     {
         if (_saveTimer.IsEnabled)
         {
             _saveTimer.Stop();
-            QueueSnapshot();
+            if (!QueueSnapshot()) return false;
         }
         _saveQueue.FlushAsync().GetAwaiter().GetResult();
-        if (!_saveQueue.LastSaveSucceeded) ShowSaveError();
+        return _saveQueue.LastSaveSucceeded;
     }
 
     private void ShowSaveError()
     {
-        if (_saveWarningShown) return;
+        if (_saveWarningShown || _exitInProgress) return;
         _saveWarningShown = true;
         System.Windows.MessageBox.Show("便签数据未能保存。请检查磁盘空间、数据目录权限及备份文件。\n数据目录：" +
             System.IO.Path.GetDirectoryName(NoteStore.SavePath), "保存失败",
@@ -437,45 +465,83 @@ public partial class App : System.Windows.Application
             "\n日志：" + Logger.LogPath, "保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
-    public void ExitApp()
+    public async void ExitApp() => await RequestExitAsync();
+
+    public async Task<bool> RequestExitAsync()
     {
-        _isExiting = true;
-        Logger.Log($"ExitApp: 开始退出，内存便利贴数={_notes.Count}，任务清单数={_taskLists.Count}");
-        // 退出前根据当前打开的窗口写回 IsOpen，下次启动只恢复这些窗口
+        if (_exitInProgress || _isExiting) return false;
+        _exitInProgress = true;
+        try
+        {
+            Logger.Log($"ExitApp: 请求退出，便利贴数={_notes.Count}，任务清单数={_taskLists.Count}");
+            while (true)
+            {
+                UpdateOpenStates();
+                SaveAll();
+                if (await FlushSavesAsync()) break;
+                if (!ConfirmSaveRetry()) return false;
+            }
+            // Keep every window, the tray and the mutex alive until the latest snapshot is safe.
+            _isExiting = true;
+            ShutdownAfterSave();
+            return true;
+        }
+        finally { _exitInProgress = false; }
+    }
+
+    protected virtual bool ConfirmSaveRetry() => System.Windows.MessageBox.Show(
+        "便签数据未能保存，程序将保留当前内容。请检查磁盘空间、目录权限及备份文件。\n" +
+        "选择“是”重试保存；选择“否”取消退出，返回编辑。\n数据目录：" +
+        System.IO.Path.GetDirectoryName(NoteStore.SavePath), "保存失败，暂不退出",
+        MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
+
+    private void UpdateOpenStates()
+    {
         foreach (var note in _notes)
             note.IsOpen = _openWindows.ContainsKey(note.Id);
         foreach (var list in _taskLists)
             list.IsOpen = _openTaskLists.ContainsKey(list.Id);
-        SaveAll();
-        foreach (var win in _openWindows.Values.ToList())
-            win.Close();
-        foreach (var win in _openTaskLists.Values.ToList())
-            win.Close();
-        FlushSaves();
+    }
+
+    protected virtual void ShutdownAfterSave()
+    {
+        foreach (var win in _openWindows.Values.ToList()) win.Close();
+        foreach (var win in _openTaskLists.Values.ToList()) win.Close();
         _hotKey?.Dispose();
         _hotKey = null;
         _tray?.Dispose();
         _tray = null;
-        // 释放单实例互斥锁，交出新实例接管
         _singleMutex?.ReleaseMutex();
         _singleMutex?.Close();
         _singleMutex = null;
         Shutdown();
     }
 
+    protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
+    {
+        if (!_isExiting)
+        {
+            UpdateOpenStates();
+            SaveAll();
+            if (!FlushSaves())
+            {
+                e.Cancel = true;
+                ShowSaveError();
+            }
+        }
+        base.OnSessionEnding(e);
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
         Logger.Log($"OnExit: _isExiting={_isExiting}，内存便利贴数={_notes.Count}，任务清单数={_taskLists.Count}");
-        // 兜底：仅当尚未经 ExitApp 处理时，写回当前打开状态
+        // Controlled exits have already saved before closing windows; avoid a second snapshot.
         if (!_isExiting)
         {
-            foreach (var note in _notes)
-                note.IsOpen = _openWindows.ContainsKey(note.Id);
-            foreach (var list in _taskLists)
-                list.IsOpen = _openTaskLists.ContainsKey(list.Id);
+            UpdateOpenStates();
             SaveAll();
+            if (!FlushSaves()) ShowSaveError();
         }
-        FlushSaves();
         _saveTimer.Tick -= SaveTimer_Tick;
         AppSettings.SaveFailed -= ShowSettingsSaveError;
         _hotKey?.Dispose();

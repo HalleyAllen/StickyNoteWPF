@@ -6,6 +6,7 @@ public sealed class SaveQueue<T> where T : class
     private readonly object _gate = new();
     private readonly Func<T, bool> _write;
     private T? _pending;
+    private T? _failed;
     private bool _running;
     private Task _worker = Task.CompletedTask;
     private bool _lastSaveSucceeded = true;
@@ -19,7 +20,21 @@ public sealed class SaveQueue<T> where T : class
         lock (_gate)
         {
             _pending = snapshot;
+            _failed = null;
             if (_running) return;
+            _running = true;
+            _worker = Task.Run(Process);
+        }
+    }
+
+    /// <summary>Explicitly retry the retained snapshot after a failed flush; never spin on errors.</summary>
+    public void RetryFailed()
+    {
+        lock (_gate)
+        {
+            if (_running || _failed == null) return;
+            _pending = _failed;
+            _failed = null;
             _running = true;
             _worker = Task.Run(Process);
         }
@@ -49,7 +64,11 @@ public sealed class SaveQueue<T> where T : class
             bool succeeded;
             try { succeeded = _write(snapshot); }
             catch { succeeded = false; }
-            lock (_gate) _lastSaveSucceeded = succeeded;
+            lock (_gate)
+            {
+                _lastSaveSucceeded = succeeded;
+                _failed = succeeded ? null : snapshot;
+            }
             if (!succeeded)
             {
                 // An error reporter must not leave the queue permanently marked as running.
