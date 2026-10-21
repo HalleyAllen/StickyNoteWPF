@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -54,6 +55,7 @@ internal static class Program
             RunCheck("image cache", CheckImageCache);
             RunCheck("hotkey replacement", CheckHotKeyReplacement);
             RunCheck("manager virtualization", () => CheckManagerVirtualization(app));
+            RunCheck("locked task editing", CheckLockedTaskEditing);
             RunCheck("save failure exit protection", () => CheckExitProtection(app));
             if (args.Length == 1) RunCheck("published application", () => CheckPublishedApplication(args[0]));
             Console.WriteLine("PASS: Windows WPF smoke checks completed.");
@@ -215,6 +217,69 @@ internal static class Program
         }
         finally { manager.Close(); notes.Clear(); }
         Console.WriteLine("PASS: manager startup, repeated refresh, filtering, sorting and virtualized rows for 500 notes.");
+    }
+
+    private static void CheckLockedTaskEditing()
+    {
+        var root = new TaskItem { Text = "root", IsExpanded = true };
+        var child = new TaskItem { Text = "child" };
+        root.SubItems.Add(child);
+        var model = new TaskListModel { IsLocked = true, ShowCompleted = true };
+        model.Items.Add(root);
+        var window = new TaskListWindow(model);
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            foreach (var item in new[] { root, child })
+            {
+                var textbox = (TextBox?)typeof(TaskListWindow)
+                    .GetMethod("FindTextBoxForItem", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(window, new object[] { item });
+                Check(textbox != null && textbox.IsReadOnly, "Locked task text was editable.");
+                foreach (var key in new[] { Key.Enter, Key.Tab })
+                {
+                    var args = new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(textbox!),
+                        Environment.TickCount, key) { RoutedEvent = Keyboard.PreviewKeyDownEvent };
+                    textbox!.RaiseEvent(args);
+                }
+            }
+            // Also guard alternate UI entry points, including stale/previously queued clicks.
+            ((Button)window.FindName("AddTaskButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            typeof(TaskListWindow).GetMethod("AddSubTask", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(window, new object[] { root });
+            VisualDescendants(window).OfType<Button>()
+                .Single(button => button.DataContext == root && button.Content?.ToString() == "🗑")
+                .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(model.Items.Count == 1 && root.SubItems.Count == 1 && child.SubItems.Count == 0,
+                "Enter, Tab or an alternate command mutated a locked task tree.");
+
+            var checkbox = VisualDescendants(window).OfType<CheckBox>().First(box => box.DataContext == root);
+            checkbox.IsChecked = true;
+            Check(root.IsDone, "Locking prevented marking a task complete.");
+            checkbox.IsChecked = false;
+            ((Button)window.FindName("LockButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            window.UpdateLayout();
+            var editable = VisualDescendants(window).OfType<TextBox>().First(box => box.DataContext == root);
+            Check(!model.IsLocked && !editable.IsReadOnly, "Unlocking did not restore editing.");
+            foreach (var key in new[] { Key.Enter, Key.Tab })
+                editable.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(editable),
+                    Environment.TickCount, key) { RoutedEvent = Keyboard.PreviewKeyDownEvent });
+            Check(model.Items.Count == 2 && root.SubItems.Count == 2,
+                "Unlocking did not restore Enter and Tab task creation.");
+        }
+        finally { window.Close(); }
+        Console.WriteLine("PASS: locked roots and children reject structural edits, completion remains available, and unlocking restores keyboard editing.");
+    }
+
+    private static IEnumerable<DependencyObject> VisualDescendants(DependencyObject parent)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            yield return child;
+            foreach (var descendant in VisualDescendants(child)) yield return descendant;
+        }
     }
 
     private static void CheckExitProtection(SmokeApp app)

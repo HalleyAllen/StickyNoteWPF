@@ -289,6 +289,7 @@ public partial class TaskListWindow : Window
 
     private void TaskText_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
+        if (List.IsLocked) return;
         if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None)
         {
             // Enter 提交当前任务并新建一条同级任务
@@ -316,6 +317,7 @@ public partial class TaskListWindow : Window
 
     private void DeleteTask_Click(object sender, RoutedEventArgs e)
     {
+        if (List.IsLocked) return;
         if ((sender as FrameworkElement)?.DataContext is not TaskItem item)
         {
             Logger.Log($"删除任务按钮点击但未识别任务项（sender 类型={sender?.GetType().Name}）");
@@ -340,6 +342,7 @@ public partial class TaskListWindow : Window
 
     private void AddTask()
     {
+        if (List.IsLocked) return;
         var newItem = new TaskItem { Text = "新任务" };
         // Order 取当前最大+1，配合排序（IsDone 升序 + Order 降序）保证新任务置顶
         long maxOrder = List.Items.Count == 0 ? 0 : List.Items.Max(i => i.Order);
@@ -388,6 +391,7 @@ public partial class TaskListWindow : Window
 
     private void AddSubTask(TaskItem parent)
     {
+        if (List.IsLocked) return;
         long maxOrder = parent.SubItems.Count == 0 ? 0 : parent.SubItems.Max(i => i.Order);
         var sub = new TaskItem { Text = "新子任务", Order = maxOrder + 1 };
         parent.SubItems.Add(sub);
