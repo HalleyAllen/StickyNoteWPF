@@ -22,6 +22,7 @@
     <Compile Include="../Services/WindowAppearance.cs" Link="Services/WindowAppearance.cs" />
     <Compile Include="../Services/WindowGeometry.cs" Link="Services/WindowGeometry.cs" />
     <Compile Include="../Services/RollingLogWriter.cs" Link="Services/RollingLogWriter.cs" />
+    <Compile Include="../Services/NoteFileStore.cs" Link="Services/NoteFileStore.cs" />
     <Compile Include="../Services/StoreData.cs" Link="Services/StoreData.cs" />
     <Compile Include="../Services/StoreDataCodec.cs" Link="Services/StoreDataCodec.cs" />
   </ItemGroup>
