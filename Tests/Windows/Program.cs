@@ -63,6 +63,7 @@ internal static class Program
             RunCheck("templates and opacity", () => CheckTemplatesAndOpacity(app));
             RunCheck("hover timers", CheckHoverTimers);
             RunCheck("image cache", CheckImageCache);
+            RunCheck("async image presentation", CheckAsyncImagePresentation);
             RunCheck("hotkey replacement", CheckHotKeyReplacement);
             RunCheck("manager virtualization", () => CheckManagerVirtualization(app));
             RunCheck("locked task editing", CheckLockedTaskEditing);
@@ -161,15 +162,119 @@ internal static class Program
                 PixelFormats.Bgra32, null, new byte[] { 0, 0, 255, 255 }, 4)));
             using (var stream = System.IO.File.Create(path)) encoder.Save(stream);
             var loader = new BackgroundImageLoader();
-            var first = loader.Load(path);
-            Check(first.IsFrozen && ReferenceEquals(first, loader.Load(path)), "Unchanged image was decoded again.");
+            var first = AwaitOnDispatcher(loader.LoadAsync(path, 64, 64));
+            Check(first.IsFrozen && ReferenceEquals(first, AwaitOnDispatcher(loader.LoadAsync(path, 64, 64))), "Unchanged image was decoded again.");
             System.IO.File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(10));
-            Check(!ReferenceEquals(first, loader.Load(path)), "Changed image was not reloaded.");
+            Check(!ReferenceEquals(first, AwaitOnDispatcher(loader.LoadAsync(path, 64, 64))), "Changed image was not reloaded.");
             System.IO.File.Delete(path);
             Check(!System.IO.File.Exists(path), "Image loading left the source file locked.");
         }
         finally { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); }
         Console.WriteLine("PASS: image reuse, invalidation and file handle release.");
+    }
+
+    private static void CheckAsyncImagePresentation()
+    {
+        string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), Guid.NewGuid() + ".png");
+        WriteTestImage(path, 2048, 1024);
+        var border = new Border();
+        var window = new Window { Width = 256, Height = 128, Content = border };
+        using var presenter = new WindowBackgroundImage(window, border);
+        try
+        {
+            var loader = new BackgroundImageLoader();
+            var small = AwaitOnDispatcher(loader.LoadAsync(path, 256, 128));
+            Check(small.IsFrozen && small.PixelWidth == 256 && small.PixelHeight == 128,
+                "A large image was not decoded to the requested size.");
+            var bigger = AwaitOnDispatcher(loader.LoadAsync(path, 512, 256));
+            Check(bigger.PixelWidth == 512 && !ReferenceEquals(small, bigger), "Resize reused an undersized image.");
+            Check(ReferenceEquals(bigger, AwaitOnDispatcher(loader.LoadAsync(path, 512, 256))),
+                "The resized image was not cached.");
+            loader.Clear();
+            Check(!ReferenceEquals(bigger, AwaitOnDispatcher(loader.LoadAsync(path, 512, 256))),
+                "Clearing the cache retained its bitmap.");
+            using var canceled = new CancellationTokenSource();
+            canceled.Cancel();
+            bool canceledLoad = false;
+            try { AwaitOnDispatcher(loader.LoadAsync(path, 256, 128, canceled.Token)); }
+            catch (OperationCanceledException) { canceledLoad = true; }
+            Check(canceledLoad, "A canceled image request still loaded.");
+
+            window.Show();
+            presenter.Apply(path, "Fill", 0.4, Brushes.Blue);
+            var old = presenter.Loading;
+            // These synchronous UI edits happen before dispatcher continuations can apply the old result.
+            presenter.Apply(null, "Fill", 1, Brushes.Red);
+            AwaitOnDispatcher(Complete(old));
+            Check(ReferenceEquals(border.Background, Brushes.Red), "A stale decode restored a cleared background.");
+            presenter.Apply(path, "Fill", 0.4, Brushes.Blue);
+            AwaitOnDispatcher(Complete(presenter.Loading));
+            var brush = (ImageBrush)border.Background;
+            int initialWidth = ((BitmapSource)brush.ImageSource).PixelWidth;
+            Check(initialWidth < 2048 && brush.Opacity == 0.4, "Image presentation ignored size or opacity.");
+            window.Width = 768;
+            Check(AwaitOnDispatcher(WaitFor(() => border.Background is ImageBrush resized
+                && ((BitmapSource)resized.ImageSource).PixelWidth > initialWidth)),
+                "Resizing the window did not decode a sharper image.");
+            presenter.Apply(path, "Center", 1, Brushes.Blue);
+            AwaitOnDispatcher(Complete(presenter.Loading));
+            brush = (ImageBrush)border.Background;
+            Check(brush.Stretch == Stretch.None && ((BitmapSource)brush.ImageSource).PixelWidth == 2048,
+                "Center mode changed the native image scale.");
+            presenter.Apply(path, "Tile", 1, Brushes.Blue);
+            AwaitOnDispatcher(Complete(presenter.Loading));
+            Check(((ImageBrush)border.Background).TileMode == TileMode.Tile, "Tile mode was lost.");
+            presenter.Apply(path + ".missing", "Fill", 1, Brushes.Blue);
+            AwaitOnDispatcher(Complete(presenter.Loading));
+            Check(ReferenceEquals(border.Background, Brushes.Blue), "Missing image did not restore the fallback.");
+            presenter.Apply(path, "Fill", 1, Brushes.Blue);
+            var pending = presenter.Loading;
+            presenter.Dispose();
+            border.Background = Brushes.Green;
+            AwaitOnDispatcher(Complete(pending));
+            Check(ReferenceEquals(border.Background, Brushes.Green), "A closed image presenter updated its target.");
+
+            foreach (Window note in new Window[]
+            {
+                new StickyNoteWindow(new StickyNoteModel { BackgroundImagePath = path }),
+                new TaskListWindow(new TaskListModel { BackgroundImagePath = path })
+            })
+            {
+                try
+                {
+                    note.Show();
+                    var target = (Border)note.FindName("RootBorder");
+                    Check(AwaitOnDispatcher(WaitFor(() => target.Background is ImageBrush)),
+                        "The note/task window did not display its asynchronous background.");
+                }
+                finally { note.Close(); }
+            }
+            System.IO.File.Delete(path);
+            Check(!System.IO.File.Exists(path), "Async loading left the image file locked.");
+        }
+        finally { window.Close(); System.IO.File.Delete(path); }
+    }
+
+    private static void WriteTestImage(string path, int width, int height)
+    {
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(BitmapSource.Create(width, height, 96, 96,
+            PixelFormats.Bgra32, null, new byte[width * height * 4], width * 4)));
+        using var stream = System.IO.File.Create(path);
+        encoder.Save(stream);
+    }
+
+    private static async Task<bool> Complete(Task task) { await task; return true; }
+
+    private static async Task<bool> WaitFor(Func<bool> condition)
+    {
+        var deadline = Stopwatch.StartNew();
+        while (!condition())
+        {
+            if (deadline.Elapsed > TimeSpan.FromSeconds(5)) return false;
+            await Task.Delay(20);
+        }
+        return true;
     }
 
     private static void CheckHotKeyReplacement()

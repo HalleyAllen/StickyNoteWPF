@@ -18,7 +18,7 @@ namespace StickyNoteWPF;
 public partial class TaskListWindow : Window
 {
     public TaskListModel List { get; }
-    private readonly BackgroundImageLoader _backgroundImage = new();
+    private readonly WindowBackgroundImage _backgroundImage;
     private readonly TaskTreeObserver _taskObserver;
     private readonly Action? _depthLimitWarning;
 
@@ -27,6 +27,7 @@ public partial class TaskListWindow : Window
         InitializeComponent();
         _depthLimitWarning = depthLimitWarning;
         List = list;
+        _backgroundImage = new(this, RootBorder);
         _taskObserver = new TaskTreeObserver(list.Items, OnTaskTreeChanged);
 
         WindowPlacement.Restore(this, new(list.Left, list.Top, list.Width, list.Height), 320, 360);
@@ -197,54 +198,11 @@ public partial class TaskListWindow : Window
     public void ApplyBackground()
     {
         var o = WindowAppearance.EffectiveOpacity(List.Opacity, App.Current.Settings.ForceShowAll);
-        try
-        {
-            if (!string.IsNullOrEmpty(List.BackgroundImagePath) && File.Exists(List.BackgroundImagePath))
-            {
-                var bmp = _backgroundImage.Load(List.BackgroundImagePath);
-
-                var stretch = List.BackgroundImageMode switch
-                {
-                    "Center" => System.Windows.Media.Stretch.None,
-                    "Tile" => System.Windows.Media.Stretch.None,
-                    "Stretch" => System.Windows.Media.Stretch.Fill,
-                    _ => System.Windows.Media.Stretch.UniformToFill
-                };
-
-                var brush = new System.Windows.Media.ImageBrush(bmp)
-                {
-                    Stretch = stretch,
-                    Opacity = o
-                };
-                if (List.BackgroundImageMode == "Tile")
-                {
-                    brush.TileMode = System.Windows.Media.TileMode.Tile;
-                    brush.Viewport = new Rect(0, 0, 0.25, 0.25);
-                    brush.ViewportUnits = System.Windows.Media.BrushMappingMode.RelativeToBoundingBox;
-                }
-                else if (List.BackgroundImageMode == "Center")
-                {
-                    brush.AlignmentX = System.Windows.Media.AlignmentX.Center;
-                    brush.AlignmentY = System.Windows.Media.AlignmentY.Center;
-                }
-                RootBorder.Background = brush;
-            }
-            else
-            {
-                var c = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(List.Color);
-                c.A = (byte)(o * 255);
-                RootBorder.Background = new System.Windows.Media.SolidColorBrush(c);
-            }
-
-            RootBorder.BorderBrush = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromArgb((byte)(o * 0x55), 0, 0, 0));
-            TitleBar.Background = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromArgb((byte)(o * 0x22), 0, 0, 0));
-        }
-        catch
-        {
-            RootBorder.Background = new SolidColorBrush(Colors.White);
-        }
+        var color = AppearanceHelper.ParseColor(List.Color, Colors.White);
+        color.A = (byte)(o * 255);
+        _backgroundImage.Apply(List.BackgroundImagePath, List.BackgroundImageMode, o, new SolidColorBrush(color));
+        RootBorder.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb((byte)(o * 0x55), 0, 0, 0));
+        TitleBar.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb((byte)(o * 0x22), 0, 0, 0));
 
         RootBorder.Effect ??= new DropShadowEffect
         {
@@ -525,6 +483,7 @@ public partial class TaskListWindow : Window
         IsVisibleChanged -= Window_IsVisibleChanged;
         StopHoverTimer();
         _taskObserver.Dispose();
+        _backgroundImage.Dispose();
         base.OnClosed(e);
     }
 

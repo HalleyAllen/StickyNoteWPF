@@ -14,12 +14,13 @@ namespace StickyNoteWPF;
 public partial class StickyNoteWindow : Window
 {
     public StickyNoteModel Note { get; }
-    private readonly BackgroundImageLoader _backgroundImage = new();
+    private readonly WindowBackgroundImage _backgroundImage;
 
     public StickyNoteWindow(StickyNoteModel note)
     {
         InitializeComponent();
         Note = note;
+        _backgroundImage = new(this, RootBorder);
 
         WindowPlacement.Restore(this, new(note.Left, note.Top, note.Width, note.Height), 220, 220);
         NoteTextBox.Text = note.Text;
@@ -193,42 +194,11 @@ public partial class StickyNoteWindow : Window
     public void ApplyBackground()
     {
         var o = WindowAppearance.EffectiveOpacity(Note.Opacity, App.Current.Settings.ForceShowAll);
-        try
-        {
-            if (!string.IsNullOrEmpty(Note.BackgroundImagePath) && File.Exists(Note.BackgroundImagePath))
-            {
-                var bmp = _backgroundImage.Load(Note.BackgroundImagePath);
-
-                RootBorder.Background = new System.Windows.Media.ImageBrush(bmp)
-                {
-                    Stretch = System.Windows.Media.Stretch.UniformToFill,
-                    Opacity = o
-                };
-            }
-            else
-            {
-                var c = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(Note.Color);
-                c.A = (byte)(o * 255);
-                RootBorder.Background = new System.Windows.Media.SolidColorBrush(c);
-            }
-
-            // 边框与标题栏同样随透明度比例变化（保持相对浓淡）
-            RootBorder.BorderBrush = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromArgb((byte)(o * 0x55), 0, 0, 0));
-            TitleBar.Background = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromArgb((byte)(o * 0x22), 0, 0, 0));
-        }
-        catch
-        {
-            // 解析失败回退纯色
-            try
-            {
-                var c = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(Note.Color);
-                c.A = (byte)(o * 255);
-                RootBorder.Background = new System.Windows.Media.SolidColorBrush(c);
-            }
-            catch { }
-        }
+        var color = AppearanceHelper.ParseColor(Note.Color, System.Windows.Media.Colors.White);
+        color.A = (byte)(o * 255);
+        _backgroundImage.Apply(Note.BackgroundImagePath, "Fill", o, new SolidColorBrush(color));
+        RootBorder.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb((byte)(o * 0x55), 0, 0, 0));
+        TitleBar.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb((byte)(o * 0x22), 0, 0, 0));
 
         ApplyShadow();
     }
@@ -315,6 +285,7 @@ public partial class StickyNoteWindow : Window
     {
         IsVisibleChanged -= Window_IsVisibleChanged;
         StopHoverTimer();
+        _backgroundImage.Dispose();
         base.OnClosed(e);
     }
 
