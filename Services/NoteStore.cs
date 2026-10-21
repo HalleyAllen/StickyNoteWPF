@@ -4,12 +4,6 @@ using StickyNoteWPF.Models;
 
 namespace StickyNoteWPF.Services;
 
-public class StoreData
-{
-    public List<StickyNoteModel> Notes { get; set; } = new();
-    public List<TaskListModel> TaskLists { get; set; } = new();
-}
-
 public static class NoteStore
 {
     private static readonly string FilePath =
@@ -37,26 +31,7 @@ public static class NoteStore
             var json = File.ReadAllText(FilePath);
             Logger.Log($"NoteStore.Load: 读取文件成功，长度={json.Length}");
 
-            // 先探测根节点类型：数组=旧格式（直接是便利贴数组），对象=新格式（StoreData）
-            using (var doc = JsonDocument.Parse(json))
-            {
-                if (doc.RootElement.ValueKind == JsonValueKind.Array)
-                {
-                    var legacy = JsonSerializer.Deserialize<List<StickyNoteModel>>(json);
-                    data.Notes = legacy ?? new List<StickyNoteModel>();
-                    Logger.Log($"NoteStore.Load: 旧格式，便利贴数={data.Notes.Count}");
-                    _loadSucceeded = true;
-                    return data;
-                }
-            }
-
-            var parsed = JsonSerializer.Deserialize<StoreData>(json)
-                ?? throw new JsonException("便签文件的根对象不能为空");
-            if (parsed is not null)
-            {
-                data.Notes = parsed.Notes ?? new List<StickyNoteModel>();
-                data.TaskLists = parsed.TaskLists ?? new List<TaskListModel>();
-            }
+            data = StoreDataCodec.Parse(json);
             Logger.Log($"NoteStore.Load: 新格式，便利贴数={data.Notes.Count}，任务清单数={data.TaskLists.Count}");
             _loadSucceeded = true;
         }
@@ -69,15 +44,9 @@ public static class NoteStore
                 try
                 {
                     var backup = File.ReadAllText(FilePath + ".bak");
-                    using var doc = JsonDocument.Parse(backup);
-                    data = doc.RootElement.ValueKind == JsonValueKind.Array
-                        ? new StoreData { Notes = JsonSerializer.Deserialize<List<StickyNoteModel>>(backup)! }
-                        : JsonSerializer.Deserialize<StoreData>(backup)
-                            ?? throw new JsonException("备份根对象不能为空");
-                    data.Notes ??= new();
-                    data.TaskLists ??= new();
+                    data = StoreDataCodec.Parse(backup);
                     // Restore immediately without rotating the corrupt primary into the good backup.
-                    AtomicFile.WriteAllText(FilePath, backup, backupExisting: false);
+                    AtomicFile.WriteAllText(FilePath, StoreDataCodec.Serialize(data), backupExisting: false);
                     _loadSucceeded = true;
                     Logger.Log("NoteStore.Load: 已从最近有效备份恢复");
                 }
@@ -107,8 +76,7 @@ public static class NoteStore
         }
     }
 
-    public static string Serialize(StoreData data) => JsonSerializer.Serialize(data,
-        new JsonSerializerOptions { WriteIndented = true });
+    public static string Serialize(StoreData data) => StoreDataCodec.Serialize(data);
 
     public static bool SaveJson(string json)
     {
