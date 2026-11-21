@@ -1,0 +1,126 @@
+<style>
+#sn-ui-plan{width:100%;color-scheme:light dark}
+#sn-ui-plan .sn-app{--sn-bg:light-dark(#f5f6f8,#191b20);--sn-panel:light-dark(#ffffff,#24272e);--sn-ink:light-dark(#202632,#edf0f5);--sn-muted:light-dark(#626c7d,#b1b8c5);--sn-line:light-dark(#e2e6ec,#3c414a);--sn-accent:#3675dd;--sn-radius:12px;--sn-gap:16px;font:14px/1.55 'Segoe UI','Microsoft YaHei',sans-serif;background:var(--sn-bg);color:var(--sn-ink);border:1px solid var(--sn-line);border-radius:12px;overflow:hidden;min-height:570px}
+#sn-ui-plan *{box-sizing:border-box}
+#sn-ui-plan [hidden]{display:none!important}
+#sn-ui-plan button,#sn-ui-plan input,#sn-ui-plan select{font:inherit;color:inherit}
+#sn-ui-plan button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:34px;padding:6px 10px;border:1px solid transparent;background:transparent;border-radius:7px}
+#sn-ui-plan button:hover{background:light-dark(#e8edf5,#343b47)}
+#sn-ui-plan button:disabled{opacity:.5}
+#sn-ui-plan button.sn-main{background:var(--sn-accent);color:#fff;padding-inline:15px}
+#sn-ui-plan button.sn-outline{border-color:var(--sn-line);background:var(--sn-panel)}
+#sn-ui-plan button[aria-pressed="true"],#sn-ui-plan button[aria-selected="true"]{background:light-dark(#e4edfc,#243b5c);color:light-dark(#1757b7,#a6c9ff)}
+#sn-ui-plan i,#sn-ui-plan svg{width:16px;height:16px;flex:none}
+#sn-ui-plan .sn-titlebar{height:46px;padding:0 16px;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--sn-line);background:var(--sn-panel);padding-right:100px}
+#sn-ui-plan .sn-brand{font-weight:600;letter-spacing:.4px}
+#sn-ui-plan .sn-layout{display:grid;grid-template-columns:158px minmax(0,1fr);min-height:522px}
+#sn-ui-plan .sn-sidebar{padding:20px 12px;border-right:1px solid var(--sn-line);display:flex;flex-direction:column;gap:8px}
+#sn-ui-plan .sn-sidebar button{justify-content:flex-start;padding:10px 12px}
+#sn-ui-plan .sn-sidebar .sn-settings{margin-top:auto}
+#sn-ui-plan .sn-content{padding:26px;min-width:0}
+#sn-ui-plan h2{font-size:24px;line-height:1.3;letter-spacing:-.5px;margin:0;font-weight:600}
+#sn-ui-plan .sn-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+#sn-ui-plan .sn-tools{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+#sn-ui-plan .sn-search{display:flex;align-items:center;gap:8px;border:1px solid var(--sn-line);border-radius:7px;background:var(--sn-panel);padding:7px 10px;flex:1 1 180px;min-width:0}
+#sn-ui-plan .sn-search input{border:0;background:transparent;min-width:0;width:100%}
+#sn-ui-plan .sn-tools select{background:var(--sn-panel);border:1px solid var(--sn-line);border-radius:7px;min-height:36px;padding:5px;max-width:100%}
+#sn-ui-plan .sn-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sn-gap)}
+#sn-ui-plan .sn-note{--sn-note-color:#e2bb48;background:var(--sn-panel);border:1px solid var(--sn-line);border-radius:var(--sn-radius);padding:16px;min-width:0;min-height:150px;position:relative;border-top:4px solid var(--sn-note-color)}
+#sn-ui-plan .sn-note:focus-within,#sn-ui-plan .sn-note:hover{border-color:var(--sn-accent);border-top-color:var(--sn-note-color)}
+#sn-ui-plan .sn-note-head{display:flex;align-items:center;gap:8px}
+#sn-ui-plan .sn-note-title{width:100%;min-width:0;background:transparent;border:0;font-weight:600;padding:0;font-size:15px}
+#sn-ui-plan .sn-note p{margin:12px 0 15px;font-size:13px;color:var(--sn-muted);white-space:pre-line;overflow-wrap:anywhere}
+#sn-ui-plan .sn-note-foot{display:flex;justify-content:space-between;align-items:center;gap:6px;color:var(--sn-muted);font-size:12px}
+#sn-ui-plan .sn-delete{padding:5px;min-height:28px;color:var(--sn-muted)}
+#sn-ui-plan .sn-delete:hover{color:light-dark(#a52222,#ffb3b3);background:light-dark(#fde8e8,#512d33)}
+#sn-ui-plan .sn-collection.sn-rows{display:flex;flex-direction:column;gap:10px}
+#sn-ui-plan .sn-rows .sn-note{min-height:0;padding:12px 14px;border-top:1px solid var(--sn-line);border-left:4px solid var(--sn-note-color);display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px}
+#sn-ui-plan .sn-rows .sn-note p{grid-row:2;margin:4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sn-ui-plan .sn-rows .sn-note-foot{grid-column:2;grid-row:1 / 3}
+#sn-ui-plan .sn-topnav{display:flex;gap:8px;padding:12px 20px 0;flex-wrap:wrap}
+#sn-ui-plan .sn-topnav .sn-settings{margin-left:auto}
+#sn-ui-plan .sn-compact .sn-content{padding:22px}
+#sn-ui-plan .sn-compact .sn-heading{margin-bottom:16px}
+#sn-ui-plan .sn-compact h2{font-size:21px}
+#sn-ui-plan .sn-status{margin:18px 0 0;color:var(--sn-muted);font-size:12px;min-height:20px}
+#sn-ui-plan .sn-taskline{display:flex;gap:9px;margin:12px 0;align-items:center;overflow-wrap:anywhere}
+#sn-ui-plan .sn-empty{color:var(--sn-muted);padding:24px 0}
+#sn-ui-plan dialog{background:var(--sn-panel);color:var(--sn-ink);border:1px solid var(--sn-line);border-radius:12px;padding:24px;max-width:min(420px,90%)}
+#sn-ui-plan dialog::backdrop{background:#0006}
+#sn-ui-plan dialog p{margin:10px 0 18px}
+@media(min-width:920px){#sn-ui-plan .sn-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:620px){#sn-ui-plan .sn-layout{grid-template-columns:minmax(0,1fr)}#sn-ui-plan .sn-sidebar{flex-direction:row;flex-wrap:wrap;padding:10px;border-right:0;border-bottom:1px solid var(--sn-line)}#sn-ui-plan .sn-sidebar .sn-settings{margin:0 0 0 auto}#sn-ui-plan .sn-content{padding:18px}#sn-ui-plan .sn-grid{grid-template-columns:minmax(0,1fr)}#sn-ui-plan .sn-app{min-height:850px}#sn-ui-plan .sn-rows .sn-note{display:block}#sn-ui-plan .sn-heading{flex-wrap:wrap}#sn-ui-plan .sn-note-foot{margin-top:8px}#sn-ui-plan .sn-compact .sn-content{padding:18px}}
+@media(pointer:coarse){#sn-ui-plan button{min-height:44px}#sn-ui-plan input{font-size:16px}}
+</style>
+<div id="sn-ui-plan" class="viz-carousel" aria-label="Windows 客户端样式方案" data-previous-label="上一方案" data-next-label="下一方案">
+  <section data-variant="清爽侧栏 · 推荐" aria-label="清爽侧栏方案">
+    <div class="sn-app" aria-label="侧栏主窗口">
+      <div class="sn-titlebar"><i data-lucide="sticky-note" aria-hidden="true"></i><span class="sn-brand">我的便利贴</span></div>
+      <div class="sn-layout">
+        <nav class="sn-sidebar" aria-label="内容类型">
+          <button class="cursor-interaction" data-tab="notes" aria-selected="true"><i data-lucide="sticky-note" aria-hidden="true"></i>便利贴</button>
+          <button class="cursor-interaction" data-tab="tasks" aria-selected="false"><i data-lucide="list-checks" aria-hidden="true"></i>任务清单</button>
+          <button class="sn-settings cursor-interaction" data-dialog="settings"><i data-lucide="settings" aria-hidden="true"></i>设置</button>
+        </nav>
+        <main class="sn-content">
+          <div class="sn-heading"><h2>便利贴</h2><button class="sn-main cursor-interaction" data-new><i data-lucide="plus" aria-hidden="true"></i>新建</button></div>
+          <div class="sn-tools">
+            <label class="sn-search"><i data-lucide="search" aria-hidden="true"></i><input type="search" aria-label="搜索内容" placeholder="搜索标题或内容"></label>
+            <select aria-label="排序"><option value="default">默认排序</option><option value="asc">标题 A → Z</option><option value="desc">标题 Z → A</option></select>
+            <button class="sn-outline cursor-interaction" data-view="cards" aria-pressed="true" aria-label="卡片视图"><i data-lucide="layout-grid" aria-hidden="true"></i></button>
+            <button class="sn-outline cursor-interaction" data-view="rows" aria-pressed="false" aria-label="列表视图"><i data-lucide="list" aria-hidden="true"></i></button>
+            <button class="cursor-interaction" data-dialog="appearance" aria-label="默认外观"><i data-lucide="palette" aria-hidden="true"></i></button>
+            <button class="cursor-interaction" data-force aria-pressed="false" aria-label="强制全部显示"><i data-lucide="eye" aria-hidden="true"></i></button>
+          </div>
+          <div class="sn-collection sn-grid">
+            <article class="sn-note"><div class="sn-note-head"><input class="sn-note-title" aria-label="便签标题" value="项目灵感"></div><p>记下突然想到的好点子。
+先把重要的事情留在桌面上。</p><div class="sn-note-foot"><span>创建于 11月21日</span><button class="sn-delete cursor-interaction" aria-label="删除项目灵感"><i data-lucide="trash-2" aria-hidden="true"></i></button></div></article>
+            <article class="sn-note" style="--sn-note-color:#75b7a5"><div class="sn-note-head"><input class="sn-note-title" aria-label="便签标题" value="会议记录"></div><p>本周重点：整理界面展示。
+保留熟悉的操作方式。</p><div class="sn-note-foot"><span>创建于 11月20日</span><button class="sn-delete cursor-interaction" aria-label="删除会议记录"><i data-lucide="trash-2" aria-hidden="true"></i></button></div></article>
+            <article class="sn-note" style="--sn-note-color:#a09acb"><div class="sn-note-head"><input class="sn-note-title" aria-label="便签标题" value="周末备忘"></div><p>挑一本想读的书。
+给自己留一些空闲时间。</p><div class="sn-note-foot"><span>创建于 11月19日</span><button class="sn-delete cursor-interaction" aria-label="删除周末备忘"><i data-lucide="trash-2" aria-hidden="true"></i></button></div></article>
+          </div><p class="sn-status" aria-live="polite">展示示例 · 可切换分类、卡片与列表；不会修改实际数据。</p>
+        </main>
+      </div>
+    </div>
+  </section>
+  <section data-variant="紧凑页签" aria-label="紧凑页签方案" hidden>
+    <div class="sn-app sn-compact" aria-label="页签主窗口">
+      <div class="sn-titlebar"><i data-lucide="sticky-note" aria-hidden="true"></i><span class="sn-brand">我的便利贴</span></div>
+      <nav class="sn-topnav" aria-label="内容类型"><button class="cursor-interaction" data-tab="notes" aria-selected="true">便利贴</button><button class="cursor-interaction" data-tab="tasks" aria-selected="false">任务清单</button><button class="sn-settings cursor-interaction" data-dialog="settings" aria-label="设置"><i data-lucide="settings" aria-hidden="true"></i></button></nav>
+      <main class="sn-content">
+        <div class="sn-heading"><h2>便利贴</h2><button class="sn-main cursor-interaction" data-new><i data-lucide="plus" aria-hidden="true"></i>新建</button></div>
+        <div class="sn-tools"><label class="sn-search"><i data-lucide="search" aria-hidden="true"></i><input type="search" aria-label="搜索内容" placeholder="搜索标题或内容"></label><select aria-label="排序"><option value="default">默认排序</option><option value="asc">标题 A → Z</option><option value="desc">标题 Z → A</option></select><button class="sn-outline cursor-interaction" data-view="cards" aria-pressed="false" aria-label="卡片视图"><i data-lucide="layout-grid" aria-hidden="true"></i></button><button class="sn-outline cursor-interaction" data-view="rows" aria-pressed="true" aria-label="列表视图"><i data-lucide="list" aria-hidden="true"></i></button><button class="cursor-interaction" data-dialog="appearance" aria-label="默认外观"><i data-lucide="palette" aria-hidden="true"></i></button><button class="cursor-interaction" data-force aria-pressed="false" aria-label="强制全部显示"><i data-lucide="eye" aria-hidden="true"></i></button></div>
+        <div class="sn-collection sn-rows"><article class="sn-note"><div class="sn-note-head"><input class="sn-note-title" aria-label="便签标题" value="项目灵感"></div><p>记下突然想到的好点子，先把重要的事情留在桌面上。</p><div class="sn-note-foot"><span>创建于 11月21日</span><button class="sn-delete cursor-interaction" aria-label="删除项目灵感"><i data-lucide="trash-2" aria-hidden="true"></i></button></div></article><article class="sn-note" style="--sn-note-color:#75b7a5"><div class="sn-note-head"><input class="sn-note-title" aria-label="便签标题" value="会议记录"></div><p>本周重点：整理界面展示，保留熟悉的操作方式。</p><div class="sn-note-foot"><span>创建于 11月20日</span><button class="sn-delete cursor-interaction" aria-label="删除会议记录"><i data-lucide="trash-2" aria-hidden="true"></i></button></div></article><article class="sn-note" style="--sn-note-color:#a09acb"><div class="sn-note-head"><input class="sn-note-title" aria-label="便签标题" value="周末备忘"></div><p>挑一本想读的书，给自己留一些空闲时间。</p><div class="sn-note-foot"><span>创建于 11月19日</span><button class="sn-delete cursor-interaction" aria-label="删除周末备忘"><i data-lucide="trash-2" aria-hidden="true"></i></button></div></article></div>
+        <p class="sn-status" aria-live="polite">展示示例 · 可切换分类、卡片与列表；不会修改实际数据。</p>
+      </main>
+    </div>
+  </section>
+</div>
+<script>
+(()=>{
+ const root=document.getElementById('sn-ui-plan');
+ const sampleTasks=[['界面优化','主界面样式与控件整理','已完成 2/5'],['本周安排','工作与生活中的小事','已完成 1/4']];
+ root.querySelectorAll('.sn-app').forEach(app=>{
+   const collection=app.querySelector('.sn-collection'),search=app.querySelector('input[type="search"]'),sort=app.querySelector('select'),heading=app.querySelector('h2'),status=app.querySelector('.sn-status');
+   let current='notes';
+   const notesMarkup=collection.innerHTML;
+   const data={notes:notesMarkup,tasks:sampleTasks.map(([title,text,progress])=>`<article class="sn-note" style="--sn-note-color:#75b7a5"><div class="sn-note-head"><input class="sn-note-title" aria-label="清单标题" value="${title}"></div><p>${text}</p><div class="sn-note-foot"><span>${progress}</span><button class="sn-delete cursor-interaction" aria-label="删除清单"><i data-lucide="trash-2" aria-hidden="true"></i></button></div></article>`).join('')};
+   function icons(){if(globalThis.lucide)lucide.createIcons({attrs:{width:16,height:16}})}
+   function filter(){const kw=search.value.trim().toLocaleLowerCase();[...collection.children].forEach(el=>{const title=el.querySelector('input');el.hidden=!!kw&&!(title.value+' '+el.textContent).toLocaleLowerCase().includes(kw)});}
+   search.addEventListener('input',filter);
+   sort.addEventListener('change',()=>{const entries=[...collection.children];if(sort.value==='default'){collection.innerHTML=data[current];icons();}else{entries.sort((a,b)=>a.querySelector('input').value.localeCompare(b.querySelector('input').value,'zh-CN')*(sort.value==='asc'?1:-1));entries.forEach(el=>collection.append(el))}filter()});
+   app.addEventListener('click',e=>{
+     const button=e.target.closest('button');if(!button)return;
+     if(button.dataset.tab){data[current]=collection.innerHTML;current=button.dataset.tab;collection.innerHTML=data[current];heading.textContent=current==='notes'?'便利贴':'任务清单';app.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b===button)));search.value='';sort.value='default';icons();}
+     if(button.dataset.view){collection.className='sn-collection '+(button.dataset.view==='cards'?'sn-grid':'sn-rows');app.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));}
+     if(button.hasAttribute('data-force')){const active=button.getAttribute('aria-pressed')!=='true';button.setAttribute('aria-pressed',String(active));status.textContent=active?'演示：强制全部显示已开启。':'演示：强制全部显示已关闭。';}
+     if(button.classList.contains('sn-delete')){button.closest('article').remove();status.textContent='已移除这张示例卡片，实际数据不受影响。';}
+     if(button.hasAttribute('data-new')){const article=document.createElement('article');article.className='sn-note';article.innerHTML='<div class="sn-note-head"><input class="sn-note-title" aria-label="新建标题" value="新建示例"></div><p>点击标题即可编辑示例。</p><div class="sn-note-foot"><span>创建于 今天</span><button class="sn-delete cursor-interaction" aria-label="删除示例"><i data-lucide="trash-2" aria-hidden="true"></i></button></div>';collection.prepend(article);search.value='';filter();icons();}
+     if(button.dataset.dialog){const dialog=document.createElement('dialog');dialog.setAttribute('aria-label',button.dataset.dialog==='settings'?'设置示意':'默认外观示意');dialog.innerHTML=button.dataset.dialog==='settings'?'<strong>设置</strong><p>常规设置、默认外观与数据同步使用统一的分组表单样式。此处仅展示主窗口布局。</p><button class="sn-main cursor-interaction">关闭</button>':'<strong>默认外观</strong><p>保留现有颜色、文字、透明度及字体大小选项，统一色板、滑块与数值的展示。</p><button class="sn-main cursor-interaction">关闭</button>';app.append(dialog);dialog.querySelector('button').onclick=()=>dialog.close();dialog.addEventListener('close',()=>dialog.remove());dialog.showModal();}
+   });
+   const design={radius:12,gap:16};
+   if(globalThis.Tweak){const tweak=new Tweak({container:app,onChange:()=>{app.style.setProperty('--sn-radius',design.radius+'px');app.style.setProperty('--sn-gap',design.gap+'px')}});tweak.addSlider(design,'radius',{label:'卡片圆角',min:4,max:16,unit:'px'});tweak.addSlider(design,'gap',{label:'卡片间距',min:10,max:24,unit:'px'});}
+ });
+})();
+</script>

@@ -1,0 +1,16 @@
+services:
+  sync:
+    build:
+      context: ..
+      dockerfile: Server/Dockerfile
+    restart: unless-stopped
+    environment:
+      Sync__ServerKey: ${SYNC_SERVER_KEY:?Set SYNC_SERVER_KEY in .env}
+      Sync__AllowRegistration: ${ALLOW_REGISTRATION:-true}
+    volumes:
+      - sync-data:/data
+    ports:
+      - "127.0.0.1:5080:8080"
+
+volumes:
+  sync-data:

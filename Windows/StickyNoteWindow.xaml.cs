@@ -42,6 +42,7 @@ public partial class StickyNoteWindow : Window
 
         // 鼠标悬停显示：用全局光标坐标判定是否落在便签矩形内（Opacity=0 时窗口不可命中，需轮询）
         ApplyHoverState();
+        Closed += (_, _) => _hoverTimer?.Stop();
     }
 
     // 眼睛按钮：切换该便签是否启用“鼠标移入才显示”

@@ -48,6 +48,7 @@ public partial class TaskListWindow : Window
         LockButton.Click += (_, _) => ToggleLock();
 
         ApplyHoverState();
+        Closed += (_, _) => _hoverTimer?.Stop();
     }
 
     // 眼睛按钮：切换是否启用“鼠标移入才显示”
@@ -494,6 +495,8 @@ public partial class TaskListWindow : Window
     }
 
     public event EventHandler? ClosedByUser;
+
+    private void TaskText_TextChanged(object sender, TextChangedEventArgs e) => Persist();
 
     private void Persist()
     {

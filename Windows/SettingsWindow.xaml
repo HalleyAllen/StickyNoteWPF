@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
-        Title="设置" Height="340" Width="380"
+        Title="设置" Height="430" Width="380"
         WindowStartupLocation="CenterOwner"
         Icon="pack://application:,,,/Resources/StickyNote.png"
         WindowStyle="None"
@@ -69,6 +69,10 @@
                     <Button x:Name="ClearHotKeyButton" Content="删除" Width="56" Height="30"
                             Margin="8,0,0,0" Cursor="Hand" FontSize="13"/>
                 </StackPanel>
+                <Separator Margin="0,0,0,12"/>
+                <Button Content="设备、账号与数据同步" Height="34" Click="OpenSync_Click"/>
+                <TextBlock Text="支持免账号设备直连，也可登录服务器同步；随时可离线使用。"
+                           TextWrapping="Wrap" Foreground="#777777" FontSize="11" Margin="0,8,0,0"/>
             </StackPanel>
             </ScrollViewer>
         </DockPanel>

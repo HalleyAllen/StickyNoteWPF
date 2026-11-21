@@ -1,0 +1,8 @@
+**/bin
+**/obj
+.git
+.vs
+**/*.db*
+**/.env
+Server/data
+**/TestResults
