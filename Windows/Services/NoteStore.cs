@@ -4,11 +4,7 @@ using StickyNoteWPF.Models;
 
 namespace StickyNoteWPF.Services;
 
-public class StoreData
-{
-    public List<StickyNoteModel> Notes { get; set; } = new();
-    public List<TaskListModel> TaskLists { get; set; } = new();
-}
+public class StoreData : StickyNoteWPF.Sync.SyncData { }
 
 public static class NoteStore
 {
@@ -20,6 +16,19 @@ public static class NoteStore
     private static bool _loadSucceeded;
 
     public static string SavePath => FilePath;
+
+    // 下载覆盖前先保留原始数据；写盘失败时不更换内存中的内容。
+    public static void ReplaceFromSync(StoreData data)
+    {
+        var dir = Path.GetDirectoryName(FilePath)!;
+        Directory.CreateDirectory(dir);
+        if (File.Exists(FilePath))
+            File.Copy(FilePath, Path.Combine(dir, $"notes.before-sync.{DateTime.UtcNow:yyyyMMddHHmmssfff}.{Guid.NewGuid():N}.json"));
+        var temp = FilePath + ".tmp";
+        File.WriteAllText(temp, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+        File.Move(temp, FilePath, true);
+        _loadSucceeded = true;
+    }
 
     public static StoreData Load()
     {
@@ -102,7 +111,9 @@ public static class NoteStore
 
             var json = JsonSerializer.Serialize(data,
                 new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(FilePath, json);
+            var temp = FilePath + ".tmp";
+            File.WriteAllText(temp, json);
+            File.Move(temp, FilePath, true);
             Logger.Log($"NoteStore.Save: 写入成功，便利贴数={notes}，任务清单数={lists}，长度={json.Length}");
         }
         catch (Exception ex)

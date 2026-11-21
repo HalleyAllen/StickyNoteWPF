@@ -37,6 +37,8 @@ public partial class SettingsWindow : Window
     }
 
     // ====== 全局快捷键设置 ======
+    private void OpenSync_Click(object sender, RoutedEventArgs e)
+        => new SyncWindow { Owner = this }.ShowDialog();
 
     private bool _capturingHotKey;
 

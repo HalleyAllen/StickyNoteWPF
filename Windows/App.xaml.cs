@@ -27,6 +27,7 @@ public partial class App : System.Windows.Application
     private MainWindow? _manager;
     private TrayIconService? _tray;
     private bool _isExiting;
+    private bool _applyingSync;
     private HotKeyService? _hotKey;
     public AppSettings Settings { get; private set; } = new();
 
@@ -406,8 +407,54 @@ public partial class App : System.Windows.Application
         _manager.RefreshLists();
     }
 
+    public StickyNoteWPF.Sync.SyncData CaptureSyncData()
+        => new() { Notes = _notes, TaskLists = _taskLists };
+
+    public void ApplySyncData(StickyNoteWPF.Sync.SyncData incoming)
+    {
+        var error = StickyNoteWPF.Sync.SnapshotTools.Validate(incoming);
+        if (error is not null) throw new InvalidOperationException(error);
+        var data = StickyNoteWPF.Sync.SnapshotTools.ForSync(incoming);
+        foreach (var note in data.Notes)
+        {
+            var previous = _notes.FirstOrDefault(n => n.Id == note.Id);
+            if (previous is null) continue;
+            note.Left = previous.Left; note.Top = previous.Top;
+            note.Width = previous.Width; note.Height = previous.Height;
+            note.IsOpen = previous.IsOpen;
+            note.BackgroundImagePath = previous.BackgroundImagePath;
+        }
+        foreach (var list in data.TaskLists)
+        {
+            var previous = _taskLists.FirstOrDefault(l => l.Id == list.Id);
+            if (previous is null) continue;
+            list.Left = double.IsFinite(previous.Left) ? previous.Left : 200;
+            list.Top = double.IsFinite(previous.Top) ? previous.Top : 150;
+            list.IsOpen = previous.IsOpen;
+            list.BackgroundImagePath = previous.BackgroundImagePath;
+        }
+        NoteStore.ReplaceFromSync(new StoreData { Notes = data.Notes, TaskLists = data.TaskLists });
+        _applyingSync = true;
+        try
+        {
+            foreach (var win in _openWindows.Values.ToList()) win.Close();
+            foreach (var win in _openTaskLists.Values.ToList()) win.Close();
+            _openWindows.Clear();
+            _openTaskLists.Clear();
+            _notes = data.Notes;
+            _taskLists = data.TaskLists;
+            foreach (var note in _notes) if (note.IsOpen) OpenNote(note);
+            foreach (var list in _taskLists) if (list.IsOpen) OpenTaskList(list);
+            ApplyTopmost(Settings.GlobalTopmost);
+            _manager?.RefreshLists();
+        }
+        finally { _applyingSync = false; }
+        SaveAll();
+    }
+
     public void SaveAll()
     {
+        if (_applyingSync) return;
         int notes = _notes?.Count ?? 0;
         int lists = _taskLists?.Count ?? 0;
         Logger.Log($"SaveAll: 准备保存，内存便利贴数={notes}，任务清单数={lists}");

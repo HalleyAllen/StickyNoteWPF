@@ -26,3 +26,11 @@ UpgradeLog*.htm
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# Sync server secrets and persistent data
+**/.env
+Server/data/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/TestResults/
