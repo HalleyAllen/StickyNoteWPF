@@ -1,13 +1,9 @@
-<Window x:Class="StickyNoteWPF.PeerSyncWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="设备直接同步" Width="540" Height="720" MinWidth="460" MinHeight="580"
-        WindowStartupLocation="CenterOwner" Background="#FFF3F3F3"
-        Icon="pack://application:,,,/Resources/StickyNote.png">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
+<UserControl x:Class="StickyNoteWPF.PeerSyncPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" FontFamily="Segoe UI, Microsoft YaHei" FontSize="14" Foreground="{DynamicResource UiText}" UseLayoutRounding="True">
+<UserControl.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries><ResourceDictionary Source="../Themes/Dialog.xaml"/></ResourceDictionary.MergedDictionaries></ResourceDictionary></UserControl.Resources>
+<ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="24">
             <TextBlock Text="设备直接同步" FontSize="21" FontWeight="SemiBold"/>
-            <TextBlock TextWrapping="Wrap" Foreground="#666666" Margin="0,8,0,18"
+            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource UiMuted}" Margin="0,8,0,18"
                        Text="无需服务器和账号。两台电脑连接同一个局域网或手机热点，一台开启接收，另一台输入配对码。两端都需要保持应用开启。"/>
             <GroupBox Header="在本机开启接收" Padding="12">
                 <StackPanel>
@@ -17,16 +13,16 @@
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="端口" VerticalAlignment="Center"/>
                             <TextBox x:Name="PortBox" Text="47831" Width="80" Height="28" Margin="10,0,12,0" VerticalContentAlignment="Center"/>
-                            <Button Content="开启接收" Width="100" Height="30" Click="Start_Click"/>
+                            <Button x:Name="StartButton" Content="开启接收" Width="100" Height="34" Click="Start_Click"/>
                         </StackPanel>
                     </StackPanel>
-                    <TextBlock x:Name="HostStatus" Text="尚未开启" TextWrapping="Wrap" Foreground="#666666" Margin="0,10,0,6"/>
+                    <TextBlock x:Name="HostStatus" Text="尚未开启" TextWrapping="Wrap" Foreground="{DynamicResource UiMuted}" Margin="0,10,0,6"/>
                     <TextBox x:Name="InvitationBox" IsReadOnly="True" TextWrapping="Wrap" Height="76" VerticalScrollBarVisibility="Auto"/>
                     <WrapPanel Margin="0,8,0,0">
-                        <Button x:Name="CopyButton" Content="复制配对码" Width="108" Height="30" Click="Copy_Click" IsEnabled="False" Margin="0,0,10,0"/>
-                        <Button x:Name="StopButton" Content="停止接收" Width="100" Height="30" Click="Stop_Click" IsEnabled="False"/>
+                        <Button x:Name="CopyButton" Content="复制配对码" Width="108" Height="34" Click="Copy_Click" IsEnabled="False" Margin="0,0,10,0"/>
+                        <Button x:Name="StopButton" Content="停止接收" Width="100" Height="34" Click="Stop_Click" IsEnabled="False"/>
                     </WrapPanel>
-                    <TextBlock TextWrapping="Wrap" Foreground="#777777" FontSize="12" Margin="0,10,0,0"
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource UiMuted}" FontSize="12" Margin="0,10,0,0"
                                Text="配对码 10 分钟后失效。持有码的设备可读取本机同步内容；替换本机数据还需你确认。只将配对码交给你信任的设备。Windows 防火墙如有提示，请允许专用网络访问。"/>
                 </StackPanel>
             </GroupBox>
@@ -37,7 +33,7 @@
                     <Button Content="连接并选择同步方向" Height="34" Click="Sync_Click"/>
                 </StackPanel>
             </GroupBox>
-            <TextBlock x:Name="StatusText" Text="首版按整份数据同步，替换前会备份本机数据。" TextWrapping="Wrap" Foreground="#444444" Margin="0,16,0,0"/>
+            <TextBlock x:Name="StatusText" Text="首版按整份数据同步，替换前会备份本机数据。" TextWrapping="Wrap" Foreground="{DynamicResource UiText}" Margin="0,16,0,0"/>
         </StackPanel>
     </ScrollViewer>
-</Window>
+</UserControl>

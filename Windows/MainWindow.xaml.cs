@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using StickyNoteWPF.Models;
 using StickyNoteWPF.Services;
+using Control = System.Windows.Controls.Control;
 
 namespace StickyNoteWPF;
 
@@ -58,6 +59,8 @@ public partial class MainWindow : Window
         };
         Loaded += (_, _) =>
         {
+            Width = Math.Min(Width, SystemParameters.WorkArea.Width);
+            Height = Math.Min(Height, SystemParameters.WorkArea.Height);
             UpdateForceShowButton();
             RefreshLists();
             UpdateNavVisuals();
@@ -68,13 +71,12 @@ public partial class MainWindow : Window
         };
     }
 
-    // 根据设置更新“全部显示”按钮状态（图标高亮表示已开启）
+    // 根据设置更新“全部显示”按钮状态（图标加深表示已开启）。
     private void UpdateForceShowButton()
     {
         var on = App.Current.Settings.ForceShowAll;
-        ForceShowButton.Foreground = on
-            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xFF, 0xD7, 0x00))
-            : System.Windows.Media.Brushes.White;
+        ForceShowButton.SetResourceReference(Control.ForegroundProperty, on ? "UiText" : "UiMuted");
+        ForceShowButton.Background = System.Windows.Media.Brushes.Transparent;
         ForceShowButton.ToolTip = on
             ? "全部显示：开启（所有便签已强制不透明且始终显示，点此关闭）"
             : "全部显示：关闭（点此开启，强制所有便签不透明且始终显示）";
@@ -109,6 +111,18 @@ public partial class MainWindow : Window
     private void NavNotes_Click(object sender, RoutedEventArgs e) => SwitchTab(false);
     private void NavTasks_Click(object sender, RoutedEventArgs e) => SwitchTab(true);
 
+    // 标题文本框会处理鼠标事件，先在容器的隧道阶段选中卡片，再保留正常编辑行为。
+    private void Card_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.Left && sender is ListBoxItem item)
+            item.IsSelected = true;
+    }
+
+    private void Card_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is ListBoxItem item) item.IsSelected = true;
+    }
+
     private void SwitchTab(bool showTasks)
     {
         _showTasks = showTasks;
@@ -123,14 +137,13 @@ public partial class MainWindow : Window
         RefreshLists();                 // 兜底刷新（SearchBox 文字未变化时不会触发 TextChanged）
     }
 
-    // 左侧导航选中态：选中项白色加粗 + 左侧蓝色指示条
+    // 左侧导航选中态：淡灰底色、加深文字。
     private void UpdateNavVisuals()
     {
-        var selected = System.Windows.Media.Brushes.White;
-        var normal = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x9A, 0xA0, 0xA6));
-        NavNotes.Foreground = _showTasks ? normal : selected;
+        PageTitle.Text = _showTasks ? "任务清单" : "便利贴";
+        NavNotes.SetResourceReference(Control.ForegroundProperty, _showTasks ? "UiMuted" : "UiText");
         NavNotes.FontWeight = _showTasks ? FontWeights.Normal : FontWeights.SemiBold;
-        NavTasks.Foreground = _showTasks ? selected : normal;
+        NavTasks.SetResourceReference(Control.ForegroundProperty, _showTasks ? "UiText" : "UiMuted");
         NavTasks.FontWeight = _showTasks ? FontWeights.SemiBold : FontWeights.Normal;
         NavIndicatorNotes.Opacity = _showTasks ? 0 : 1;
         NavIndicatorTasks.Opacity = _showTasks ? 1 : 0;
@@ -244,6 +257,12 @@ public partial class MainWindow : Window
         foreach (var item in menu.Items)
             if (item is System.Windows.Controls.MenuItem mi)
                 mi.IsChecked = string.Equals(mi.Tag as string, CurrentSortTag, StringComparison.Ordinal);
+        SortButton.ToolTip = CurrentSortTag switch
+        {
+            "titleAsc" => "排序方式：按标题 A→Z",
+            "titleDesc" => "排序方式：按标题 Z→A",
+            _ => "排序方式：默认排序"
+        };
     }
 
     private IEnumerable<StickyNoteModel> FilterNotes(IEnumerable<StickyNoteModel> source, string kw)
@@ -317,15 +336,13 @@ public partial class MainWindow : Window
 
     private void UpdateViewButtons()
     {
-        var activeBg = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x00, 0x7A, 0xCC));
-        var activeFg = System.Windows.Media.Brushes.White;
-        var idleBg = System.Windows.Media.Brushes.White;
-        var idleFg = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x33, 0x33, 0x33));
+        var activeBg = System.Windows.Media.Brushes.Transparent;
+        var idleBg = System.Windows.Media.Brushes.Transparent;
 
         bool row = CurrentRowView;
         CardViewButton.Background = row ? idleBg : activeBg;
-        CardViewButton.Foreground = row ? idleFg : activeFg;
+        CardViewButton.SetResourceReference(Control.ForegroundProperty, row ? "UiMuted" : "UiText");
         RowViewButton.Background = row ? activeBg : idleBg;
-        RowViewButton.Foreground = row ? activeFg : idleFg;
+        RowViewButton.SetResourceReference(Control.ForegroundProperty, row ? "UiText" : "UiMuted");
     }
 }

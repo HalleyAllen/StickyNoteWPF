@@ -11,7 +11,7 @@ namespace StickyNoteWPF;
 /// forTaskOnly=false 只调整新建便利贴的默认外观（DefaultColor 等）。
 /// 两套默认完全独立、互不影响，且仅影响之后新建的对应类型，不影响已创建的。
 /// </summary>
-public partial class DefaultAppearanceWindow : Window
+public partial class DefaultAppearancePage : System.Windows.Controls.UserControl
 {
     private readonly AppSettings _settings;
     // 必须初始为 true：XAML 里绑定的 ValueChanged 在 InitializeComponent() 解析时就已挂上，
@@ -35,11 +35,12 @@ public partial class DefaultAppearanceWindow : Window
         ? _settings.TaskListTextColor ?? AppSettings.TaskListDefaultTextColorHex
         : _settings.NoteTextColor;
 
-    public DefaultAppearanceWindow(bool forTaskOnly)
+    public DefaultAppearancePage(bool forTaskOnly)
     {
         _settings = App.Current.Settings;
         _isTask = forTaskOnly;
         InitializeComponent();
+        AppearanceTitle.Text = _isTask ? "清单默认外观" : "便签默认外观";
 
         // 兼容旧数据：默认字体大小无效时回退，避免被 Slider 钳到最小值
         if (_settings.DefaultFontSize <= 0)
@@ -74,12 +75,6 @@ public partial class DefaultAppearanceWindow : Window
         };
 
         RefreshTargetUi();
-
-        CloseButton.Click += (_, _) => Close();
-        TitleBar.MouseLeftButtonDown += (_, e) =>
-        {
-            if (e.LeftButton == MouseButtonState.Pressed) DragMove();
-        };
     }
 
     // 重建色板与说明文案（窗口作用类型在打开时已固定，无切换入口）

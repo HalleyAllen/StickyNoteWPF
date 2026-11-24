@@ -12,6 +12,7 @@ public class AppSettings
 
     public bool StartupWithWindows { get; set; }
     public bool GlobalTopmost { get; set; } = true;
+    public bool DarkMode { get; set; }
 
     // 全局快捷键：隐藏/显示所有窗口（除设置窗口外），如 "Ctrl+Alt+H"；空字符串表示未设置
     public string ToggleWindowsHotKey { get; set; } = string.Empty;

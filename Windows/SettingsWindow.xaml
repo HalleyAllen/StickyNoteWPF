@@ -5,38 +5,67 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
-        Title="设置" Height="430" Width="380"
+        Title="设置" Height="700" Width="760"
         WindowStartupLocation="CenterOwner"
         Icon="pack://application:,,,/Resources/StickyNote.png"
         WindowStyle="None"
         ResizeMode="CanResize"
-        MinHeight="300" MinWidth="340"
-        Background="Transparent">
+        MinHeight="440" MinWidth="640"
+        Background="Transparent" FontFamily="Segoe UI, Microsoft YaHei" FontSize="14" Foreground="{DynamicResource UiText}" UseLayoutRounding="True">
+    <Window.Resources><ResourceDictionary>
+        <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="Themes/Dialog.xaml"/></ResourceDictionary.MergedDictionaries>
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="{DynamicResource UiText}"/>
+            <Setter Property="Padding" Value="16,10"/><Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TabItem">
+                <Border x:Name="Tab" Background="Transparent" CornerRadius="7" Padding="{TemplateBinding Padding}">
+                    <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsSelected" Value="True"><Setter TargetName="Tab" Property="Background" Value="{DynamicResource UiSelected}"/><Setter TargetName="Tab" Property="TextElement.Foreground" Value="{DynamicResource UiText}"/></Trigger>
+                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Tab" Property="TextElement.Foreground" Value="{DynamicResource UiText}"/></Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
+    </ResourceDictionary></Window.Resources>
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome GlassFrameThickness="0" CornerRadius="0"
                             ResizeBorderThickness="6" CaptionHeight="40"
                             UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
 
-    <Border Background="#FFF3F3F3" BorderBrush="#FF2D2D30" BorderThickness="1">
+    <Border Background="{DynamicResource UiCanvas}" BorderBrush="{DynamicResource UiLine}" BorderThickness="1">
         <DockPanel LastChildFill="True">
             <Grid x:Name="TitleBar" DockPanel.Dock="Top" Height="40"
-                  Background="#FF2D2D30">
+                  Background="{DynamicResource UiSurface}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="⚙ 设置" Foreground="White"
+                <TextBlock Grid.Column="0" Text="设置" Foreground="{DynamicResource UiText}"
                            FontSize="15" FontWeight="SemiBold"
                            VerticalAlignment="Center" Margin="12,0,0,0"/>
-                <Button x:Name="CloseButton" Grid.Column="1" Content="✕"
+                <Button x:Name="CloseButton" Grid.Column="1" Style="{StaticResource UiIconButton}" Content="&#xE8BB;"
                         Width="40" Height="40" Background="Transparent"
-                        Foreground="White" BorderThickness="0" Cursor="Hand"
+                        Foreground="{DynamicResource UiText}" BorderThickness="0" Cursor="Hand"
                         FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
             </Grid>
 
+            <TextBlock x:Name="SettingsStatus" DockPanel.Dock="Bottom" Text="设置自动保存" Foreground="{DynamicResource UiMuted}" FontSize="12" Margin="24,8,24,12" TextWrapping="Wrap"/>
+            <TabControl x:Name="SettingsTabs" Background="Transparent" BorderThickness="0" Margin="12,16,12,0" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" SelectionChanged="SettingsTabs_SelectionChanged">
+            <TabItem Header="常规">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <StackPanel Margin="20,16" Orientation="Vertical">
+            <StackPanel Margin="12,24" Orientation="Vertical">
+                <TextBlock Text="常规设置" FontSize="21" FontWeight="SemiBold" Margin="0,0,0,20"/>
+                <Grid Margin="0,0,0,24">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="深色模式" FontSize="14"/>
+                        <TextBlock Text="使用深色界面，保留便签和清单的自定义颜色" Foreground="{DynamicResource UiMuted}" FontSize="12" Margin="0,5,16,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <CheckBox x:Name="DarkModeCheck" Grid.Column="1" VerticalAlignment="Center" AutomationProperties.Name="深色模式"/>
+                </Grid>
                 <!-- 开机自启 -->
                 <DockPanel LastChildFill="True" Margin="0,0,0,18">
                     <TextBlock Text="开机自启" FontSize="14" VerticalAlignment="Center"/>
@@ -55,26 +84,28 @@
                 <TextBlock Text="隐藏/显示全部窗口快捷键" FontSize="14" Margin="0,0,0,6"/>
                 <DockPanel LastChildFill="True" Margin="0,0,0,4">
                     <TextBlock x:Name="HotKeyHint" Text="按下快捷键可一键隐藏或显示所有便签与任务清单（设置窗口除外）"
-                               FontSize="11" Foreground="#FF999999" TextWrapping="Wrap"/>
+                               FontSize="12" Foreground="{DynamicResource UiMuted}" TextWrapping="Wrap"/>
                 </DockPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
-                    <Border x:Name="HotKeyBox" BorderBrush="#FFCCCCCC" BorderThickness="1"
-                            CornerRadius="3" Background="White" Height="30" MinWidth="150"
+                    <Border x:Name="HotKeyBox" BorderBrush="{DynamicResource UiLine}" BorderThickness="1"
+                            CornerRadius="3" Background="{DynamicResource UiSurface}" Height="34" MinWidth="150"
                             Padding="10,0" VerticalAlignment="Center">
                         <TextBlock x:Name="HotKeyText" Text="未设置" FontSize="13"
-                                   VerticalAlignment="Center" Foreground="#FF555555"/>
+                                   VerticalAlignment="Center" Foreground="{DynamicResource UiMuted}"/>
                     </Border>
-                    <Button x:Name="SetHotKeyButton" Content="修改" Width="56" Height="30"
+                    <Button x:Name="SetHotKeyButton" Content="修改" Width="56" Height="34"
                             Margin="8,0,0,0" Cursor="Hand" FontSize="13"/>
-                    <Button x:Name="ClearHotKeyButton" Content="删除" Width="56" Height="30"
+                    <Button x:Name="ClearHotKeyButton" Content="删除" Width="56" Height="34"
                             Margin="8,0,0,0" Cursor="Hand" FontSize="13"/>
                 </StackPanel>
-                <Separator Margin="0,0,0,12"/>
-                <Button Content="设备、账号与数据同步" Height="34" Click="OpenSync_Click"/>
-                <TextBlock Text="支持免账号设备直连，也可登录服务器同步；随时可离线使用。"
-                           TextWrapping="Wrap" Foreground="#777777" FontSize="11" Margin="0,8,0,0"/>
             </StackPanel>
             </ScrollViewer>
+            </TabItem>
+            <TabItem Header="便签外观"><ContentControl x:Name="NoteAppearanceHost" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/></TabItem>
+            <TabItem Header="清单外观"><ContentControl x:Name="TaskAppearanceHost" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/></TabItem>
+            <TabItem Header="服务器同步"><ContentControl x:Name="ServerSyncHost" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/></TabItem>
+            <TabItem Header="设备直连"><ContentControl x:Name="PeerSyncHost" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/></TabItem>
+            </TabControl>
         </DockPanel>
     </Border>
 </Window>

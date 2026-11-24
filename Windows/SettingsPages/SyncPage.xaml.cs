@@ -1,20 +1,22 @@
+using System.Windows.Controls;
 using System.Windows;
 using StickyNoteWPF.Services;
 using StickyNoteWPF.Sync;
 
 namespace StickyNoteWPF;
 
-public partial class SyncWindow : Window
+public partial class SyncPage : System.Windows.Controls.UserControl
 {
     private SyncPreferences _preferences = SyncPreferences.Load();
     private bool _busy;
-    public SyncWindow()
+    public bool IsBusy => _busy;
+    public SyncPage()
     {
         InitializeComponent();
         ServerBox.Text = _preferences.ServerUrl;
         KeyBox.Password = _preferences.ServerKey;
         UsernameBox.Text = _preferences.Username;
-        Closing += (_, e) => { if (_busy) e.Cancel = true; };
+
         UpdateStatus();
     }
 
@@ -29,10 +31,6 @@ public partial class SyncWindow : Window
     }
 
     private async void Login_Click(object sender, RoutedEventArgs e) => await LoginAsync(false);
-    private void OpenPeer_Click(object sender, RoutedEventArgs e)
-    {
-        if (!_busy) new PeerSyncWindow { Owner = this }.ShowDialog();
-    }
     private async void Register_Click(object sender, RoutedEventArgs e) => await LoginAsync(true);
     private async Task LoginAsync(bool register) => await RunAsync(async () =>
     {
@@ -77,7 +75,7 @@ public partial class SyncWindow : Window
                 localHash, remoteHash, remote.Revision, SnapshotTools.IsEmpty(local));
             if (decision == SyncDirection.Conflict)
             {
-                var answer = System.Windows.MessageBox.Show(this,
+                var answer = System.Windows.MessageBox.Show(Window.GetWindow(this)!,
                     $"本机有 {local.Notes.Count} 张便签、{local.TaskLists.Count} 个清单；服务器有 {remote.Data.Notes.Count} 张便签、{remote.Data.TaskLists.Count} 个清单。\n\n首次关联或两端都已修改，需要选择保留哪份完整数据（不会合并）：\n\n“是”：用本机数据替换服务器。\n“否”：用服务器数据替换本机，替换前自动备份。\n“取消”：保持两端原样。",
                     "选择同步数据", MessageBoxButton.YesNoCancel, MessageBoxImage.Question, MessageBoxResult.Cancel);
                 if (answer == MessageBoxResult.Cancel) { UpdateStatus("已取消同步，两端数据未替换。"); return; }

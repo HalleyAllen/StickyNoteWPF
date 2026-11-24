@@ -11,8 +11,10 @@ public static class AppearanceHelper
     {
         try
         {
-            return new System.Windows.Media.SolidColorBrush(
+            var brush = new System.Windows.Media.SolidColorBrush(
                 (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
+            brush.Freeze();
+            return brush;
         }
         catch
         {
@@ -146,95 +148,18 @@ public static class AppearanceHelper
     // 颜色通过 DynamicResource 引用 tb.Resources 中的 ScrollThumbBrush / ScrollThumbHoverBrush / ScrollTrackBrush
     public static void ApplyScrollBarTheme(System.Windows.Controls.TextBox tb, string textColorHex, string bgColorHex)
     {
-        try
-        {
-            var textColor = ParseColor(textColorHex, Colors.Black);
-            var bgColor = ParseColor(bgColorHex, Colors.White);
+        SetBrush(tb.Resources, "ScrollThumbBrush", ParseColor(textColorHex, Colors.Black));
+        SetBrush(tb.Resources, "ScrollThumbHoverBrush", ParseColor(textColorHex, Colors.Black));
+        SetBrush(tb.Resources, "ScrollTrackBrush", ParseColor(bgColorHex, Colors.White));
+        var template = (ControlTemplate)System.Windows.Application.Current.FindResource("NoteTextBoxTemplate");
+        if (!ReferenceEquals(tb.Template, template)) tb.Template = template;
+    }
 
-            tb.Resources["ScrollThumbBrush"] = new SolidColorBrush(textColor);
-            tb.Resources["ScrollThumbHoverBrush"] = new SolidColorBrush(textColor);
-            tb.Resources["ScrollTrackBrush"] = new SolidColorBrush(bgColor);
-
-            const string templateXaml =
-                "<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' " +
-                "xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' " +
-                "xmlns:s='clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework' " +
-                "TargetType='{x:Type TextBox}'>" +
-                "<Border x:Name='PART_Border' Background='{TemplateBinding Background}' " +
-                "BorderBrush='{TemplateBinding BorderBrush}' BorderThickness='{TemplateBinding BorderThickness}' " +
-                "SnapsToDevicePixels='True'>" +
-                "<ScrollViewer x:Name='PART_ContentHost' Margin='0' Padding='{TemplateBinding Padding}' " +
-                "Focusable='False' VerticalScrollBarVisibility='Auto' HorizontalScrollBarVisibility='Disabled'>" +
-                "<ScrollViewer.Template>" +
-                "<ControlTemplate TargetType='{x:Type ScrollViewer}'>" +
-                "<ControlTemplate.Resources>" +
-                "<Style x:Key='NoteScrollBarStyle' TargetType='{x:Type ScrollBar}'>" +
-                "<Setter Property='Width' Value='5'/>" +
-                "<Setter Property='Background' Value='{DynamicResource ScrollTrackBrush}'/>" +
-                "<Setter Property='Template'>" +
-                "<Setter.Value>" +
-                "<ControlTemplate TargetType='{x:Type ScrollBar}'>" +
-                "<Track x:Name='PART_Track' Width='5' HorizontalAlignment='Stretch' IsDirectionReversed='True'>" +
-                "<Track.DecreaseRepeatButton>" +
-                "<RepeatButton Command='{x:Static ScrollBar.LineUpCommand}' Focusable='False' Opacity='0'>" +
-                "<RepeatButton.Template>" +
-                "<ControlTemplate TargetType='{x:Type ButtonBase}'>" +
-                "<Border Background='Transparent'/>" +
-                "</ControlTemplate></RepeatButton.Template>" +
-                "</RepeatButton>" +
-                "</Track.DecreaseRepeatButton>" +
-                "<Track.Thumb>" +
-                "<Thumb>" +
-                "<Thumb.Template>" +
-                "<ControlTemplate TargetType='{x:Type Thumb}'>" +
-                "<Rectangle Name='Rect' Width='5' Fill='{DynamicResource ScrollThumbBrush}' RadiusX='3' RadiusY='3'/>" +
-                "<ControlTemplate.Triggers>" +
-                "<Trigger Property='IsMouseOver' Value='True'>" +
-                "<Setter TargetName='Rect' Property='Fill' Value='{DynamicResource ScrollThumbHoverBrush}'/>" +
-                "</Trigger></ControlTemplate.Triggers>" +
-                "</ControlTemplate></Thumb.Template>" +
-                "</Thumb>" +
-                "</Track.Thumb>" +
-                "<Track.IncreaseRepeatButton>" +
-                "<RepeatButton Command='{x:Static ScrollBar.LineDownCommand}' Focusable='False' Opacity='0'>" +
-                "<RepeatButton.Template>" +
-                "<ControlTemplate TargetType='{x:Type ButtonBase}'>" +
-                "<Border Background='Transparent'/>" +
-                "</ControlTemplate></RepeatButton.Template>" +
-                "</RepeatButton>" +
-                "</Track.IncreaseRepeatButton>" +
-                "</Track>" +
-                "</ControlTemplate>" +
-                "</Setter.Value>" +
-                "</Setter>" +
-                "</Style>" +
-                "</ControlTemplate.Resources>" +
-                "<Grid Background='Transparent'>" +
-                "<Grid.ColumnDefinitions><ColumnDefinition Width='*'/><ColumnDefinition Width='Auto'/></Grid.ColumnDefinitions>" +
-                "<Grid.RowDefinitions><RowDefinition Height='*'/><RowDefinition Height='Auto'/></Grid.RowDefinitions>" +
-                "<ScrollContentPresenter x:Name='PART_ScrollContentPresenter' Grid.Column='0' Grid.Row='0' " +
-                "Content='{TemplateBinding Content}' ContentTemplate='{TemplateBinding ContentTemplate}' " +
-                "CanContentScroll='{TemplateBinding CanContentScroll}'/>" +
-                "<ScrollBar x:Name='PART_VerticalScrollBar' Grid.Column='1' Grid.Row='0' Orientation='Vertical' " +
-                "Style='{StaticResource NoteScrollBarStyle}' " +
-                "Maximum='{TemplateBinding ScrollableHeight}' ViewportSize='{TemplateBinding ViewportHeight}' " +
-                "Value='{TemplateBinding VerticalOffset}' " +
-                "Visibility='{TemplateBinding ComputedVerticalScrollBarVisibility}'/>" +
-                "<DockPanel Grid.Column='0' Grid.Row='1' LastChildFill='False' Background='Transparent'>" +
-                "<Rectangle x:Name='PART_ScrollCorner' DockPanel.Dock='Right' Width='5' Height='5' Fill='Transparent'/>" +
-                "</DockPanel>" +
-                "</Grid>" +
-                "</ControlTemplate>" +
-                "</ScrollViewer.Template>" +
-                "</ScrollViewer>" +
-                "</Border>" +
-                "</ControlTemplate>";
-            tb.Template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(templateXaml);
-            tb.ApplyTemplate();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine("ApplyScrollBarTheme failed: " + ex.Message);
-        }
+    public static void SetBrush(ResourceDictionary resources, string key, System.Windows.Media.Color color)
+    {
+        if (resources[key] is SolidColorBrush current && current.Color == color) return;
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        resources[key] = brush;
     }
 }

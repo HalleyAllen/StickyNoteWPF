@@ -1,21 +1,29 @@
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
+using System.Windows.Controls;
 using StickyNoteWPF.Services;
 
 namespace StickyNoteWPF;
 
+public enum SettingsSection { General, NoteAppearance, TaskAppearance, ServerSync, PeerSync }
+
 public partial class SettingsWindow : Window
 {
     private readonly AppSettings _settings;
+    private bool _ready, _closing, _allowClose;
+    private SyncPage? _syncPage;
+    private PeerSyncPage? _peerPage;
 
-    public SettingsWindow(AppSettings settings)
+    public SettingsWindow(AppSettings settings, SettingsSection section = SettingsSection.General)
     {
         _settings = settings;
         InitializeComponent();
 
         StartupCheck.IsChecked = AppSettings.IsStartupEnabled();
         TopmostCheck.IsChecked = _settings.GlobalTopmost;
+        DarkModeCheck.IsChecked = _settings.DarkMode;
+        DarkModeCheck.Checked += (_, _) => SetDarkMode(true);
+        DarkModeCheck.Unchecked += (_, _) => SetDarkMode(false);
 
         CloseButton.Click += (_, _) => Close();
         TitleBar.MouseLeftButtonDown += (_, e) =>
@@ -34,27 +42,90 @@ public partial class SettingsWindow : Window
         SetHotKeyButton.Click += (_, _) => BeginHotKeyCapture();
         ClearHotKeyButton.Click += (_, _) => ClearHotKey();
         PreviewKeyDown += HotKeyCapture_PreviewKeyDown;
+        _ready = true;
+        SelectSection(section);
+        Loaded += (_, _) =>
+        {
+            Width = Math.Min(Width, SystemParameters.WorkArea.Width);
+            Height = Math.Min(Height, SystemParameters.WorkArea.Height);
+        };
+        Closing += SettingsWindow_Closing;
+    }
+
+    private void SetDarkMode(bool enabled)
+    {
+        _settings.DarkMode = enabled;
+        ThemeManager.Apply(enabled);
+        _settings.Save();
     }
 
     // ====== 全局快捷键设置 ======
-    private void OpenSync_Click(object sender, RoutedEventArgs e)
-        => new SyncWindow { Owner = this }.ShowDialog();
+    public void SelectSection(SettingsSection section)
+    {
+        SettingsTabs.SelectedIndex = (int)section;
+        LoadSection();
+    }
+
+    private void SettingsTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_ready || e.Source != SettingsTabs) return;
+        _capturingHotKey = false;
+        EndHotKeyCapture();
+        LoadSection();
+    }
+
+    private void LoadSection()
+    {
+        if (!_ready) return;
+        switch ((SettingsSection)SettingsTabs.SelectedIndex)
+        {
+            case SettingsSection.NoteAppearance: NoteAppearanceHost.Content ??= new DefaultAppearancePage(false); break;
+            case SettingsSection.TaskAppearance: TaskAppearanceHost.Content ??= new DefaultAppearancePage(true); break;
+            case SettingsSection.ServerSync: ServerSyncHost.Content ??= _syncPage = new SyncPage(); break;
+            case SettingsSection.PeerSync: PeerSyncHost.Content ??= _peerPage = new PeerSyncPage(); break;
+        }
+    }
+
+    private void SettingsWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_allowClose) return;
+        if (_syncPage?.IsBusy == true || _peerPage?.IsBusy == true)
+        {
+            e.Cancel = true;
+            SettingsStatus.Text = "请等待当前同步操作结束后再关闭设置。";
+            return;
+        }
+        if (_peerPage is null) return;
+        e.Cancel = true;
+        if (_closing) return;
+        _closing = true;
+        Dispatcher.BeginInvoke(new Action(async () =>
+        {
+            try
+            {
+                await _peerPage.ClosePageAsync();
+                _allowClose = true;
+                Close();
+            }
+            catch (Exception ex) { _closing = false; SettingsStatus.Text = "无法停止设备接收：" + ex.Message; }
+        }));
+    }
 
     private bool _capturingHotKey;
 
     private void BeginHotKeyCapture()
     {
         _capturingHotKey = true;
-        HotKeyBox.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x2D, 0x8C, 0xFF));
+        HotKeyBox.SetResourceReference(Border.BorderBrushProperty, "UiAccent");
         HotKeyText.Text = "请按下新快捷键…（Esc 取消）";
-        HotKeyText.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x2D, 0x8C, 0xFF));
+        HotKeyText.SetResourceReference(TextBlock.ForegroundProperty, "UiAccent");
     }
 
     private void EndHotKeyCapture()
     {
         _capturingHotKey = false;
-        HotKeyBox.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xCC, 0xCC, 0xCC));
-        HotKeyText.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x55, 0x55, 0x55));
+        HotKeyBox.SetResourceReference(Border.BorderBrushProperty, "UiLine");
+        HotKeyText.SetResourceReference(TextBlock.ForegroundProperty, "UiMuted");
         HotKeyText.Text = string.IsNullOrWhiteSpace(_settings.ToggleWindowsHotKey)
             ? "未设置"
             : _settings.ToggleWindowsHotKey;
@@ -109,7 +180,7 @@ public partial class SettingsWindow : Window
         else
         {
             HotKeyText.Text = "该组合无法注册，请换一个";
-            HotKeyText.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xC0, 0x39, 0x2B));
+            HotKeyText.SetResourceReference(TextBlock.ForegroundProperty, "UiDanger");
         }
     }
 

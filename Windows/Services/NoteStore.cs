@@ -14,6 +14,7 @@ public static class NoteStore
 
     // 上次加载是否成功：失败时禁止“空数据覆盖”，并自动备份损坏文件
     private static bool _loadSucceeded;
+    private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 
     public static string SavePath => FilePath;
 
@@ -24,9 +25,7 @@ public static class NoteStore
         Directory.CreateDirectory(dir);
         if (File.Exists(FilePath))
             File.Copy(FilePath, Path.Combine(dir, $"notes.before-sync.{DateTime.UtcNow:yyyyMMddHHmmssfff}.{Guid.NewGuid():N}.json"));
-        var temp = FilePath + ".tmp";
-        File.WriteAllText(temp, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
-        File.Move(temp, FilePath, true);
+        WriteFile(FilePath, data);
         _loadSucceeded = true;
     }
 
@@ -42,28 +41,7 @@ public static class NoteStore
                 return data;
             }
 
-            var json = File.ReadAllText(FilePath);
-            Logger.Log($"NoteStore.Load: 读取文件成功，长度={json.Length}");
-
-            // 先探测根节点类型：数组=旧格式（直接是便利贴数组），对象=新格式（StoreData）
-            using (var doc = JsonDocument.Parse(json))
-            {
-                if (doc.RootElement.ValueKind == JsonValueKind.Array)
-                {
-                    var legacy = JsonSerializer.Deserialize<List<StickyNoteModel>>(json);
-                    data.Notes = legacy ?? new List<StickyNoteModel>();
-                    Logger.Log($"NoteStore.Load: 旧格式，便利贴数={data.Notes.Count}");
-                    _loadSucceeded = true;
-                    return data;
-                }
-            }
-
-            var parsed = JsonSerializer.Deserialize<StoreData>(json);
-            if (parsed is not null)
-            {
-                data.Notes = parsed.Notes ?? new List<StickyNoteModel>();
-                data.TaskLists = parsed.TaskLists ?? new List<TaskListModel>();
-            }
+            data = ReadFile(FilePath);
             Logger.Log($"NoteStore.Load: 新格式，便利贴数={data.Notes.Count}，任务清单数={data.TaskLists.Count}");
             _loadSucceeded = true;
         }
@@ -109,16 +87,36 @@ public static class NoteStore
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
 
-            var json = JsonSerializer.Serialize(data,
-                new JsonSerializerOptions { WriteIndented = true });
-            var temp = FilePath + ".tmp";
-            File.WriteAllText(temp, json);
-            File.Move(temp, FilePath, true);
-            Logger.Log($"NoteStore.Save: 写入成功，便利贴数={notes}，任务清单数={lists}，长度={json.Length}");
+            WriteFile(FilePath, data);
+            Logger.Log($"NoteStore.Save: 写入成功，便利贴数={notes}，任务清单数={lists}");
         }
         catch (Exception ex)
         {
             Logger.LogException("NoteStore.Save", ex);
         }
+    }
+
+    // 流式读写避免同时保留完整 UTF-16 JSON 字符串与 JSON DOM；保留临时文件原子替换。
+    private static StoreData ReadFile(string path)
+    {
+        using var stream = File.OpenRead(path);
+        int first;
+        using (var reader = new StreamReader(stream, System.Text.Encoding.UTF8, true, 128, true))
+        {
+            do { first = reader.Read(); } while (first >= 0 && char.IsWhiteSpace((char)first));
+        }
+        stream.Position = 0;
+        if (first == '[') return new StoreData { Notes = JsonSerializer.Deserialize<List<StickyNoteModel>>(stream) ?? new() };
+        var data = JsonSerializer.Deserialize<StoreData>(stream) ?? new();
+        data.Notes ??= new();
+        data.TaskLists ??= new();
+        return data;
+    }
+
+    private static void WriteFile(string path, StoreData data)
+    {
+        var temp = path + ".tmp";
+        using (var stream = File.Create(temp)) JsonSerializer.Serialize(stream, data, Json);
+        File.Move(temp, path, true);
     }
 }

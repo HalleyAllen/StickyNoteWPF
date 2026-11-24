@@ -25,13 +25,13 @@
     <!-- 根容器：透明，避免整体被当作半透明单元合成 -->
     <Grid>
         <!-- 底层：半透明背景 + 阴影（有图片时背景为 ImageBrush，否则为纯色） -->
-        <Border x:Name="RootBorder" CornerRadius="10"
+        <Border x:Name="RootBorder" CornerRadius="12"
                 BorderThickness="1" BorderBrush="#55000000"/>
 
         <!-- 上层：内容（文字完全不透明，独立渲染） -->
         <DockPanel LastChildFill="True" Margin="1">
             <!-- 标题栏 -->
-            <Grid x:Name="TitleBar" DockPanel.Dock="Top" Height="28"
+            <Grid x:Name="TitleBar" DockPanel.Dock="Top" Height="34"
                   Background="#22000000" Cursor="Hand">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -39,25 +39,34 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="TitleText" Grid.Column="0" Text="便利贴" VerticalAlignment="Center"
-                           Margin="8,0,0,0" FontSize="11" Foreground="#333"/>
-                <Button x:Name="LockButton" Grid.Column="1" Content="🔓"
+                           Margin="8,0,4,0" FontSize="12" Foreground="#333" TextTrimming="CharacterEllipsis"/>
+                <Button x:Name="ListButton" Grid.Column="1" Style="{StaticResource UiToolbarButton}" Width="26" Height="22" Margin="0,0,2,0" Focusable="False" ToolTip="正文列表：有序 / 无序" Click="ListButton_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button.ContextMenu><ContextMenu Style="{StaticResource UiSortMenu}" Placement="Bottom" VerticalOffset="6" Opened="ListMenu_Opened">
+                        <MenuItem x:Name="OrderedListMenu" Header="有序列表（1. 2. 3.）" ToolTip="选中多行后设置；再次选择可取消（Ctrl+Shift+7）" Tag="Ordered" IsCheckable="True" Click="ListMenu_Click"/>
+                        <MenuItem x:Name="UnorderedListMenu" Header="无序列表（•）" ToolTip="选中多行后设置；再次选择可取消（Ctrl+Shift+8）" Tag="Unordered" IsCheckable="True" Click="ListMenu_Click"/>
+                        <MenuItem Header="取消列表" Tag="None" Click="ListMenu_Click"/>
+                    </ContextMenu></Button.ContextMenu>
+                    <Path Width="15" Height="15" Stretch="Uniform" Data="{StaticResource UiListGeometry}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                </Button>
+                <Button Style="{StaticResource UiIconButton}" Padding="0" FontFamily="{StaticResource UiIconFont}" x:Name="LockButton" Grid.Column="2" Content="&#xE785;"
                         Width="26" Height="22" Margin="0,0,2,0"
                         Background="Transparent" BorderThickness="0"
                         ToolTip="未锁定（点此锁定，锁定后不可编辑）" Cursor="Hand"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                <Button x:Name="EyeButton" Grid.Column="2" Content="👁"
+                <Button Style="{StaticResource UiIconButton}" Padding="0" FontFamily="{StaticResource UiIconFont}" x:Name="EyeButton" Grid.Column="3" Content="&#xE890;"
                         Width="26" Height="22" Margin="0,0,2,0"
                         Background="Transparent" BorderThickness="0"
                         ToolTip="鼠标移入才显示" Cursor="Hand"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                <Button x:Name="SettingsButton" Grid.Column="3" Content="⚙"
+                <Button Style="{StaticResource UiIconButton}" Padding="0" FontFamily="{StaticResource UiIconFont}" x:Name="SettingsButton" Grid.Column="4" Content="&#xE713;"
                         Width="26" Height="22" Margin="0,0,2,0"
                         Background="Transparent" BorderThickness="0"
                         ToolTip="便签设置" Cursor="Hand"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                <Button x:Name="CloseButton" Grid.Column="4" Content="✕"
+                <Button Style="{StaticResource UiIconButton}" Padding="0" FontFamily="{StaticResource UiIconFont}" x:Name="CloseButton" Grid.Column="5" Content="&#xE8BB;"
                         Width="26" Height="22" Margin="0,0,4,0"
                         Background="Transparent" BorderThickness="0"
                         ToolTip="关闭" Cursor="Hand"
@@ -66,7 +75,7 @@
             <!-- 文本编辑区 -->
             <TextBox x:Name="NoteTextBox" DockPanel.Dock="Bottom"
                      BorderThickness="0" Background="Transparent"
-                     Padding="8" TextWrapping="Wrap" AcceptsReturn="True"
+                     Padding="12" TextWrapping="Wrap" AcceptsReturn="True"
                      VerticalScrollBarVisibility="Auto"
                      Foreground="#222"
                      CaretBrush="#222" UndoLimit="100"/>

@@ -1,0 +1,334 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Light.xaml"/>
+        <ResourceDictionary Source="NoteTextBox.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+    <FontFamily
+        x:Key="UiIconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+    <Style
+        x:Key="UiButton"
+        TargetType="Button">
+        <Setter
+            Property="Background"
+            Value="{DynamicResource UiSurface}" />
+        <Setter
+            Property="Foreground"
+            Value="{DynamicResource UiText}" />
+        <Setter
+            Property="BorderBrush"
+            Value="{DynamicResource UiLine}" />
+        <Setter
+            Property="BorderThickness"
+            Value="1" />
+        <Setter
+            Property="Padding"
+            Value="12,6" />
+        <Setter
+            Property="Cursor"
+            Value="Hand" />
+        <Setter
+            Property="HorizontalContentAlignment"
+            Value="Center" />
+        <Setter
+            Property="VerticalContentAlignment"
+            Value="Center" />
+        <Setter
+            Property="Template">
+            <Setter.Value>
+                <ControlTemplate
+                    TargetType="Button">
+                    <Border
+                        x:Name="Chrome"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="7"
+                        SnapsToDevicePixels="True">
+                        <ContentPresenter
+                            Margin="{TemplateBinding Padding}"
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                            RecognizesAccessKey="True" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger
+                            Property="IsPressed"
+                            Value="True">
+                            <Setter
+                                TargetName="Chrome"
+                                Property="Opacity"
+                                Value="0.7" />
+                        </Trigger>
+                        <Trigger
+                            Property="IsKeyboardFocused"
+                            Value="True">
+                            <Setter
+                                TargetName="Chrome"
+                                Property="BorderBrush"
+                                Value="{DynamicResource UiAccent}" />
+                            <Setter
+                                TargetName="Chrome"
+                                Property="BorderThickness"
+                                Value="2" />
+                        </Trigger>
+                        <Trigger
+                            Property="IsEnabled"
+                            Value="False">
+                            <Setter
+                                TargetName="Chrome"
+                                Property="Opacity"
+                                Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style
+        TargetType="Button"
+        BasedOn="{StaticResource UiButton}" />
+    <Style
+        x:Key="UiPrimaryButton"
+        TargetType="Button"
+        BasedOn="{StaticResource UiButton}">
+        <Setter
+            Property="Background"
+            Value="{DynamicResource UiAccent}" />
+        <Setter
+            Property="Foreground"
+            Value="{DynamicResource UiAccentText}" />
+        <Setter
+            Property="BorderBrush"
+            Value="{DynamicResource UiAccent}" />
+    </Style>
+    <Style
+        x:Key="UiIconButton"
+        TargetType="Button"
+        BasedOn="{StaticResource UiButton}">
+        <Setter
+            Property="FontFamily"
+            Value="{StaticResource UiIconFont}" />
+        <Setter
+            Property="FontSize"
+            Value="15" />
+        <Setter
+            Property="Width"
+            Value="34" />
+        <Setter
+            Property="Height"
+            Value="34" />
+        <Setter
+            Property="Padding"
+            Value="0" />
+        <Setter
+            Property="Background"
+            Value="Transparent" />
+        <Setter
+            Property="BorderBrush"
+            Value="Transparent" />
+        <Setter
+            Property="AutomationProperties.Name"
+            Value="{Binding ToolTip, RelativeSource={RelativeSource Self}, TargetNullValue='', FallbackValue=''}" />
+    </Style>
+    <!-- 工具栏使用几何图形，不依赖系统图标字体的私用字符映射。 -->
+    <Geometry x:Key="UiGridGeometry">M2,2 H8 V8 H2 Z M12,2 H18 V8 H12 Z M2,12 H8 V18 H2 Z M12,12 H18 V18 H12 Z</Geometry>
+    <Geometry x:Key="UiListGeometry">M6,4 H18 M6,10 H18 M6,16 H18 M2,4 H2.2 M2,10 H2.2 M2,16 H2.2</Geometry>
+    <Geometry x:Key="UiPaletteGeometry">M10,2 C5.6,2 2,5.6 2,10 C2,14.4 5.6,18 10,18 H11.2 C12.5,18 13.1,16.4 12.2,15.5 C11.5,14.8 12,13.5 13,13.5 H15 C17,13.5 18,12 18,10 C18,5.6 14.4,2 10,2 Z M6,7 H6.2 M10,5.5 H10.2 M14,7 H14.2 M5.5,11 H5.7</Geometry>
+    <Geometry x:Key="UiEyeGeometry">M1,10 C5,2 15,2 19,10 C15,18 5,18 1,10 Z M13,10 A3,3 0 1 1 7,10 A3,3 0 1 1 13,10</Geometry>
+    <!-- Lucide arrow-down-wide-narrow，ISC 许可见 Resources/Icons/LICENSE-LUCIDE.txt。 -->
+    <Geometry x:Key="UiSortGeometry">M3,16 L7,20 L11,16 M7,20 V4 M11,4 H21 M11,8 H18 M11,12 H15</Geometry>
+    <Style x:Key="UiToolbarButton" TargetType="Button" BasedOn="{StaticResource UiButton}">
+        <Setter Property="Width" Value="34"/>
+        <Setter Property="Height" Value="34"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource UiMuted}"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="AutomationProperties.Name" Value="{Binding ToolTip, RelativeSource={RelativeSource Self}, TargetNullValue='', FallbackValue=''}"/>
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+            <Border x:Name="Surface" Background="{TemplateBinding Background}" CornerRadius="6">
+                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Foreground" Value="{DynamicResource UiText}"/></Trigger>
+                <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.45"/></Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <!-- 导航仅由选中底色区分状态，不使用通用按钮的边框、按压淡出或默认焦点框。 -->
+    <Style x:Key="UiNavigationButton" TargetType="Button" BasedOn="{StaticResource UiButton}">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+            <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                <ContentPresenter x:Name="Label" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Label" Property="TextElement.Foreground" Value="{DynamicResource UiText}"/></Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style
+        x:Key="UiDeleteButton"
+        TargetType="Button"
+        BasedOn="{StaticResource UiIconButton}">
+        <Setter
+            Property="Foreground"
+            Value="{DynamicResource UiMuted}" />
+        <Style.Triggers>
+            <Trigger
+                Property="IsMouseOver"
+                Value="True">
+                <Setter
+                    Property="Foreground"
+                    Value="{DynamicResource UiDanger}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style
+        x:Key="UiField"
+        TargetType="TextBox"><Setter Property="CaretBrush" Value="{DynamicResource UiText}"/>
+        <Setter
+            Property="Background"
+            Value="{DynamicResource UiSurface}" />
+        <Setter
+            Property="Foreground"
+            Value="{DynamicResource UiText}" />
+        <Setter
+            Property="BorderBrush"
+            Value="{DynamicResource UiLine}" />
+        <Setter
+            Property="BorderThickness"
+            Value="1" />
+        <Setter
+            Property="Padding"
+            Value="10,5" />
+        <Setter
+            Property="VerticalContentAlignment"
+            Value="Center" />
+        <Setter
+            Property="Template">
+            <Setter.Value>
+                <ControlTemplate
+                    TargetType="TextBox">
+                    <Border
+                        x:Name="Field"
+                        CornerRadius="7"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}">
+                        <ScrollViewer
+                            x:Name="PART_ContentHost" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger
+                            Property="IsKeyboardFocusWithin"
+                            Value="True">
+                            <Setter
+                                TargetName="Field"
+                                Property="BorderBrush"
+                                Value="{DynamicResource UiAccent}" />
+                        </Trigger>
+                        <Trigger
+                            Property="IsEnabled"
+                            Value="False">
+                            <Setter
+                                TargetName="Field"
+                                Property="Opacity"
+                                Value="0.5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style
+        x:Key="UiPassword"
+        TargetType="PasswordBox"><Setter Property="Foreground" Value="{DynamicResource UiText}"/><Setter Property="CaretBrush" Value="{DynamicResource UiText}"/>
+        <Setter
+            Property="Padding"
+            Value="10,5" />
+        <Setter
+            Property="Background"
+            Value="{DynamicResource UiSurface}" />
+        <Setter
+            Property="BorderBrush"
+            Value="{DynamicResource UiLine}" />
+        <Setter
+            Property="BorderThickness"
+            Value="1" />
+        <Setter
+            Property="Template">
+            <Setter.Value>
+                <ControlTemplate
+                    TargetType="PasswordBox">
+                    <Border
+                        x:Name="Field"
+                        CornerRadius="7"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}">
+                        <ScrollViewer
+                            x:Name="PART_ContentHost" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger
+                            Property="IsKeyboardFocusWithin"
+                            Value="True">
+                            <Setter
+                                TargetName="Field"
+                                Property="BorderBrush"
+                                Value="{DynamicResource UiAccent}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="ToolTip">
+        <Setter Property="Background" Value="{DynamicResource UiSurface}"/>
+        <Setter Property="Foreground" Value="{DynamicResource UiText}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource UiLine}"/>
+    </Style>
+    <Style x:Key="UiSortMenuItem" TargetType="MenuItem">
+        <Setter Property="Foreground" Value="{DynamicResource UiText}"/>
+        <Setter Property="Padding" Value="10,8"/>
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="MenuItem">
+            <Border x:Name="Row" Background="Transparent" Padding="{TemplateBinding Padding}" CornerRadius="5">
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Path x:Name="Mark" Data="M1,6 L4,9 L11,2" Stroke="{DynamicResource UiText}" StrokeThickness="1.5" Visibility="Hidden" VerticalAlignment="Center"/>
+                    <ContentPresenter Grid.Column="1" ContentSource="Header" RecognizesAccessKey="True"/>
+                </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsChecked" Value="True"><Setter TargetName="Mark" Property="Visibility" Value="Visible"/></Trigger>
+                <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Row" Property="Background" Value="{DynamicResource UiSelected}"/></Trigger>
+                <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="UiSortMenu" TargetType="ContextMenu">
+        <Setter Property="Foreground" Value="{DynamicResource UiText}"/>
+        <Setter Property="ItemContainerStyle" Value="{StaticResource UiSortMenuItem}"/>
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ContextMenu">
+            <Border Background="{DynamicResource UiSurface}" BorderBrush="{DynamicResource UiLine}" BorderThickness="1" CornerRadius="7" Padding="4"><ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"/></Border>
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <!-- 保留拖动和轨道翻页，避免深色页面出现系统默认的白色滚动轨道。 -->
+    <Style TargetType="ScrollBar">
+        <Setter Property="Width" Value="10"/>
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ScrollBar">
+            <Grid Background="Transparent">
+                <Track x:Name="PART_Track" IsDirectionReversed="True">
+                    <Track.DecreaseRepeatButton><RepeatButton x:Name="Decrease" Command="ScrollBar.PageUpCommand" Focusable="False"><RepeatButton.Template><ControlTemplate TargetType="RepeatButton"><Border Background="Transparent"/></ControlTemplate></RepeatButton.Template></RepeatButton></Track.DecreaseRepeatButton>
+                    <Track.Thumb><Thumb><Thumb.Template><ControlTemplate TargetType="Thumb"><Border Background="{DynamicResource UiMuted}" CornerRadius="3" Margin="2" Opacity="0.5"/></ControlTemplate></Thumb.Template></Thumb></Track.Thumb>
+                    <Track.IncreaseRepeatButton><RepeatButton x:Name="Increase" Command="ScrollBar.PageDownCommand" Focusable="False"><RepeatButton.Template><ControlTemplate TargetType="RepeatButton"><Border Background="Transparent"/></ControlTemplate></RepeatButton.Template></RepeatButton></Track.IncreaseRepeatButton>
+                </Track>
+            </Grid>
+            <ControlTemplate.Triggers><Trigger Property="Orientation" Value="Horizontal"><Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False"/><Setter TargetName="Decrease" Property="Command" Value="ScrollBar.PageLeftCommand"/><Setter TargetName="Increase" Property="Command" Value="ScrollBar.PageRightCommand"/><Setter Property="Width" Value="Auto"/><Setter Property="Height" Value="10"/></Trigger></ControlTemplate.Triggers>
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
+</ResourceDictionary>

@@ -18,6 +18,7 @@ namespace StickyNoteWPF;
 public partial class TaskListWindow : Window
 {
     public TaskListModel List { get; }
+    private readonly NoteBackground _background;
 
     public TaskListWindow(TaskListModel list)
     {
@@ -28,14 +29,11 @@ public partial class TaskListWindow : Window
         Top = double.IsNaN(list.Top) ? 150 : list.Top;
         Width = 320;
         Height = 360;
+        _background = new NoteBackground(RootBorder, TitleBar, ApplyBackground);
 
         var view = CollectionViewSource.GetDefaultView(list.Items);
-        view.SortDescriptions.Clear();
-        view.SortDescriptions.Add(new SortDescription(nameof(TaskItem.IsDone), ListSortDirection.Ascending));
-        // 未完成区内按 Order 降序，序号最大（最新）的置顶，保证新任务始终在最顶
-        view.SortDescriptions.Add(new SortDescription(nameof(TaskItem.Order), ListSortDirection.Descending));
-        TaskList.ItemsSource = view;
         EnsureSubSorting(list.Items);
+        TaskList.ItemsSource = view;
         ApplyShowCompleted();
 
         RefreshFromModel();
@@ -48,7 +46,7 @@ public partial class TaskListWindow : Window
         LockButton.Click += (_, _) => ToggleLock();
 
         ApplyHoverState();
-        Closed += (_, _) => _hoverTimer?.Stop();
+        Closed += (_, _) => { _hoverTimer?.Stop(); _background.Dispose(); };
     }
 
     // 眼睛按钮：切换是否启用“鼠标移入才显示”
@@ -68,7 +66,7 @@ public partial class TaskListWindow : Window
 
     private void ApplyLockState()
     {
-        LockButton.Content = List.IsLocked ? "🔒" : "🔓";
+        LockButton.Content = List.IsLocked ? "\uE72E" : "\uE785";
         LockButton.ToolTip = List.IsLocked ? "已锁定（点此解锁，解锁后可编辑）" : "未锁定（点此锁定，锁定后不可编辑）";
 
         // 锁定：仅关闭编辑（文本框只读）、隐藏删除与添加按钮；勾选仍可用
@@ -84,7 +82,7 @@ public partial class TaskListWindow : Window
 
     private void ApplyHoverState()
     {
-        EyeButton.Content = List.HoverToShow ? "👁" : "🚫";
+        EyeButton.Content = List.HoverToShow ? "\uE890" : "\uED1A";
         EyeButton.ToolTip = List.HoverToShow ? "鼠标移入才显示（点此关闭）" : "始终显示（点此开启悬停）";
 
         if (App.Current?.Settings.ForceShowAll == true)
@@ -186,87 +184,26 @@ public partial class TaskListWindow : Window
     }
 
     public void ApplyBackground()
-    {
-        var o = Math.Clamp(List.Opacity, 0.0, 1.0);
-        try
-        {
-            if (!string.IsNullOrEmpty(List.BackgroundImagePath) && File.Exists(List.BackgroundImagePath))
-            {
-                var bmp = new System.Windows.Media.Imaging.BitmapImage();
-                bmp.BeginInit();
-                bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                bmp.UriSource = new Uri(List.BackgroundImagePath, UriKind.Absolute);
-                bmp.EndInit();
-
-                var stretch = List.BackgroundImageMode switch
-                {
-                    "Center" => System.Windows.Media.Stretch.None,
-                    "Tile" => System.Windows.Media.Stretch.None,
-                    "Stretch" => System.Windows.Media.Stretch.Fill,
-                    _ => System.Windows.Media.Stretch.UniformToFill
-                };
-
-                var brush = new System.Windows.Media.ImageBrush(bmp)
-                {
-                    Stretch = stretch,
-                    Opacity = o
-                };
-                if (List.BackgroundImageMode == "Tile")
-                {
-                    brush.TileMode = System.Windows.Media.TileMode.Tile;
-                    brush.Viewport = new Rect(0, 0, 0.25, 0.25);
-                    brush.ViewportUnits = System.Windows.Media.BrushMappingMode.RelativeToBoundingBox;
-                }
-                else if (List.BackgroundImageMode == "Center")
-                {
-                    brush.AlignmentX = System.Windows.Media.AlignmentX.Center;
-                    brush.AlignmentY = System.Windows.Media.AlignmentY.Center;
-                }
-                RootBorder.Background = brush;
-            }
-            else
-            {
-                var c = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(List.Color);
-                c.A = (byte)(o * 255);
-                RootBorder.Background = new System.Windows.Media.SolidColorBrush(c);
-            }
-
-            RootBorder.BorderBrush = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromArgb((byte)(o * 0x55), 0, 0, 0));
-            TitleBar.Background = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromArgb((byte)(o * 0x22), 0, 0, 0));
-        }
-        catch
-        {
-            RootBorder.Background = new SolidColorBrush(Colors.White);
-        }
-
-        RootBorder.Effect = new DropShadowEffect
-        {
-            Color = Colors.Black,
-            BlurRadius = 12,
-            ShadowDepth = 3,
-            Opacity = 0.3
-        };
-    }
+        => _background?.Apply(List.BackgroundImagePath, List.Color, List.BackgroundImageMode, List.Opacity, Width, Height);
 
     public void ApplyTextStyle()
     {
-        TitleText.Foreground = AppearanceHelper.MakeBrush(List.TextColor);
-        SettingsButton.Foreground = AppearanceHelper.MakeBrush(List.TextColor);
-        CloseButton.Foreground = AppearanceHelper.MakeBrush(List.TextColor);
-        EyeButton.Foreground = AppearanceHelper.MakeBrush(List.TextColor);
-        LockButton.Foreground = AppearanceHelper.MakeBrush(List.TextColor);
+        var foreground = AppearanceHelper.MakeBrush(List.TextColor);
+        TitleText.Foreground = foreground;
+        SettingsButton.Foreground = foreground;
+        CloseButton.Foreground = foreground;
+        EyeButton.Foreground = foreground;
+        LockButton.Foreground = foreground;
 
         // 底部“添加任务”按钮颜色跟随文字色
-        AddTaskButton.Foreground = AppearanceHelper.MakeBrush(List.TextColor);
+        AddTaskButton.Foreground = foreground;
 
         // 任务文本与滚动条主题（ListBox 内 TextBox/删除按钮 的文字色改用 XAML 绑定，避免刷新丢失）
         var textColor = AppearanceHelper.ParseColor(List.TextColor, Colors.Black);
         var bgColor = AppearanceHelper.ParseColor(List.Color, Colors.White);
-        TaskList.Resources["ScrollThumbBrush"] = new SolidColorBrush(textColor);
-        TaskList.Resources["ScrollThumbHoverBrush"] = new SolidColorBrush(textColor);
-        TaskList.Resources["ScrollTrackBrush"] = new SolidColorBrush(bgColor);
+        AppearanceHelper.SetBrush(TaskList.Resources, "ScrollThumbBrush", textColor);
+        AppearanceHelper.SetBrush(TaskList.Resources, "ScrollThumbHoverBrush", textColor);
+        AppearanceHelper.SetBrush(TaskList.Resources, "ScrollTrackBrush", bgColor);
     }
 
     private void Task_CheckedChanged(object sender, RoutedEventArgs e)
@@ -398,6 +335,10 @@ public partial class TaskListWindow : Window
     // 聚焦到指定任务项的文本框（可用于任意层级）
     private void FocusItemTextBox(TaskItem item)
     {
+        // 根任务可能尚未生成容器，先滚动到其所在的根节点再查找文本框。
+        var root = List.Items.FirstOrDefault(ContainsItem);
+        if (root is not null) TaskList.ScrollIntoView(root);
+        bool ContainsItem(TaskItem candidate) => ReferenceEquals(candidate, item) || candidate.SubItems.Any(ContainsItem);
         TaskList.Dispatcher.BeginInvoke(new Action(() =>
         {
             var tb = FindTextBoxForItem(item);
@@ -461,9 +402,12 @@ public partial class TaskListWindow : Window
     private static void EnsureSubSorting(ObservableCollection<TaskItem> items)
     {
         var view = CollectionViewSource.GetDefaultView(items);
-        view.SortDescriptions.Clear();
-        view.SortDescriptions.Add(new SortDescription(nameof(TaskItem.IsDone), ListSortDirection.Ascending));
-        view.SortDescriptions.Add(new SortDescription(nameof(TaskItem.Order), ListSortDirection.Descending));
+        using (view.DeferRefresh())
+        {
+            view.SortDescriptions.Clear();
+            view.SortDescriptions.Add(new SortDescription(nameof(TaskItem.IsDone), ListSortDirection.Ascending));
+            view.SortDescriptions.Add(new SortDescription(nameof(TaskItem.Order), ListSortDirection.Descending));
+        }
         foreach (var item in items)
             if (item.SubItems.Count > 0)
                 EnsureSubSorting(item.SubItems);
@@ -485,6 +429,7 @@ public partial class TaskListWindow : Window
 
     protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
     {
+        _background?.Resize();
         Persist();
         base.OnRenderSizeChanged(sizeInfo);
     }

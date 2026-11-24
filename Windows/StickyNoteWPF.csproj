@@ -21,6 +21,7 @@
     <Content Include="Resources\StickyNote.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Resources\Icons\LICENSE-LUCIDE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- 发布后清理历史目录并复制图标资源。 -->

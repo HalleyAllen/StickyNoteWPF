@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="VisualPreview\**\*.cs" />
     <ProjectReference Include="..\Server\StickyNote.Sync.Server.csproj" />
     <Compile Include="..\Windows\Services\SyncClient.cs" Link="SyncClient.cs" />
   </ItemGroup>

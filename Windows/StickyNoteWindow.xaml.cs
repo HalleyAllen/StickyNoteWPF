@@ -14,6 +14,7 @@ namespace StickyNoteWPF;
 public partial class StickyNoteWindow : Window
 {
     public StickyNoteModel Note { get; }
+    private readonly NoteBackground _background;
 
     public StickyNoteWindow(StickyNoteModel note)
     {
@@ -24,6 +25,7 @@ public partial class StickyNoteWindow : Window
         Top = note.Top;
         Width = note.Width;
         Height = note.Height;
+        _background = new NoteBackground(RootBorder, TitleBar, ApplyBackground);
         NoteTextBox.Text = note.Text;
         // 兼容旧数据：若字体大小无效（<=0），回退到默认字体大小并写回模型
         if (note.FontSize <= 0)
@@ -39,10 +41,63 @@ public partial class StickyNoteWindow : Window
         EyeButton.Click += (_, _) => ToggleHover();
         LockButton.Click += (_, _) => ToggleLock();
         NoteTextBox.TextChanged += (_, _) => { Note.Text = NoteTextBox.Text; Persist(); };
+        NoteTextBox.PreviewKeyDown += NoteTextBox_PreviewKeyDown;
+        // 最窄便签优先保留全部操作按钮，避免标题只剩下一个被截断的省略号。
+        SizeChanged += (_, _) => TitleText.Visibility = ActualWidth < 200 ? Visibility.Hidden : Visibility.Visible;
 
         // 鼠标悬停显示：用全局光标坐标判定是否落在便签矩形内（Opacity=0 时窗口不可命中，需轮询）
         ApplyHoverState();
-        Closed += (_, _) => _hoverTimer?.Stop();
+        Closed += (_, _) => { _hoverTimer?.Stop(); _background.Dispose(); };
+    }
+
+    private void ListButton_Click(object sender, RoutedEventArgs e)
+    {
+        ListButton.ContextMenu.PlacementTarget = ListButton;
+        ListButton.ContextMenu.IsOpen = true;
+    }
+
+    private void ListMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        var kind = NoteListEditor.GetKind(NoteTextBox.Text, NoteTextBox.SelectionStart, NoteTextBox.SelectionLength);
+        OrderedListMenu.IsChecked = kind == NoteListKind.Ordered;
+        UnorderedListMenu.IsChecked = kind == NoteListKind.Unordered;
+    }
+
+    private void ListMenu_Click(object sender, RoutedEventArgs e)
+    {
+        if (Note.IsLocked || sender is not System.Windows.Controls.MenuItem { Tag: string tag }
+            || !Enum.TryParse<NoteListKind>(tag, out var kind)) return;
+        ApplyListEdit(NoteListEditor.Toggle(NoteTextBox.Text, NoteTextBox.SelectionStart, NoteTextBox.SelectionLength, kind));
+    }
+
+    private void NoteTextBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (Note.IsLocked) return;
+        if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key is Key.D7 or Key.D8)
+        {
+            ApplyListEdit(NoteListEditor.Toggle(NoteTextBox.Text, NoteTextBox.SelectionStart, NoteTextBox.SelectionLength,
+                e.Key == Key.D7 ? NoteListKind.Ordered : NoteListKind.Unordered));
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None
+            && NoteListEditor.Continue(NoteTextBox.Text, NoteTextBox.SelectionStart, NoteTextBox.SelectionLength) is { } edit)
+        {
+            ApplyListEdit(edit);
+            e.Handled = true;
+        }
+    }
+
+    private void ApplyListEdit(NoteTextEdit edit)
+    {
+        NoteTextBox.BeginChange();
+        try
+        {
+            NoteTextBox.Select(edit.Start, edit.Length);
+            NoteTextBox.SelectedText = edit.Text;
+            NoteTextBox.Select(edit.SelectionStart, edit.SelectionLength);
+        }
+        finally { NoteTextBox.EndChange(); }
+        NoteTextBox.Focus();
     }
 
     // 眼睛按钮：切换该便签是否启用“鼠标移入才显示”
@@ -64,16 +119,17 @@ public partial class StickyNoteWindow : Window
     // 根据当前便签的 IsLocked 刷新锁图标与文本框只读状态
     private void ApplyLockState()
     {
-        LockButton.Content = Note.IsLocked ? "🔒" : "🔓";
+        LockButton.Content = Note.IsLocked ? "\uE72E" : "\uE785";
         LockButton.ToolTip = Note.IsLocked ? "已锁定（点此解锁，解锁后可编辑）" : "未锁定（点此锁定，锁定后不可编辑）";
         NoteTextBox.IsReadOnly = Note.IsLocked;
+        ListButton.IsEnabled = !Note.IsLocked;
         NoteTextBox.CaretBrush = Note.IsLocked ? System.Windows.Media.Brushes.Transparent : MakeBrush(Note.TextColor);
     }
 
     // 根据当前便签的 HoverToShow 应用悬停显隐状态，并刷新眼睛图标
     private void ApplyHoverState()
     {
-        EyeButton.Content = Note.HoverToShow ? "👁" : "🚫";
+        EyeButton.Content = Note.HoverToShow ? "\uE890" : "\uED1A";
         EyeButton.ToolTip = Note.HoverToShow ? "鼠标移入才显示（点此关闭）" : "始终显示（点此开启悬停）";
 
         // 全局“全部显示”开启时，无论单个便签开关如何，一律强制不透明且始终显示
@@ -165,7 +221,6 @@ public partial class StickyNoteWindow : Window
     {
         ApplyBackground();
         ApplyTextStyle();
-        ApplyScrollBarTheme();
         ApplyLockState();
         ApplyTitle();
     }
@@ -188,74 +243,21 @@ public partial class StickyNoteWindow : Window
     // 关键：图片模式下 RootBorder.Background 直接设为 ImageBrush，
     // 不再叠加纯色层，否则透明度拉满时纯色不透明会盖住图片。
     public void ApplyBackground()
-    {
-        var o = Math.Clamp(Note.Opacity, 0.0, 1.0);
-        try
-        {
-            if (!string.IsNullOrEmpty(Note.BackgroundImagePath) && File.Exists(Note.BackgroundImagePath))
-            {
-                var bmp = new System.Windows.Media.Imaging.BitmapImage();
-                bmp.BeginInit();
-                bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                bmp.UriSource = new Uri(Note.BackgroundImagePath, UriKind.Absolute);
-                bmp.EndInit();
-
-                RootBorder.Background = new System.Windows.Media.ImageBrush(bmp)
-                {
-                    Stretch = System.Windows.Media.Stretch.UniformToFill,
-                    Opacity = o
-                };
-            }
-            else
-            {
-                var c = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(Note.Color);
-                c.A = (byte)(o * 255);
-                RootBorder.Background = new System.Windows.Media.SolidColorBrush(c);
-            }
-
-            // 边框与标题栏同样随透明度比例变化（保持相对浓淡）
-            RootBorder.BorderBrush = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromArgb((byte)(o * 0x55), 0, 0, 0));
-            TitleBar.Background = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromArgb((byte)(o * 0x22), 0, 0, 0));
-        }
-        catch
-        {
-            // 解析失败回退纯色
-            try
-            {
-                var c = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(Note.Color);
-                c.A = (byte)(o * 255);
-                RootBorder.Background = new System.Windows.Media.SolidColorBrush(c);
-            }
-            catch { }
-        }
-
-        ApplyShadow();
-    }
-
-    private void ApplyShadow()
-    {
-        RootBorder.Effect = new DropShadowEffect
-        {
-            Color = System.Windows.Media.Colors.Black,
-            BlurRadius = 12,
-            ShadowDepth = 3,
-            Opacity = 0.3
-        };
-    }
+        => _background?.Apply(Note.BackgroundImagePath, Note.Color, "Fill", Note.Opacity, Width, Height);
 
     // 应用便签文字 / 标题文字 / 按钮 的颜色（来自该便签自身存储）
     public void ApplyTextStyle()
     {
+        var foreground = MakeBrush(Note.TextColor);
         NoteTextBox.FontSize = Note.FontSize > 0 ? Note.FontSize : (App.Current?.Settings.DefaultFontSize ?? 14);
-        NoteTextBox.Foreground = MakeBrush(Note.TextColor);
-        NoteTextBox.CaretBrush = MakeBrush(Note.TextColor);
-        TitleText.Foreground = MakeBrush(Note.TextColor);
-        SettingsButton.Foreground = MakeBrush(Note.TextColor);
-        CloseButton.Foreground = MakeBrush(Note.TextColor);
-        EyeButton.Foreground = MakeBrush(Note.TextColor);
-        LockButton.Foreground = MakeBrush(Note.TextColor);
+        NoteTextBox.Foreground = foreground;
+        NoteTextBox.CaretBrush = foreground;
+        TitleText.Foreground = foreground;
+        SettingsButton.Foreground = foreground;
+        CloseButton.Foreground = foreground;
+        EyeButton.Foreground = foreground;
+        LockButton.Foreground = foreground;
+        ListButton.Foreground = foreground;
 
         ApplyScrollBarTheme();
     }
@@ -263,122 +265,16 @@ public partial class StickyNoteWindow : Window
     // 便签文本区滚动条跟随主题：滑块/箭头用文字色，轨道用背景色（均按便签透明度半透明），
     // 改便签主题时由 RefreshFromModel / ApplyTextStyle 自动同步，无需单独设置。
     private void ApplyScrollBarTheme()
-    {
-        try
-        {
-            var textColor = ParseColor(Note.TextColor, System.Windows.Media.Colors.Black);
-            var bgColor = ParseColor(Note.Color, System.Windows.Media.Colors.White);
-
-            // 滚动条只看颜色、不随便签透明度变化：
-            // 轨道（背景）= 便签主题背景色，滑块（Thumb）= 便签文字色，均为实色
-            var thumb = textColor;
-            var track = bgColor;
-            var hover = textColor;
-
-            // 这些画刷供滚动条模板以 DynamicResource 引用，主题变化时替换即可刷新
-            NoteTextBox.Resources["ScrollThumbBrush"] = new System.Windows.Media.SolidColorBrush(thumb);
-            NoteTextBox.Resources["ScrollThumbHoverBrush"] = new System.Windows.Media.SolidColorBrush(hover);
-            NoteTextBox.Resources["ScrollTrackBrush"] = new System.Windows.Media.SolidColorBrush(track);
-
-            // 方案（最可靠 + 经标准模板验证可显隐）：
-            // 自定义 TextBox 模板（提供 PART_ContentHost=ScrollViewer），并为该 ScrollViewer 自定义模板。
-            // ScrollViewer 模板采用【标准完整结构】：
-            //   - ScrollContentPresenter（x:Name=PART_ScrollContentPresenter）承载内容，保证 ExtentHeight 正确计算
-            //   - 垂直 ScrollBar（x:Name=PART_VerticalScrollBar）绑定 ScrollableHeight/ViewportHeight/VerticalOffset/
-            //     ComputedVerticalScrollBarVisibility，内容溢出时自动出现
-            //   - 两个角落 Corner（x:Name=PART_ScrollCorner 等）保持标准
-            // 垂直 ScrollBar 显式引用同模板 Resources 中的细样式 NoteScrollBarStyle。
-            // 颜色用 DynamicResource 引用 NoteTextBox.Resources 的画刷，主题变化时替换即可实时刷新。
-            const string templateXaml =
-                "<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' " +
-                "xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' " +
-                "xmlns:s='clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework' " +
-                "TargetType='{x:Type TextBox}'>" +
-                "<Border x:Name='PART_Border' Background='{TemplateBinding Background}' " +
-                "BorderBrush='{TemplateBinding BorderBrush}' BorderThickness='{TemplateBinding BorderThickness}' " +
-                "SnapsToDevicePixels='True'>" +
-                "<ScrollViewer x:Name='PART_ContentHost' Margin='0' Padding='{TemplateBinding Padding}' " +
-                "Focusable='False' VerticalScrollBarVisibility='Auto' HorizontalScrollBarVisibility='Disabled'>" +
-                "<ScrollViewer.Template>" +
-                "<ControlTemplate TargetType='{x:Type ScrollViewer}'>" +
-                "<ControlTemplate.Resources>" +
-                "<Style x:Key='NoteScrollBarStyle' TargetType='{x:Type ScrollBar}'>" +
-                "<Setter Property='Width' Value='5'/>" +
-                "<Setter Property='Background' Value='{DynamicResource ScrollTrackBrush}'/>" +
-                "<Setter Property='Template'>" +
-                "<Setter.Value>" +
-                "<ControlTemplate TargetType='{x:Type ScrollBar}'>" +
-                "<Track x:Name='PART_Track' Width='5' HorizontalAlignment='Stretch' IsDirectionReversed='True'>" +
-                "<Track.DecreaseRepeatButton>" +
-                "<RepeatButton Command='{x:Static ScrollBar.LineUpCommand}' Focusable='False' Opacity='0'>" +
-                "<RepeatButton.Template>" +
-                "<ControlTemplate TargetType='{x:Type ButtonBase}'>" +
-                "<Border Background='Transparent'/>" +
-                "</ControlTemplate></RepeatButton.Template>" +
-                "</RepeatButton>" +
-                "</Track.DecreaseRepeatButton>" +
-                "<Track.Thumb>" +
-                "<Thumb>" +
-                "<Thumb.Template>" +
-                "<ControlTemplate TargetType='{x:Type Thumb}'>" +
-                "<Rectangle Name='Rect' Width='5' Fill='{DynamicResource ScrollThumbBrush}' RadiusX='3' RadiusY='3'/>" +
-                "<ControlTemplate.Triggers>" +
-                "<Trigger Property='IsMouseOver' Value='True'>" +
-                "<Setter TargetName='Rect' Property='Fill' Value='{DynamicResource ScrollThumbHoverBrush}'/>" +
-                "</Trigger></ControlTemplate.Triggers>" +
-                "</ControlTemplate></Thumb.Template>" +
-                "</Thumb>" +
-                "</Track.Thumb>" +
-                "<Track.IncreaseRepeatButton>" +
-                "<RepeatButton Command='{x:Static ScrollBar.LineDownCommand}' Focusable='False' Opacity='0'>" +
-                "<RepeatButton.Template>" +
-                "<ControlTemplate TargetType='{x:Type ButtonBase}'>" +
-                "<Border Background='Transparent'/>" +
-                "</ControlTemplate></RepeatButton.Template>" +
-                "</RepeatButton>" +
-                "</Track.IncreaseRepeatButton>" +
-                "</Track>" +
-                "</ControlTemplate>" +
-                "</Setter.Value>" +
-                "</Setter>" +
-                "</Style>" +
-                "</ControlTemplate.Resources>" +
-                "<Grid Background='Transparent'>" +
-                "<Grid.ColumnDefinitions><ColumnDefinition Width='*'/><ColumnDefinition Width='Auto'/></Grid.ColumnDefinitions>" +
-                "<Grid.RowDefinitions><RowDefinition Height='*'/><RowDefinition Height='Auto'/></Grid.RowDefinitions>" +
-                "<ScrollContentPresenter x:Name='PART_ScrollContentPresenter' Grid.Column='0' Grid.Row='0' " +
-                "Content='{TemplateBinding Content}' ContentTemplate='{TemplateBinding ContentTemplate}' " +
-                "CanContentScroll='{TemplateBinding CanContentScroll}'/>" +
-                "<ScrollBar x:Name='PART_VerticalScrollBar' Grid.Column='1' Grid.Row='0' Orientation='Vertical' " +
-                "Style='{StaticResource NoteScrollBarStyle}' " +
-                "Maximum='{TemplateBinding ScrollableHeight}' ViewportSize='{TemplateBinding ViewportHeight}' " +
-                "Value='{TemplateBinding VerticalOffset}' " +
-                "Visibility='{TemplateBinding ComputedVerticalScrollBarVisibility}'/>" +
-                "<DockPanel Grid.Column='0' Grid.Row='1' LastChildFill='False' Background='Transparent'>" +
-                "<Rectangle x:Name='PART_ScrollCorner' DockPanel.Dock='Right' Width='5' Height='5' Fill='Transparent'/>" +
-                "</DockPanel>" +
-                "</Grid>" +
-                "</ControlTemplate>" +
-                "</ScrollViewer.Template>" +
-                "</ScrollViewer>" +
-                "</Border>" +
-                "</ControlTemplate>";
-            NoteTextBox.Template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(templateXaml);
-            NoteTextBox.ApplyTemplate();
-        }
-        catch (Exception ex)
-        {
-            // 滚动条样式失败不应影响便签正常使用，静默忽略
-            System.Diagnostics.Debug.WriteLine("ApplyScrollBarTheme failed: " + ex.Message);
-        }
-    }
+        => AppearanceHelper.ApplyScrollBarTheme(NoteTextBox, Note.TextColor, Note.Color);
 
     private static System.Windows.Media.Brush MakeBrush(string hex)
     {
         try
         {
-            return new System.Windows.Media.SolidColorBrush(
+            var brush = new System.Windows.Media.SolidColorBrush(
                 (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
+            brush.Freeze();
+            return brush;
         }
         catch
         {
@@ -414,6 +310,7 @@ public partial class StickyNoteWindow : Window
 
     protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
     {
+        _background?.Resize();
         Note.Width = Width;
         Note.Height = Height;
         Persist();

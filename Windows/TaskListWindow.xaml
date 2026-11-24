@@ -75,7 +75,7 @@
         <!-- 任务行模板（递归：子任务复用同一模板，支持多层嵌套） -->
         <DataTemplate x:Key="TaskItemTemplate" DataType="{x:Type models:TaskItem}">
             <StackPanel>
-                <Grid MinHeight="26">
+                <Grid MinHeight="32">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="20"/>
                         <ColumnDefinition Width="Auto"/>
@@ -136,7 +136,7 @@
                                         Value="{Binding ElementName=Root, Path=List.IsLocked}"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsDone}" Value="True">
-                                        <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                        <Setter Property="TextDecorations" Value="Strikethrough"/><Setter Property="Opacity" Value="0.65"/>
                                         <Setter Property="Foreground"
                                                 Value="{Binding ElementName=Root, Path=List.TextColor}"/>
                                     </DataTrigger>
@@ -146,7 +146,7 @@
                     </TextBox>
 
                     <!-- 添加子任务 -->
-                    <Button Grid.Column="3" Content="＋" Width="22" Height="22"
+                    <Button Padding="0" FontFamily="{StaticResource UiIconFont}" Grid.Column="3" Content="&#xE710;" Width="22" Height="22"
                             Background="Transparent" BorderThickness="0" Cursor="Hand"
                             FontSize="12" ToolTip="添加子任务" VerticalAlignment="Center"
                             Foreground="{Binding ElementName=Root, Path=List.TextColor}"
@@ -164,7 +164,7 @@
                     </Button>
 
                     <!-- 删除任务 -->
-                    <Button Grid.Column="4" Content="🗑" Width="22" Height="22"
+                    <Button Padding="0" FontFamily="{StaticResource UiIconFont}" Grid.Column="4" Content="&#xE74D;" Width="22" Height="22"
                             Background="Transparent" BorderThickness="0" Cursor="Hand"
                             FontSize="11" ToolTip="删除任务" VerticalAlignment="Center"
                             Foreground="{Binding ElementName=Root, Path=List.TextColor}"
@@ -201,7 +201,7 @@
             </Grid.RowDefinitions>
 
             <!-- 标题栏（鼠标拖动移动窗口） -->
-            <Grid x:Name="TitleBar" Grid.Row="0" Height="32"
+            <Grid x:Name="TitleBar" Grid.Row="0" Height="34"
                   Background="Transparent" Cursor="SizeAll">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -218,7 +218,7 @@
                            TextTrimming="CharacterEllipsis" Text="任务清单"/>
 
                 <!-- 添加任务 -->
-                <Button x:Name="AddTaskButton" Grid.Column="1" Content="＋"
+                <Button Style="{StaticResource UiIconButton}" Padding="0" FontFamily="{StaticResource UiIconFont}" x:Name="AddTaskButton" Grid.Column="1" Content="&#xE710;"
                         Width="32" Height="32" Background="Transparent"
                         Foreground="#FF222222" BorderThickness="0" Cursor="Hand"
                         FontSize="16" FontWeight="Bold" ToolTip="添加任务"
@@ -226,40 +226,42 @@
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
                 <!-- 锁定 -->
-                <Button x:Name="LockButton" Grid.Column="2" Content="🔓"
+                <Button Style="{StaticResource UiIconButton}" Padding="0" FontFamily="{StaticResource UiIconFont}" x:Name="LockButton" Grid.Column="2" Content="&#xE785;"
                         Width="32" Height="32" Background="Transparent"
                         Foreground="#FF222222" BorderThickness="0" Cursor="Hand"
                         FontSize="14" ToolTip="未锁定（点此锁定，锁定后不可编辑）"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
                 <!-- 悬停显示 -->
-                <Button x:Name="EyeButton" Grid.Column="3" Content="🚫"
+                <Button Style="{StaticResource UiIconButton}" Padding="0" FontFamily="{StaticResource UiIconFont}" x:Name="EyeButton" Grid.Column="3" Content="&#xED1A;"
                         Width="32" Height="32" Background="Transparent"
                         Foreground="#FF222222" BorderThickness="0" Cursor="Hand"
                         FontSize="14" ToolTip="始终显示（点此开启悬停）"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
                 <!-- 设置 -->
-                <Button x:Name="SettingsButton" Grid.Column="4" Content="⚙"
+                <Button Style="{StaticResource UiIconButton}" Padding="0" FontFamily="{StaticResource UiIconFont}" x:Name="SettingsButton" Grid.Column="4" Content="&#xE713;"
                         Width="32" Height="32" Background="Transparent"
                         Foreground="#FF222222" BorderThickness="0" Cursor="Hand"
                         FontSize="15" ToolTip="设置"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
                 <!-- 关闭 -->
-                <Button x:Name="CloseButton" Grid.Column="5" Content="✕"
+                <Button Style="{StaticResource UiIconButton}" Padding="0" FontFamily="{StaticResource UiIconFont}" x:Name="CloseButton" Grid.Column="5" Content="&#xE8BB;"
                         Width="40" Height="32" Background="Transparent"
                         Foreground="#FF222222" BorderThickness="0" Cursor="Hand"
                         FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
             </Grid>
 
             <!-- 任务列表 -->
-            <!-- CanContentScroll=False：按像素滚动，避免虚拟化按"项"跳跃（滚轮/滑块细腻） -->
-            <ListBox x:Name="TaskList" Grid.Row="1" Margin="8,4,2,4"
+            <!-- 像素滚动仍保留虚拟化，避免长清单为所有离屏任务创建编辑控件。 -->
+            <ListBox x:Name="TaskList" Grid.Row="1" Margin="12,6,6,10"
                      Background="Transparent" BorderThickness="0"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
-                     ScrollViewer.CanContentScroll="False">
+                     ScrollViewer.CanContentScroll="True"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.ScrollUnit="Pixel">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>

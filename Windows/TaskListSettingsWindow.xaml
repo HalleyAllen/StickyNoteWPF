@@ -8,35 +8,36 @@
         WindowStyle="None"
         ResizeMode="CanResize"
         MinHeight="380" MinWidth="320"
-        Background="Transparent">
+        Background="Transparent" FontFamily="Segoe UI, Microsoft YaHei" FontSize="14" Foreground="{DynamicResource UiText}" UseLayoutRounding="True">
+    <Window.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries><ResourceDictionary Source="Themes/Dialog.xaml"/></ResourceDictionary.MergedDictionaries></ResourceDictionary></Window.Resources>
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome GlassFrameThickness="0" CornerRadius="0"
                             ResizeBorderThickness="6" CaptionHeight="40"
                             UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
 
-    <Border Background="#FFF3F3F3" BorderBrush="#FF2D2D30" BorderThickness="1">
+    <Border Background="{DynamicResource UiCanvas}" BorderBrush="{DynamicResource UiLine}" BorderThickness="1">
         <DockPanel LastChildFill="True">
             <Grid x:Name="TitleBar" DockPanel.Dock="Top" Height="40"
-                  Background="#FF2D2D30">
+                  Background="{DynamicResource UiSurface}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="⚙ 任务清单设置" Foreground="White"
+                <TextBlock Grid.Column="0" Text="任务清单设置" Foreground="{DynamicResource UiText}"
                            FontSize="15" FontWeight="SemiBold"
                            VerticalAlignment="Center" Margin="12,0,0,0"/>
-                <Button x:Name="CloseButton" Grid.Column="1" Content="✕"
+                <Button x:Name="CloseButton" Grid.Column="1" Style="{StaticResource UiIconButton}" Content="&#xE8BB;"
                         Width="40" Height="40" Background="Transparent"
-                        Foreground="White" BorderThickness="0" Cursor="Hand"
+                        Foreground="{DynamicResource UiText}" BorderThickness="0" Cursor="Hand"
                         FontSize="15" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
             </Grid>
 
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="20,16" Orientation="Vertical">
                 <TextBlock Text="清单标题（用于区分）" FontSize="14" Margin="0,0,0,8"/>
-                <TextBox x:Name="TitleBox" Height="30" Padding="6,3"
-                         FontSize="14" BorderThickness="1" BorderBrush="#FFAAAAAA"
+                <TextBox x:Name="TitleBox" Height="34" Padding="6,3"
+                         FontSize="14" BorderThickness="1" BorderBrush="{DynamicResource UiLine}"
                          TextChanged="TitleBox_TextChanged" Margin="0,0,0,18"/>
 
                 <CheckBox x:Name="ShowCompletedCheck" Content="显示已完成任务"
@@ -60,11 +61,11 @@
                                VerticalAlignment="Center"/>
                     <Button x:Name="PickImageButton" Grid.Column="1" Content="选择图片"
                             Height="28" Padding="10,0" Margin="0,0,8,0"
-                            Background="#FF2D2D30" Foreground="White" BorderThickness="0"
+                            Background="{DynamicResource UiLine}" Foreground="{DynamicResource UiText}" BorderThickness="0"
                             Cursor="Hand" Click="PickImageButton_Click"/>
                     <Button x:Name="ClearImageButton" Grid.Column="2" Content="清除"
                             Height="28" Padding="10,0"
-                            Background="Transparent" Foreground="#C33" BorderBrush="#CCC"
+                            Background="Transparent" Foreground="{DynamicResource UiDanger}" BorderBrush="{DynamicResource UiLine}"
                             BorderThickness="1" Cursor="Hand" Click="ClearImageButton_Click"/>
                 </Grid>
 
@@ -74,7 +75,7 @@
                 <DockPanel LastChildFill="True" Margin="0,0,0,6">
                     <TextBlock Text="字体大小" FontSize="14" VerticalAlignment="Center"/>
                     <TextBlock x:Name="FontSizeValue" DockPanel.Dock="Right"
-                               Text="16" FontSize="13" Foreground="#666"
+                               Text="16" FontSize="13" Foreground="{DynamicResource UiMuted}"
                                VerticalAlignment="Center" HorizontalAlignment="Right"/>
                 </DockPanel>
                 <Slider x:Name="FontSizeSlider" Minimum="8" Maximum="48"
@@ -85,7 +86,7 @@
                 <DockPanel LastChildFill="True" Margin="0,0,0,6">
                     <TextBlock Text="窗口透明度" FontSize="14" VerticalAlignment="Center"/>
                     <TextBlock x:Name="OpacityValue" DockPanel.Dock="Right"
-                               Text="100%" FontSize="13" Foreground="#666"
+                               Text="100%" FontSize="13" Foreground="{DynamicResource UiMuted}"
                                VerticalAlignment="Center" HorizontalAlignment="Right"/>
                 </DockPanel>
                 <Slider x:Name="OpacitySlider" Minimum="0" Maximum="1.0"

@@ -1,0 +1,14 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="UiCanvas" Color="#191C22"/>
+    <SolidColorBrush x:Key="UiSurface" Color="#242830"/>
+    <SolidColorBrush x:Key="UiSidebar" Color="#20242B"/>
+    <SolidColorBrush x:Key="UiText" Color="#E8ECF2"/>
+    <SolidColorBrush x:Key="UiMuted" Color="#A6B0BF"/>
+    <SolidColorBrush x:Key="UiLine" Color="#3B4350"/>
+    <SolidColorBrush x:Key="UiAccent" Color="#91B8FF"/>
+    <SolidColorBrush x:Key="UiSelected" Color="#363E4B"/>
+    <SolidColorBrush x:Key="UiDanger" Color="#FF9292"/>
+    <SolidColorBrush x:Key="UiAccentText" Color="#16223A"/>
+    <DropShadowEffect x:Key="UiCardShadow" Color="#000000" BlurRadius="14" ShadowDepth="3" Direction="270" Opacity="0.55" RenderingBias="Quality"/>
+</ResourceDictionary>

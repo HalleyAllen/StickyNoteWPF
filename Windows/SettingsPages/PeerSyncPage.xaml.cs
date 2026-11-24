@@ -1,3 +1,4 @@
+using System.Windows.Controls;
 using System.Net;
 using System.Windows;
 using System.Windows.Threading;
@@ -5,30 +6,17 @@ using StickyNoteWPF.Sync;
 
 namespace StickyNoteWPF;
 
-public partial class PeerSyncWindow : Window
+public partial class PeerSyncPage : System.Windows.Controls.UserControl
 {
     private PeerSyncHost? _host;
-    private bool _busy, _receiving, _stopping, _allowClose;
+    private bool _busy, _receiving, _stopping;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
 
-    public PeerSyncWindow()
+    public PeerSyncPage()
     {
         InitializeComponent();
         AddressBox.ItemsSource = PeerInvitation.LocalAddresses();
         AddressBox.SelectedIndex = 0;
-        Closing += async (_, e) =>
-        {
-            if (_allowClose) return;
-            if (_busy || _receiving || _stopping) { e.Cancel = true; return; }
-            if (_host is not null)
-            {
-                e.Cancel = true;
-                await StopHostAsync();
-                _allowClose = true;
-                Close();
-            }
-        };
-        Closed += (_, _) => _timer.Stop();
         _timer.Tick += async (_, _) =>
         {
             if (_host is null || _stopping) return;
@@ -36,6 +24,9 @@ public partial class PeerSyncWindow : Window
             else HostStatus.Text = $"正在接收，配对码有效至 {_host.Invitation.ExpiresAt.ToLocalTime():HH:mm:ss}";
         };
     }
+
+    public bool IsBusy => _busy || _receiving || _stopping;
+    public Task ClosePageAsync() => StopHostAsync();
 
     private void Start_Click(object sender, RoutedEventArgs e)
     {
@@ -69,7 +60,7 @@ public partial class PeerSyncWindow : Window
         {
             if (SnapshotTools.Hash(App.Current.CaptureSyncData()) != expected)
                 throw new PeerSyncException("接收设备的数据已变化，请重新读取后再同步。");
-            var answer = System.Windows.MessageBox.Show(this,
+            var answer = System.Windows.MessageBox.Show(Window.GetWindow(this)!,
                 $"已配对设备请求用 {data.Notes.Count} 张便签、{data.TaskLists.Count} 个清单替换本机完整同步数据。\n\n替换前会备份本机数据。是否接收？",
                 "接收设备数据", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
             ct.ThrowIfCancellationRequested();
@@ -97,7 +88,7 @@ public partial class PeerSyncWindow : Window
             if (SnapshotTools.Hash(App.Current.CaptureSyncData()) != local.Version)
                 throw new PeerSyncException("连接期间本机内容已修改，请重新同步。");
             if (local.Version == remote.Version) { StatusText.Text = "两台设备的数据已经一致。"; return; }
-            var answer = System.Windows.MessageBox.Show(this,
+            var answer = System.Windows.MessageBox.Show(Window.GetWindow(this)!,
                 $"本机：{local.Data.Notes.Count} 张便签、{local.Data.TaskLists.Count} 个清单。\n对方：{remote.Data.Notes.Count} 张便签、{remote.Data.TaskLists.Count} 个清单。\n\n请选择保留哪一端的完整同步数据（不会合并）：\n\n“是”：发送本机数据，对方确认后替换。\n“否”：接收对方数据，备份后替换本机。\n“取消”：不做修改。",
                 "选择设备同步方向", MessageBoxButton.YesNoCancel, MessageBoxImage.Question, MessageBoxResult.Cancel);
             if (answer == MessageBoxResult.Cancel) { StatusText.Text = "已取消，两台设备的数据未替换。"; return; }

@@ -25,6 +25,7 @@ public partial class App : System.Windows.Application
     private readonly Dictionary<Guid, StickyNoteWindow> _openWindows = new();
     private readonly Dictionary<Guid, TaskListWindow> _openTaskLists = new();
     private MainWindow? _manager;
+    private SettingsWindow? _settingsWindow;
     private TrayIconService? _tray;
     private bool _isExiting;
     private bool _applyingSync;
@@ -67,6 +68,7 @@ public partial class App : System.Windows.Application
         base.OnStartup(e);
 
         Settings = AppSettings.Load();
+        ThemeManager.Apply(Settings.DarkMode);
         var data = NoteStore.Load();
         _notes = data.Notes;
         _taskLists = data.TaskLists;
@@ -181,22 +183,27 @@ public partial class App : System.Windows.Application
 
     // 主设置只作为新建便签的默认值，已创建的便签保留各自样式（见 CreateNote / StickyNoteWindow）
 
-    public void OpenSettings()
+    public void OpenSettings(SettingsSection section = SettingsSection.General)
     {
-        var w = new SettingsWindow(Settings);
+        if (_settingsWindow is not null)
+        {
+            _settingsWindow.SelectSection(section);
+            _settingsWindow.Activate();
+            return;
+        }
+        var w = new SettingsWindow(Settings, section);
+        _settingsWindow = w;
+        w.Closed += (_, _) => _settingsWindow = null;
         if (_manager != null)
             w.Owner = _manager;
         w.ShowDialog();
     }
 
     // 默认外观：按入口类型单独打开 —— forTaskOnly=true 只设置新建任务清单的默认，
-    // 反之只设置新建便利贴的默认，两套互不影响（见 DefaultAppearanceWindow）
+    // 反之只设置新建便利贴的默认，两套互不影响；入口跳到统一设置的对应页。
     public void OpenDefaultAppearance(bool forTaskOnly)
     {
-        var w = new DefaultAppearanceWindow(forTaskOnly);
-        if (_manager != null)
-            w.Owner = _manager;
-        w.ShowDialog();
+        OpenSettings(forTaskOnly ? SettingsSection.TaskAppearance : SettingsSection.NoteAppearance);
     }
 
     public void OpenNoteSettings(StickyNoteWindow noteWindow)

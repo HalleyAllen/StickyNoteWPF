@@ -1,442 +1,691 @@
-﻿<Window x:Class="StickyNoteWPF.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:StickyNoteWPF"
-        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        mc:Ignorable="d"
-        Title="便利贴管理" Height="480" Width="600"
-        MinHeight="320" MinWidth="420"
-        WindowStartupLocation="CenterScreen"
-        Icon="pack://application:,,,/Resources/StickyNote.png"
-        WindowStyle="None"
-        ResizeMode="CanResize"
-        Background="Transparent">
+<Window
+    x:Class="StickyNoteWPF.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:StickyNoteWPF"
+    xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+    Title="便利贴管理"
+    Width="860"
+    Height="600"
+    MinWidth="620"
+    MinHeight="420"
+    WindowStartupLocation="CenterScreen"
+    WindowStyle="None"
+    ResizeMode="CanResize"
+    FontFamily="Segoe UI, Microsoft YaHei"
+    FontSize="14"
+    Foreground="{DynamicResource UiText}"
+    UseLayoutRounding="True"
+    Background="{DynamicResource UiCanvas}"
+    Icon="pack://application:,,,/Resources/StickyNote.png">
     <Window.Resources>
-        <local:TitleFallbackConverter x:Key="TitleFallback"/>
-        <local:ContrastTextConverter x:Key="ContrastText"/>
-        <local:TaskProgressConverter x:Key="TaskProgress"/>
-
-        <!-- 细滚动条样式：宽 5px、圆形滑块，参考便利贴 -->
-        <Style TargetType="{x:Type ScrollBar}">
-            <Setter Property="Width" Value="5"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Template">
+        <local:CardBrushConverter x:Key="CardBrush"/>
+        <local:NotePreviewConverter x:Key="NotePreview"/>
+        <local:TitleFallbackConverter
+            x:Key="TitleFallback" />
+        <local:TaskProgressConverter
+            x:Key="TaskProgress" />
+        <ItemsPanelTemplate
+            x:Key="CardViewPanel">
+            <local:VirtualizingCardPanel ItemWidth="242" ItemHeight="188"/>
+        </ItemsPanelTemplate>
+        <ItemsPanelTemplate
+            x:Key="RowViewPanel">
+            <VirtualizingStackPanel />
+        </ItemsPanelTemplate>
+        <Style
+            x:Key="ItemTitle"
+            TargetType="TextBox">
+            <Setter Property="CaretBrush" Value="{Binding Foreground, RelativeSource={RelativeSource Self}}"/>
+            <Setter
+                Property="FontWeight"
+                Value="SemiBold" />
+            <Setter
+                Property="FontSize"
+                Value="15" />
+            <Setter
+                Property="Foreground"
+                Value="{Binding Background, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource CardBrush}, ConverterParameter=text}" />
+            <Setter
+                Property="Background"
+                Value="Transparent" />
+            <Setter
+                Property="BorderThickness"
+                Value="0" />
+            <Setter
+                Property="Padding"
+                Value="0" />
+            <Setter
+                Property="VerticalContentAlignment"
+                Value="Center" />
+        </Style>
+        <Style
+            x:Key="CardSurface"
+            TargetType="Border">
+            <Setter
+                Property="Background"
+                Value="{Binding Color, Converter={StaticResource CardBrush}}" />
+            <Setter
+                Property="BorderBrush"
+                Value="{DynamicResource UiLine}" />
+            <Setter
+                Property="BorderThickness"
+                Value="1" />
+            <Setter
+                Property="CornerRadius"
+                Value="10" />
+            <Setter
+                Property="Margin"
+                Value="6,6,16,16" />
+        </Style>
+        <!-- 阴影只渲染背景，不让整个卡片（尤其文字）被栅格化。 -->
+        <Style x:Key="CardShadowLayer" TargetType="Border">
+            <Setter Property="Background" Value="{Binding Background, RelativeSource={RelativeSource AncestorType=Border}}"/>
+            <Setter Property="CornerRadius" Value="9"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Style.Triggers>
+                <DataTrigger
+                    Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
+                    Value="True">
+                    <Setter
+                        Property="Effect"
+                        Value="{DynamicResource UiCardShadow}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style
+            x:Key="ManagerList"
+            TargetType="ListBox">
+            <Setter
+                Property="Background"
+                Value="Transparent" />
+            <Setter
+                Property="BorderThickness"
+                Value="0" />
+            <Setter
+                Property="Padding"
+                Value="0" />
+            <Setter Property="SelectionMode" Value="Single"/>
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+            <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/>
+            <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel"/>
+            <Setter
+                Property="ScrollViewer.HorizontalScrollBarVisibility"
+                Value="Disabled" />
+            <Setter
+                Property="ScrollViewer.VerticalScrollBarVisibility"
+                Value="Auto" />
+            <Setter
+                Property="ItemContainerStyle">
                 <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type ScrollBar}">
-                        <Track x:Name="PART_Track" Width="5" HorizontalAlignment="Stretch"
-                               IsDirectionReversed="True">
-                            <Track.DecreaseRepeatButton>
-                                <RepeatButton Command="ScrollBar.LineUpCommand" Focusable="False" Opacity="0">
-                                    <RepeatButton.Template>
-                                        <ControlTemplate TargetType="{x:Type ButtonBase}">
-                                            <Border Background="Transparent"/>
-                                        </ControlTemplate>
-                                    </RepeatButton.Template>
-                                </RepeatButton>
-                            </Track.DecreaseRepeatButton>
-                            <Track.Thumb>
-                                <Thumb>
-                                    <Thumb.Template>
-                                        <ControlTemplate TargetType="{x:Type Thumb}">
-                                            <Rectangle x:Name="Rect" Width="5" Fill="#BBBBBB" RadiusX="3" RadiusY="3"/>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="Rect" Property="Fill" Value="#888888"/>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Thumb.Template>
-                                </Thumb>
-                            </Track.Thumb>
-                            <Track.IncreaseRepeatButton>
-                                <RepeatButton Command="ScrollBar.LineDownCommand" Focusable="False" Opacity="0">
-                                    <RepeatButton.Template>
-                                        <ControlTemplate TargetType="{x:Type ButtonBase}">
-                                            <Border Background="Transparent"/>
-                                        </ControlTemplate>
-                                    </RepeatButton.Template>
-                                </RepeatButton>
-                            </Track.IncreaseRepeatButton>
-                        </Track>
-                    </ControlTemplate>
+                    <Style
+                        TargetType="ListBoxItem">
+                        <EventSetter Event="PreviewMouseDown" Handler="Card_PreviewMouseDown"/>
+                        <EventSetter Event="GotKeyboardFocus" Handler="Card_GotKeyboardFocus"/>
+                        <Setter
+                            Property="Padding"
+                            Value="0" />
+                        <Setter
+                            Property="Margin"
+                            Value="0" />
+                        <Setter
+                            Property="HorizontalContentAlignment"
+                            Value="Stretch" />
+                        <Setter
+                            Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate
+                                    TargetType="ListBoxItem">
+                                    <ContentPresenter />
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True"><Setter Property="Panel.ZIndex" Value="1"/></Trigger>
+                        </Style.Triggers>
+                    </Style>
                 </Setter.Value>
             </Setter>
         </Style>
-
-        <!-- 视图切换面板：卡片视图用 WrapPanel，列表视图用 StackPanel -->
-        <ItemsPanelTemplate x:Key="CardViewPanel">
-            <WrapPanel Orientation="Horizontal"/>
-        </ItemsPanelTemplate>
-        <ItemsPanelTemplate x:Key="RowViewPanel">
-            <StackPanel Orientation="Vertical"/>
-        </ItemsPanelTemplate>
-
-        <!-- ===== 便签：卡片视图 ===== -->
-        <DataTemplate x:Key="NoteCardTemplate">
-            <Border Margin="6" Padding="10" CornerRadius="6" Width="180"
-                    Background="{Binding Color}">
+        <DataTemplate
+            x:Key="NoteCardTemplate">
+            <Border
+                Style="{StaticResource CardSurface}"
+                Width="220"
+                Height="166">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBox Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
-                                 FontWeight="Bold" FontSize="13"
-                                 BorderThickness="0" Background="Transparent"
-                                 Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
-                                 ToolTip="点击修改便签标题"
-                                 TextChanged="TitleTextBox_TextChanged"/>
-                        <TextBlock Text="{Binding CreatedAt, StringFormat='创建于 {0:g}'}"
-                                   FontSize="10"
-                                   Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
-                                   Margin="0,4,0,0"/>
-                    </StackPanel>
-                    <Button Grid.Column="1" Content="🗑"
-                            Width="28" Height="28" Margin="8,0,0,0"
-                            Background="Transparent" Foreground="#C0392B"
-                            BorderThickness="0" Cursor="Hand" FontSize="14"
-                            ToolTip="删除便签"
-                            Click="DeleteNoteButton_Click"/>
-                </Grid>
-            </Border>
-        </DataTemplate>
-
-        <!-- ===== 便签：列表视图 ===== -->
-        <DataTemplate x:Key="NoteRowTemplate">
-            <Border Margin="6,3" Padding="12,8" CornerRadius="6"
-                    HorizontalAlignment="Stretch" Background="{Binding Color}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <DockPanel LastChildFill="True">
-                            <TextBlock DockPanel.Dock="Right" Margin="8,0,0,0"
-                                       VerticalAlignment="Center"
-                                       Text="{Binding CreatedAt, StringFormat='{}{0:MM-dd HH:mm}'}"
-                                       FontSize="10"
-                                       Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
-                                       Opacity="0.7"/>
-                            <TextBox Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
-                                     FontWeight="Bold" FontSize="13"
-                                     BorderThickness="0" Background="Transparent"
-                                     Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
-                                     ToolTip="点击修改便签标题"
-                                     TextChanged="TitleTextBox_TextChanged"/>
+                    <Grid.RowDefinitions>
+                        <RowDefinition
+                            Height="4" />
+                        <RowDefinition
+                            Height="*" />
+                    </Grid.RowDefinitions>
+                    <Border Grid.RowSpan="2" Style="{StaticResource CardShadowLayer}"/>
+                    <Border
+                        Background="{Binding Color}"
+                        CornerRadius="9,9,0,0" />
+                    <Grid
+                        Grid.Row="1"
+                        Margin="16,14,12,10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition
+                                Height="Auto" />
+                            <RowDefinition
+                                Height="*" />
+                            <RowDefinition
+                                Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBox
+                            Style="{StaticResource ItemTitle}"
+                            Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
+                            ToolTip="点击修改标题；双击卡片打开便签"
+                            TextChanged="TitleTextBox_TextChanged" />
+                        <TextBlock
+                            Grid.Row="1"
+                            Text="{Binding Text, Converter={StaticResource NotePreview}}"
+                            Foreground="{Binding Background, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource CardBrush}, ConverterParameter=secondary}"
+                            FontSize="13"
+                            Margin="0,10,0,8"
+                            TextWrapping="Wrap"
+                            TextTrimming="CharacterEllipsis"
+                            MaxHeight="60" />
+                        <DockPanel
+                            Grid.Row="2">
+                            <Button
+                                DockPanel.Dock="Right"
+                                Style="{StaticResource UiDeleteButton}" Foreground="{Binding Background, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource CardBrush}, ConverterParameter=secondary}"
+                                Content=""
+                                Width="28"
+                                Height="28"
+                                ToolTip="删除便签"
+                                Click="DeleteNoteButton_Click" />
+                            <TextBlock
+                                Text="{Binding CreatedAt, StringFormat='创建于 {0:MM-dd HH:mm}'}"
+                                Foreground="{Binding Background, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource CardBrush}, ConverterParameter=secondary}"
+                                FontSize="12"
+                                VerticalAlignment="Center" />
                         </DockPanel>
-                        <TextBlock Margin="0,3,8,0" Text="{Binding Text}"
-                                   FontSize="11" TextTrimming="CharacterEllipsis"
-                                   Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
-                                   Opacity="0.75"/>
+                    </Grid>
+                </Grid>
+            </Border>
+        </DataTemplate>
+        <DataTemplate
+            x:Key="NoteRowTemplate">
+            <Border
+                Style="{StaticResource CardSurface}"
+                Margin="6,6,12,12"
+                MinHeight="78">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition
+                            Width="4" />
+                        <ColumnDefinition
+                            Width="*" />
+                        <ColumnDefinition
+                            Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.ColumnSpan="3" Style="{StaticResource CardShadowLayer}"/>
+                    <Border
+                        Background="{Binding Color}"
+                        CornerRadius="9,0,0,9" />
+                    <StackPanel
+                        Grid.Column="1"
+                        Margin="14,12">
+                        <TextBox
+                            Style="{StaticResource ItemTitle}"
+                            Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
+                            ToolTip="点击修改标题"
+                            TextChanged="TitleTextBox_TextChanged" />
+                        <TextBlock
+                            Text="{Binding Text, Converter={StaticResource NotePreview}}"
+                            TextTrimming="CharacterEllipsis"
+                            Foreground="{Binding Background, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource CardBrush}, ConverterParameter=secondary}"
+                            FontSize="13"
+                            Margin="0,5,0,0" />
                     </StackPanel>
-                    <Button Grid.Column="1" Content="🗑"
-                            Width="28" Height="28" Margin="10,0,0,0" VerticalAlignment="Center"
-                            Background="Transparent" Foreground="#C0392B"
-                            BorderThickness="0" Cursor="Hand" FontSize="14"
+                    <StackPanel
+                        Grid.Column="2"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Margin="8,0">
+                        <TextBlock
+                            Text="{Binding CreatedAt, StringFormat='{}{0:MM-dd}'}"
+                            Foreground="{Binding Background, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource CardBrush}, ConverterParameter=secondary}"
+                            FontSize="12"
+                            VerticalAlignment="Center"
+                            Margin="0,0,8,0" />
+                        <Button
+                            Style="{StaticResource UiDeleteButton}" Foreground="{Binding Background, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource CardBrush}, ConverterParameter=secondary}"
+                            Content=""
                             ToolTip="删除便签"
-                            Click="DeleteNoteButton_Click"/>
-                </Grid>
-            </Border>
-        </DataTemplate>
-
-        <!-- ===== 任务清单：卡片视图 ===== -->
-        <DataTemplate x:Key="TaskCardTemplate">
-            <Border Margin="6" Padding="10" CornerRadius="6" Width="180"
-                    Background="{Binding Color}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBox Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
-                                 FontWeight="Bold" FontSize="13"
-                                 BorderThickness="0" Background="Transparent"
-                                 Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
-                                 ToolTip="点击修改清单标题"
-                                 TextChanged="TaskTitleTextBox_TextChanged"/>
-                        <TextBlock FontSize="10"
-                                   Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
-                                   Margin="0,4,0,0"
-                                   Text="{Binding Items, Converter={StaticResource TaskProgress}}"/>
+                            Click="DeleteNoteButton_Click" />
                     </StackPanel>
-                    <Button Grid.Column="1" Content="🗑"
-                            Width="28" Height="28" Margin="8,0,0,0"
-                            Background="Transparent" Foreground="#C0392B"
-                            BorderThickness="0" Cursor="Hand" FontSize="14"
-                            ToolTip="删除清单"
-                            Click="DeleteTaskListButton_Click"/>
                 </Grid>
             </Border>
         </DataTemplate>
-
-        <!-- ===== 任务清单：列表视图 ===== -->
-        <DataTemplate x:Key="TaskRowTemplate">
-            <Border Margin="6,3" Padding="12,8" CornerRadius="6"
-                    HorizontalAlignment="Stretch" Background="{Binding Color}">
+        <DataTemplate
+            x:Key="TaskCardTemplate">
+            <Border
+                Style="{StaticResource CardSurface}"
+                Width="220"
+                Height="166">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition
+                            Height="4" />
+                        <RowDefinition
+                            Height="*" />
+                    </Grid.RowDefinitions>
+                    <Border Grid.RowSpan="2" Style="{StaticResource CardShadowLayer}"/>
+                    <Border
+                        Background="{Binding Color}"
+                        CornerRadius="9,9,0,0" />
+                    <Grid
+                        Grid.Row="1"
+                        Margin="16,14,12,10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition
+                                Height="Auto" />
+                            <RowDefinition
+                                Height="*" />
+                            <RowDefinition
+                                Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBox
+                            Style="{StaticResource ItemTitle}"
+                            Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
+                            ToolTip="点击修改标题；双击卡片打开清单"
+                            TextChanged="TaskTitleTextBox_TextChanged" />
+                        <ItemsControl
+                            Grid.Row="1"
+                            Foreground="{Binding Background, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource CardBrush}, ConverterParameter=secondary}"
+                            ItemsSource="{Binding Items}"
+                            Margin="0,10,0,8"
+                            MaxHeight="56"
+                            VirtualizingPanel.IsVirtualizing="True"
+                            VirtualizingPanel.ScrollUnit="Pixel"
+                            ClipToBounds="True"
+                            IsHitTestVisible="False">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.Template><ControlTemplate TargetType="ItemsControl">
+                                <ScrollViewer CanContentScroll="True" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" Focusable="False"><ItemsPresenter/></ScrollViewer>
+                            </ControlTemplate></ItemsControl.Template>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock
+                                        Text="{Binding Text, Converter={StaticResource NotePreview}}"
+                                        TextTrimming="CharacterEllipsis"
+                                        Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        FontSize="13"
+                                        Margin="0,0,0,4">
+                                        <TextBlock.Style>
+                                            <Style
+                                                TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger
+                                                        Binding="{Binding IsDone}"
+                                                        Value="True">
+                                                        <Setter
+                                                            Property="TextDecorations"
+                                                            Value="Strikethrough" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <DockPanel
+                            Grid.Row="2">
+                            <Button
+                                DockPanel.Dock="Right"
+                                Style="{StaticResource UiDeleteButton}" Foreground="{Binding Background, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource CardBrush}, ConverterParameter=secondary}"
+                                Content=""
+                                Width="28"
+                                Height="28"
+                                ToolTip="删除清单"
+                                Click="DeleteTaskListButton_Click" />
+                            <TextBlock
+                                Text="{Binding Items, Converter={StaticResource TaskProgress}}"
+                                Foreground="{Binding Background, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource CardBrush}, ConverterParameter=secondary}"
+                                FontSize="12"
+                                VerticalAlignment="Center" />
+                        </DockPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+        </DataTemplate>
+        <DataTemplate
+            x:Key="TaskRowTemplate">
+            <Border
+                Style="{StaticResource CardSurface}"
+                Margin="6,6,12,12"
+                MinHeight="78">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition
+                            Width="4" />
+                        <ColumnDefinition
+                            Width="*" />
+                        <ColumnDefinition
+                            Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <DockPanel Grid.Column="0" LastChildFill="True">
-                        <TextBlock DockPanel.Dock="Right" Margin="8,0,0,0"
-                                   VerticalAlignment="Center"
-                                   Text="{Binding Items, Converter={StaticResource TaskProgress}}"
-                                   FontSize="11"
-                                   Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
-                                   Opacity="0.75"/>
-                        <TextBox Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
-                                 FontWeight="Bold" FontSize="13"
-                                 BorderThickness="0" Background="Transparent"
-                                 Foreground="{Binding Color, Converter={StaticResource ContrastText}}"
-                                 ToolTip="点击修改清单标题"
-                                 TextChanged="TaskTitleTextBox_TextChanged"/>
-                    </DockPanel>
-                    <Button Grid.Column="1" Content="🗑"
-                            Width="28" Height="28" Margin="10,0,0,0" VerticalAlignment="Center"
-                            Background="Transparent" Foreground="#C0392B"
-                            BorderThickness="0" Cursor="Hand" FontSize="14"
+                    <Border Grid.ColumnSpan="3" Style="{StaticResource CardShadowLayer}"/>
+                    <Border
+                        Background="{Binding Color}"
+                        CornerRadius="9,0,0,9" />
+                    <TextBox
+                        Grid.Column="1"
+                        Style="{StaticResource ItemTitle}"
+                        Margin="14,12"
+                        Text="{Binding Title, Converter={StaticResource TitleFallback}, UpdateSourceTrigger=PropertyChanged}"
+                        ToolTip="点击修改标题"
+                        TextChanged="TaskTitleTextBox_TextChanged" />
+                    <StackPanel
+                        Grid.Column="2"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Margin="8,0">
+                        <TextBlock
+                            Text="{Binding Items, Converter={StaticResource TaskProgress}}"
+                            Foreground="{Binding Background, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource CardBrush}, ConverterParameter=secondary}"
+                            FontSize="12"
+                            Margin="0,0,8,0"
+                            VerticalAlignment="Center" />
+                        <Button
+                            Style="{StaticResource UiDeleteButton}" Foreground="{Binding Background, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource CardBrush}, ConverterParameter=secondary}"
+                            Content=""
                             ToolTip="删除清单"
-                            Click="DeleteTaskListButton_Click"/>
+                            Click="DeleteTaskListButton_Click" />
+                    </StackPanel>
                 </Grid>
             </Border>
         </DataTemplate>
     </Window.Resources>
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome GlassFrameThickness="0"
-                            CornerRadius="0"
-                            ResizeBorderThickness="6"
-                            CaptionHeight="32"
-                            UseAeroCaptionButtons="False" />
+        <shell:WindowChrome
+            CaptionHeight="44"
+            ResizeBorderThickness="6"
+            GlassFrameThickness="0"
+            UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
-
-    <Border Background="#FFF3F3F3" BorderBrush="#FF2D2D30" BorderThickness="1">
+    <Border
+        BorderBrush="{DynamicResource UiLine}"
+        BorderThickness="1">
         <Grid>
-            <DockPanel LastChildFill="True">
-            <!-- 自定义标题栏（含功能按钮） -->
-            <Grid x:Name="TitleBar" DockPanel.Dock="Top" Height="32"
-                  Background="#FF2D2D30">
+            <Grid.RowDefinitions>
+                <RowDefinition
+                    Height="44" />
+                <RowDefinition
+                    Height="*" />
+            </Grid.RowDefinitions>
+            <Grid
+                x:Name="TitleBar"
+                Background="{DynamicResource UiSurface}">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition
+                        Width="*" />
+                    <ColumnDefinition
+                        Width="44" />
+                    <ColumnDefinition
+                        Width="44" />
                 </Grid.ColumnDefinitions>
-
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center"
-                            Margin="8,0,0,0">
-                    <Image Source="pack://application:,,,/Resources/StickyNote.png" Width="16" Height="16" Margin="0,0,6,0"/>
-                    <TextBlock Text="我的便利贴" Foreground="White"
-                               FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <StackPanel
+                    Orientation="Horizontal"
+                    Margin="18,0"
+                    VerticalAlignment="Center">
+                    <Image
+                        Source="pack://application:,,,/Resources/StickyNote.png"
+                        Width="20"
+                        Height="20"
+                        Margin="0,0,10,0" />
+                    <TextBlock
+                        Text="我的便利贴"
+                        FontWeight="SemiBold" />
                 </StackPanel>
-
-                <!-- 全部显示：停用/启用所有便签的隐藏与透明效果 -->
-                <Button x:Name="ForceShowButton" Grid.Column="1" Content="👁"
-                        Width="34" Height="32" Margin="0,0,2,0"
-                        Background="Transparent" Foreground="White"
-                        BorderThickness="0" Cursor="Hand" FontSize="15"
-                        ToolTip="全部显示：关闭（点此开启，强制所有便签不透明且始终显示）"
-                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-
-                <!-- 设置（全局） -->
-                <Button x:Name="SettingsButton" Grid.Column="2" Content="⚙"
-                        Width="34" Height="32" Margin="0,0,2,0"
-                        Background="Transparent" Foreground="White"
-                        BorderThickness="0" Cursor="Hand" FontSize="15"
-                        ToolTip="设置：开机自启、窗口置顶、全局快捷键"
-                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-
-                <!-- 最小化 -->
-                <Button x:Name="MinButton" Grid.Column="3" Content="—"
-                        Width="34" Height="32" Background="Transparent"
-                        Foreground="White" BorderThickness="0" Cursor="Hand"
-                        FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-
-                <!-- 关闭 -->
-                <Button x:Name="CloseButton" Grid.Column="4" Content="✕"
-                        Width="40" Height="32" Background="Transparent"
-                        Foreground="White" BorderThickness="0" Cursor="Hand"
-                        FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                <Button
+                    x:Name="MinButton"
+                    Grid.Column="1"
+                    Style="{StaticResource UiIconButton}"
+                    Content=""
+                    ToolTip="最小化"
+                    shell:WindowChrome.IsHitTestVisibleInChrome="True" />
+                <Button
+                    x:Name="CloseButton"
+                    Grid.Column="2"
+                    Style="{StaticResource UiDeleteButton}"
+                    Content=""
+                    ToolTip="关闭管理窗口（继续在托盘运行）"
+                    shell:WindowChrome.IsHitTestVisibleInChrome="True" />
             </Grid>
-
-            <!-- 主体：左侧导航 + 右侧内容 -->
-            <Grid>
+            <Grid
+                Grid.Row="1">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="116"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition
+                        Width="148" />
+                    <ColumnDefinition
+                        Width="*" />
                 </Grid.ColumnDefinitions>
-
-                <!-- 左侧导航栏 -->
-                <Border Grid.Column="0" Background="#FF2D2D30">
-                    <StackPanel Margin="0,6,0,0">
-                        <Grid Height="44">
-                            <Rectangle x:Name="NavIndicatorNotes" Width="3" HorizontalAlignment="Left"
-                                       VerticalAlignment="Stretch" Fill="#FF007ACC" Opacity="1"/>
-                            <Button x:Name="NavNotes" Content="📝  便利贴" Click="NavNotes_Click"
-                                    Background="Transparent" BorderThickness="0" Cursor="Hand"
-                                    Foreground="White" FontSize="13" FontWeight="SemiBold"
-                                    HorizontalContentAlignment="Left" Padding="18,0,0,0"/>
-                        </Grid>
-                        <Grid Height="44">
-                            <Rectangle x:Name="NavIndicatorTasks" Width="3" HorizontalAlignment="Left"
-                                       VerticalAlignment="Stretch" Fill="#FF007ACC" Opacity="0"/>
-                            <Button x:Name="NavTasks" Content="✅  任务清单" Click="NavTasks_Click"
-                                    Background="Transparent" BorderThickness="0" Cursor="Hand"
-                                    Foreground="#FF9AA0A6" FontSize="13" FontWeight="Normal"
-                                    HorizontalContentAlignment="Left" Padding="18,0,0,0"/>
-                        </Grid>
-                    </StackPanel>
+                <Border
+                    Background="{DynamicResource UiSidebar}"
+                    BorderBrush="{DynamicResource UiLine}"
+                    BorderThickness="0,1,1,0">
+                    <DockPanel
+                        Margin="10,20,10,14">
+                        <Button
+                            x:Name="SettingsButton"
+                            Style="{StaticResource UiNavigationButton}"
+                            DockPanel.Dock="Bottom"
+                            HorizontalContentAlignment="Left"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="12,10"
+                            ToolTip="常规设置、设备与账号同步">
+                            <StackPanel
+                                Orientation="Horizontal">
+                                <TextBlock
+                                    FontFamily="{StaticResource UiIconFont}"
+                                    Text=""
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center" />
+                                <TextBlock
+                                    Text="设置" />
+                            </StackPanel>
+                        </Button>
+                        <StackPanel>
+                            <Grid
+                                Margin="0,0,0,6">
+                                <Border
+                                    x:Name="NavIndicatorNotes"
+                                    CornerRadius="7"
+                                    Background="{DynamicResource UiSelected}" />
+                                <Button
+                                    x:Name="NavNotes"
+                                    Style="{StaticResource UiNavigationButton}"
+                                    Content="便利贴"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="16,11"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Click="NavNotes_Click" />
+                            </Grid>
+                            <Grid>
+                                <Border
+                                    x:Name="NavIndicatorTasks"
+                                    CornerRadius="7"
+                                    Background="{DynamicResource UiSelected}"
+                                    Opacity="0" />
+                                <Button
+                                    x:Name="NavTasks"
+                                    Style="{StaticResource UiNavigationButton}"
+                                    Content="任务清单"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="16,11"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Click="NavTasks_Click" />
+                            </Grid>
+                        </StackPanel>
+                    </DockPanel>
                 </Border>
-
-                <!-- 右侧内容区 -->
-                <Grid Grid.Column="1">
+                <Grid
+                    Grid.Column="1"
+                    Margin="24,24,16,12">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
+                        <RowDefinition
+                            Height="Auto" />
+                        <RowDefinition
+                            Height="Auto" />
+                        <RowDefinition
+                            Height="*" />
                     </Grid.RowDefinitions>
-
-                    <!-- 顶部工具栏：搜索 / 排序 / 视图切换 / 新建 -->
-                    <Border Grid.Row="0" Height="40" Background="#FFECECEC"
-                            BorderBrush="#FFDCDCDC" BorderThickness="0,0,0,1">
-                        <Grid Margin="10,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <!-- 搜索框 -->
-                            <Border Grid.Column="0" Height="26" VerticalAlignment="Center"
-                                    CornerRadius="13" Background="White"
-                                    BorderBrush="#FFD5D5D5" BorderThickness="1">
-                                <DockPanel Margin="10,0,6,0" LastChildFill="True">
-                                    <TextBlock DockPanel.Dock="Left" Text="🔍" FontSize="11"
-                                               VerticalAlignment="Center" Margin="0,1,5,0"/>
-                                    <TextBox x:Name="SearchBox" BorderThickness="0" Background="Transparent"
-                                             VerticalContentAlignment="Center" FontSize="12"
-                                             TextChanged="SearchBox_TextChanged"
-                                             ToolTip="按标题或内容关键字搜索"/>
-                                </DockPanel>
-                            </Border>
-
-                            <!-- 排序 -->
-                            <Button x:Name="SortButton" Grid.Column="1" Content="排序 ▾"
-                                    Height="26" Margin="6,0,0,0" Padding="8,0"
-                                    Background="White" BorderBrush="#FFCCCCCC" BorderThickness="1"
-                                    FontSize="12" Cursor="Hand"
-                                    ToolTip="排序方式" Click="SortButton_Click">
-                                <Button.ContextMenu>
-                                    <ContextMenu>
-                                        <MenuItem Header="默认排序" Tag="none" IsCheckable="True" Click="SortMenuItem_Click"/>
-                                        <MenuItem Header="按标题 A→Z" Tag="titleAsc" IsCheckable="True" Click="SortMenuItem_Click"/>
-                                        <MenuItem Header="按标题 Z→A" Tag="titleDesc" IsCheckable="True" Click="SortMenuItem_Click"/>
-                                    </ContextMenu>
-                                </Button.ContextMenu>
-                            </Button>
-
-                            <!-- 视图切换 -->
-                            <Button x:Name="CardViewButton" Grid.Column="2" Content="卡片"
-                                    Height="26" Margin="6,0,0,0" Padding="10,0"
-                                    Background="White" BorderBrush="#FFCCCCCC" BorderThickness="1"
-                                    FontSize="12" Cursor="Hand"
-                                    ToolTip="卡片视图" Click="CardViewButton_Click"/>
-                            <Button x:Name="RowViewButton" Grid.Column="3" Content="列表"
-                                    Height="26" Margin="4,0,0,0" Padding="10,0"
-                                    Background="White" BorderBrush="#FFCCCCCC" BorderThickness="1"
-                                    FontSize="12" Cursor="Hand"
-                                    ToolTip="列表视图" Click="RowViewButton_Click"/>
-
-                            <!-- 默认外观（新建默认样式） -->
-                            <Button x:Name="DefaultAppearanceButton" Grid.Column="4" Content="🎨 默认"
-                                    Height="26" Margin="6,0,0,0" Padding="8,0"
-                                    Background="White" BorderBrush="#FFCCCCCC" BorderThickness="1"
-                                    FontSize="12" Cursor="Hand"
-                                    ToolTip="默认外观：设置新建便利贴的默认样式（不影响任务清单与已创建的便利贴）"/>
-
-                            <!-- 新建 -->
-                            <Button x:Name="AddNoteButton" Grid.Column="5" Content="＋ 新建"
-                                    Height="26" Margin="6,0,0,0" Padding="12,0"
-                                    Background="#FF007ACC" Foreground="White" BorderThickness="0"
-                                    FontSize="12" FontWeight="SemiBold" Cursor="Hand"
-                                    ToolTip="新建便利贴"/>
-                        </Grid>
-                    </Border>
-
-                    <!-- 内容列表 -->
-                    <Grid Grid.Row="1">
-                        <TextBlock x:Name="EmptyHint" Margin="24,0" VerticalAlignment="Center"
-                                   Text="还没有便利贴，点击右上角「＋ 新建」创建第一张吧。"
-                                   Foreground="#FF888888" TextWrapping="Wrap"
-                                   HorizontalAlignment="Center" TextAlignment="Center"/>
-
-                        <!-- 便利贴列表（卡片/列表视图由代码切换模板） -->
-                        <ListBox x:Name="NoteList" BorderThickness="0" Margin="8"
-                                 Background="Transparent"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                 ItemTemplate="{StaticResource NoteCardTemplate}"
-                                 ItemsPanel="{StaticResource CardViewPanel}">
-                            <ListBox.Resources>
-                                <Style TargetType="{x:Type ScrollViewer}">
-                                    <Setter Property="Padding" Value="0"/>
-                                </Style>
-                            </ListBox.Resources>
-                            <ListBox.ItemContainerStyle>
-                                <Style TargetType="ListBoxItem">
-                                    <Setter Property="Padding" Value="0"/>
-                                    <Setter Property="Margin" Value="0"/>
-                                    <Setter Property="Background" Value="Transparent"/>
-                                    <Setter Property="BorderThickness" Value="0"/>
-                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsSelected" Value="True">
-                                            <Setter Property="Background" Value="Transparent"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </ListBox.ItemContainerStyle>
-                        </ListBox>
-
-                        <!-- 任务清单列表 -->
-                        <ListBox x:Name="TaskListBox" BorderThickness="0" Margin="8"
-                                 Background="Transparent"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                 Visibility="Collapsed"
-                                 ItemTemplate="{StaticResource TaskCardTemplate}"
-                                 ItemsPanel="{StaticResource CardViewPanel}">
-                            <ListBox.Resources>
-                                <Style TargetType="{x:Type ScrollViewer}">
-                                    <Setter Property="Padding" Value="0"/>
-                                </Style>
-                            </ListBox.Resources>
-                            <ListBox.ItemContainerStyle>
-                                <Style TargetType="ListBoxItem">
-                                    <Setter Property="Padding" Value="0"/>
-                                    <Setter Property="Margin" Value="0"/>
-                                    <Setter Property="Background" Value="Transparent"/>
-                                    <Setter Property="BorderThickness" Value="0"/>
-                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsSelected" Value="True">
-                                            <Setter Property="Background" Value="Transparent"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </ListBox.ItemContainerStyle>
-                        </ListBox>
+                    <DockPanel
+                        Margin="0,0,8,20">
+                        <Button
+                            x:Name="AddNoteButton"
+                            DockPanel.Dock="Right"
+                            Style="{StaticResource UiPrimaryButton}"
+                            Content="＋ 新建"
+                            Padding="16,8" />
+                        <TextBlock
+                            x:Name="PageTitle"
+                            Text="便利贴"
+                            FontSize="24"
+                            FontWeight="SemiBold"
+                            VerticalAlignment="Center" />
+                    </DockPanel>
+                    <Grid
+                        Grid.Row="1"
+                        Margin="0,0,8,20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition
+                                Width="*" />
+                            <ColumnDefinition
+                                Width="Auto" />
+                            <ColumnDefinition
+                                Width="Auto" />
+                            <ColumnDefinition
+                                Width="Auto" />
+                            <ColumnDefinition
+                                Width="Auto" />
+                            <ColumnDefinition
+                                Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border
+                            Background="{DynamicResource UiSurface}"
+                            BorderBrush="{DynamicResource UiLine}"
+                            BorderThickness="1"
+                            CornerRadius="7"
+                            Margin="0,0,8,0">
+                            <DockPanel
+                                Margin="10,0">
+                                <TextBlock
+                                    DockPanel.Dock="Left"
+                                    Text=""
+                                    FontFamily="{StaticResource UiIconFont}"
+                                    Foreground="{DynamicResource UiMuted}"
+                                    Margin="0,0,8,0"
+                                    VerticalAlignment="Center" />
+                                <TextBox
+                                    x:Name="SearchBox"
+                                    Foreground="{DynamicResource UiText}"
+                                    CaretBrush="{DynamicResource UiText}"
+                                    BorderThickness="0"
+                                    Background="Transparent"
+                                    VerticalContentAlignment="Center"
+                                    TextChanged="SearchBox_TextChanged"
+                                    ToolTip="按标题或内容关键字搜索"
+                                    AutomationProperties.Name="搜索标题或内容" />
+                            </DockPanel>
+                        </Border>
+                        <Button
+                            x:Name="SortButton"
+                            Grid.Column="1"
+                            Style="{StaticResource UiToolbarButton}"
+                            Margin="0,0,8,0"
+                            Click="SortButton_Click"
+                            ToolTip="排序方式">
+                            <Button.ContextMenu>
+                                <ContextMenu Style="{StaticResource UiSortMenu}" Placement="Bottom" VerticalOffset="6">
+                                    <MenuItem
+                                        Header="默认排序"
+                                        Tag="none"
+                                        IsCheckable="True"
+                                        Click="SortMenuItem_Click" />
+                                    <MenuItem
+                                        Header="按标题 A→Z"
+                                        Tag="titleAsc"
+                                        IsCheckable="True"
+                                        Click="SortMenuItem_Click" />
+                                    <MenuItem
+                                        Header="按标题 Z→A"
+                                        Tag="titleDesc"
+                                        IsCheckable="True"
+                                        Click="SortMenuItem_Click" />
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                            <Path Width="18" Height="18" Stretch="Uniform" Data="{StaticResource UiSortGeometry}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                        </Button>
+                        <Button
+                            x:Name="CardViewButton"
+                            Grid.Column="2"
+                            Style="{StaticResource UiToolbarButton}"
+                            ToolTip="卡片视图"
+                            Click="CardViewButton_Click"
+                            Margin="0,0,4,0">
+                            <Path Width="18" Height="18" Stretch="Uniform" Data="{StaticResource UiGridGeometry}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.4" StrokeLineJoin="Round"/>
+                        </Button>
+                        <Button
+                            x:Name="RowViewButton"
+                            Grid.Column="3"
+                            Style="{StaticResource UiToolbarButton}"
+                            ToolTip="列表视图"
+                            Click="RowViewButton_Click"
+                            Margin="0,0,8,0">
+                            <Path Width="18" Height="18" Stretch="Uniform" Data="{StaticResource UiListGeometry}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                        </Button>
+                        <Button
+                            x:Name="DefaultAppearanceButton"
+                            Grid.Column="4"
+                            Style="{StaticResource UiToolbarButton}"
+                            ToolTip="默认外观">
+                            <Path Width="18" Height="18" Stretch="Uniform" Data="{StaticResource UiPaletteGeometry}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                        </Button>
+                        <Button
+                            x:Name="ForceShowButton"
+                            Grid.Column="5"
+                            Style="{StaticResource UiToolbarButton}"
+                            ToolTip="全部显示">
+                            <Path Width="18" Height="18" Stretch="Uniform" Data="{StaticResource UiEyeGeometry}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.4" StrokeLineJoin="Round"/>
+                        </Button>
+                    </Grid>
+                    <Grid
+                        Grid.Row="2">
+                        <TextBlock
+                            x:Name="EmptyHint"
+                            Text="还没有便利贴，点击右上角「＋ 新建」创建第一张吧。"
+                            Foreground="{DynamicResource UiMuted}"
+                            FontSize="14"
+                            TextWrapping="Wrap"
+                            TextAlignment="Center"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Margin="24" />
+                        <ListBox
+                            x:Name="NoteList"
+                            Style="{StaticResource ManagerList}"
+                            ItemTemplate="{StaticResource NoteCardTemplate}"
+                            ItemsPanel="{StaticResource CardViewPanel}" />
+                        <ListBox
+                            x:Name="TaskListBox"
+                            Style="{StaticResource ManagerList}"
+                            Visibility="Collapsed"
+                            ItemTemplate="{StaticResource TaskCardTemplate}"
+                            ItemsPanel="{StaticResource CardViewPanel}" />
                     </Grid>
                 </Grid>
             </Grid>
-            </DockPanel>
-
         </Grid>
     </Border>
 </Window>
