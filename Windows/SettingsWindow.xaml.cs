@@ -35,7 +35,7 @@ public partial class SettingsWindow : Window
         TopmostCheck.Checked += (_, _) => { _settings.GlobalTopmost = true; _settings.Save(); App.Current.ApplyTopmost(true); };
         TopmostCheck.Unchecked += (_, _) => { _settings.GlobalTopmost = false; _settings.Save(); App.Current.ApplyTopmost(false); };
 
-        // 全局快捷键：隐藏/显示所有窗口（设置窗口除外）
+        // 全局快捷键仅切换便签和任务清单，主页与设置保持原状态。
         HotKeyText.Text = string.IsNullOrWhiteSpace(_settings.ToggleWindowsHotKey)
             ? "未设置"
             : _settings.ToggleWindowsHotKey;
@@ -117,7 +117,7 @@ public partial class SettingsWindow : Window
     {
         _capturingHotKey = true;
         HotKeyBox.SetResourceReference(Border.BorderBrushProperty, "UiAccent");
-        HotKeyText.Text = "请按下新快捷键…（Esc 取消）";
+        HotKeyText.Text = "按下单键或组合键…（Esc 取消）";
         HotKeyText.SetResourceReference(TextBlock.ForegroundProperty, "UiAccent");
     }
 
@@ -157,9 +157,7 @@ public partial class SettingsWindow : Window
             return;
 
         var mods = Keyboard.Modifiers;
-        if (mods == ModifierKeys.None) return; // 必须带修饰键，避免误设纯字母键
-
-        var main = KeyToDisplay(e.Key);
+        var main = KeyToDisplay(e.Key == Key.System ? e.SystemKey : e.Key);
         if (main == null) return;
 
         var combo = string.Empty;
@@ -179,7 +177,7 @@ public partial class SettingsWindow : Window
         }
         else
         {
-            HotKeyText.Text = "该组合无法注册，请换一个";
+            HotKeyText.Text = "该按键或组合无法注册，请换一个";
             HotKeyText.SetResourceReference(TextBlock.ForegroundProperty, "UiDanger");
         }
     }

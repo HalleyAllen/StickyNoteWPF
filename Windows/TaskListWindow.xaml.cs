@@ -30,6 +30,7 @@ public partial class TaskListWindow : Window
         Width = 320;
         Height = 360;
         _background = new NoteBackground(RootBorder, TitleBar, ApplyBackground);
+        if (!list.IsLocked && TaskTemplates.HasWeeklyTemplate(list)) TaskTemplates.ApplyWeekly(list, DateTime.Today.DayOfWeek);
 
         var view = CollectionViewSource.GetDefaultView(list.Items);
         EnsureSubSorting(list.Items);
@@ -197,6 +198,7 @@ public partial class TaskListWindow : Window
 
         // 底部“添加任务”按钮颜色跟随文字色
         AddTaskButton.Foreground = foreground;
+        OtherButton.Foreground = foreground;
 
         // 任务文本与滚动条主题（ListBox 内 TextBox/删除按钮 的文字色改用 XAML 绑定，避免刷新丢失）
         var textColor = AppearanceHelper.ParseColor(List.TextColor, Colors.Black);
@@ -270,10 +272,50 @@ public partial class TaskListWindow : Window
         Persist();
     }
 
+    private void OtherButton_Click(object sender, RoutedEventArgs e)
+    {
+        OtherButton.ContextMenu.PlacementTarget = OtherButton;
+        OtherButton.ContextMenu.IsOpen = true;
+    }
+
+    private void OtherMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        var applied = TaskTemplates.HasWeeklyTemplate(List);
+        WeeklyTemplateMenu.IsEnabled = !List.IsLocked && !applied;
+        WeeklyTemplateMenu.Header = applied ? "已使用一周任务模板" : "应用一周任务模板";
+        ShowCompletedMenu.IsChecked = List.ShowCompleted;
+    }
+
+    private void WeeklyTemplate_Click(object sender, RoutedEventArgs e)
+    {
+        if (List.IsLocked || TaskTemplates.HasWeeklyTemplate(List)) return;
+        var today = TaskTemplates.ApplyWeekly(List, DateTime.Today.DayOfWeek);
+        EnsureSubSorting(List.Items);
+        ApplyShowCompleted();
+        Persist();
+        FocusItemTextBox(today.SubItems[0]);
+    }
+
+    private void ShowCompletedMenu_Click(object sender, RoutedEventArgs e)
+    {
+        List.ShowCompleted = ShowCompletedMenu.IsChecked;
+        ApplyShowCompleted();
+        Persist();
+    }
+
     private void AddTask_Click(object sender, RoutedEventArgs e) => AddTask();
 
     private void AddTask()
     {
+        if (List.IsLocked) return;
+        if (TaskTemplates.HasWeeklyTemplate(List))
+        {
+            var today = TaskTemplates.ApplyWeekly(List, DateTime.Today.DayOfWeek);
+            today.IsDone = false;
+            ApplyShowCompleted();
+            AddSubTask(today);
+            return;
+        }
         var newItem = new TaskItem { Text = "新任务" };
         // Order 取当前最大+1，配合排序（IsDone 升序 + Order 降序）保证新任务置顶
         long maxOrder = List.Items.Count == 0 ? 0 : List.Items.Max(i => i.Order);

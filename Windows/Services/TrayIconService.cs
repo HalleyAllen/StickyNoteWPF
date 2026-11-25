@@ -35,10 +35,10 @@ public sealed class TrayIconService : IDisposable
     private ContextMenuStrip BuildMenu()
     {
         var strip = new ContextMenuStrip();
-        // 「隐藏/显示全部窗口」：打开菜单时根据当前可见状态动态更新文字
-        var toggleItem = new System.Windows.Forms.ToolStripMenuItem("隐藏全部窗口", null, (_, _) => _app.ToggleAllWindows());
+        // 菜单与快捷键使用相同的便签、任务清单显隐范围。
+        var toggleItem = new System.Windows.Forms.ToolStripMenuItem("隐藏便签与清单", null, (_, _) => _app.ToggleAllWindows());
         strip.Opening += (_, _) =>
-            toggleItem.Text = _app.HasVisibleWindows ? "隐藏全部窗口" : "显示全部窗口";
+            toggleItem.Text = _app.HasVisibleWindows ? "隐藏便签与清单" : "显示便签与清单";
         strip.Items.AddRange(new ToolStripItem[]
         {
             new System.Windows.Forms.ToolStripMenuItem("新建便利贴", null, (_, _) => _app.CreateNote()),

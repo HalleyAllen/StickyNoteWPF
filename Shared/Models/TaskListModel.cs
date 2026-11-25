@@ -59,6 +59,9 @@ public class TaskItem : INotifyPropertyChanged
 
 public class TaskListModel : INotifyPropertyChanged
 {
+    // 用稳定 ID 识别模板分组，修改星期标题后仍能避免重复应用。
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<DayOfWeek, Guid>? WeeklyTemplateDays { get; set; }
     private string _title = "任务清单";
     private string _color = "#FFF7A900";
     private string _textColor = "#FF222222";

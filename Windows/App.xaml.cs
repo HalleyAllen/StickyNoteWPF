@@ -84,7 +84,7 @@ public partial class App : System.Windows.Application
 
         ApplyTopmost(Settings.GlobalTopmost);
 
-        // 注册全局快捷键（隐藏/显示所有窗口），未设置则跳过
+        // 注册便签和任务清单显隐快捷键，未设置则跳过。
         RegisterToggleHotKey(Settings.ToggleWindowsHotKey);
 
         // 管理器窗口关闭时不退出应用（托盘常驻）
@@ -122,14 +122,13 @@ public partial class App : System.Windows.Application
             win.Topmost = topmost;
     }
 
-    // ====== 全局快捷键：隐藏/显示所有窗口（设置窗口除外）======
+    // ====== 全局快捷键：隐藏/显示便签和任务清单 ======
 
-    /// <summary>注册「隐藏/显示全部窗口」全局快捷键；组合为空表示不注册，注册失败返回 false。</summary>
+    /// <summary>注册便签和任务清单显隐快捷键；空值取消注册，失败保留原快捷键。</summary>
     public bool RegisterToggleHotKey(string combination)
     {
-        _hotKey?.Dispose();
-        _hotKey = null;
-        if (string.IsNullOrWhiteSpace(combination)) return true; // 未设置，视为成功（无操作）
+        if (string.IsNullOrWhiteSpace(combination)) { UnregisterToggleHotKey(); return true; }
+        if (_hotKey?.IsRegistered == true && string.Equals(_registeredToggleHotKey, combination, StringComparison.OrdinalIgnoreCase)) return true;
 
         var service = new HotKeyService();
         if (!service.Register(combination, ToggleAllWindows))
@@ -137,44 +136,39 @@ public partial class App : System.Windows.Application
             service.Dispose();
             return false;
         }
+        _hotKey?.Dispose();
         _hotKey = service;
+        _registeredToggleHotKey = combination;
         return true;
     }
+    private string? _registeredToggleHotKey;
 
     public void UnregisterToggleHotKey()
     {
         _hotKey?.Dispose();
         _hotKey = null;
+        _registeredToggleHotKey = null;
     }
 
-    // 当前是否有任一便签/任务清单/管理器窗口可见（供托盘菜单动态显示文字）
+    // 主页不参与显隐判断，避免仅主页可见时仍反复执行隐藏。
     internal bool HasVisibleWindows =>
         _openWindows.Values.Any(w => w.IsVisible)
-        || _openTaskLists.Values.Any(w => w.IsVisible)
-        || (_manager?.IsVisible ?? false);
+        || _openTaskLists.Values.Any(w => w.IsVisible);
 
-    // 切换所有便签/任务清单/管理器窗口的显示状态；设置窗口（模态）不受影响
+    // 快捷键和托盘菜单仅切换便签、任务清单，主页及设置保持原状态。
     internal void ToggleAllWindows()
     {
-        bool anyVisible = _openWindows.Values.Any(w => w.IsVisible)
-            || _openTaskLists.Values.Any(w => w.IsVisible)
-            || (_manager?.IsVisible ?? false);
+        bool anyVisible = HasVisibleWindows;
 
         if (anyVisible)
         {
             foreach (var win in _openWindows.Values) win.Hide();
             foreach (var win in _openTaskLists.Values) win.Hide();
-            _manager?.Hide();
         }
         else
         {
             foreach (var win in _openWindows.Values) win.Show();
             foreach (var win in _openTaskLists.Values) win.Show();
-            if (_manager != null)
-            {
-                _manager.Show();
-                _manager.RefreshLists();
-            }
             // 清除键盘焦点：重新显示后 WPF 会把焦点分给之前点过的控件，
             // 从而画出焦点虚线框，这里主动清除避免残留
             Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => Keyboard.ClearFocus()));

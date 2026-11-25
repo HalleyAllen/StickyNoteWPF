@@ -6,7 +6,7 @@ namespace StickyNoteWPF.Services;
 
 /// <summary>
 /// 全局热键服务：基于 Win32 RegisterHotKey，应用无焦点时也能响应。
-/// 组合格式：如 "Ctrl+Alt+H"；修饰键支持 Ctrl / Alt / Shift / Win；主键为单字符（A-Z / 0-9 / F1-F12 等）。
+/// 支持单键（如 F1）或 Ctrl+Alt+H 等组合；修饰键支持 Ctrl / Alt / Shift / Win。
 /// </summary>
 public sealed class HotKeyService : IDisposable
 {
@@ -16,6 +16,7 @@ public sealed class HotKeyService : IDisposable
     private const uint MOD_CONTROL = 0x0002;
     private const uint MOD_SHIFT = 0x0004;
     private const uint MOD_WIN = 0x0008;
+    private const uint MOD_NOREPEAT = 0x4000;
 
     private const int HotKeyId = 0x5A11;
 
@@ -42,7 +43,7 @@ public sealed class HotKeyService : IDisposable
         _source.AddHook(WndProc);
         _callback = callback;
 
-        if (!RegisterHotKey(_source.Handle, HotKeyId, modifiers, vk))
+        if (!RegisterHotKey(_source.Handle, HotKeyId, modifiers | MOD_NOREPEAT, vk))
         {
             Unregister();
             return false;
@@ -82,8 +83,11 @@ public sealed class HotKeyService : IDisposable
         vk = 0;
         if (string.IsNullOrWhiteSpace(combination)) return false;
 
-        var parts = combination.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length < 2) return false; // 至少一个修饰键 + 一个主键
+        combination = combination.Trim();
+        // “+”本身也是主键；Ctrl++ 对应 Ctrl 加键盘上的加号键。
+        if (combination == "+" || combination.EndsWith("++", StringComparison.Ordinal)) combination = combination[..^1] + "=";
+        var parts = combination.Split('+', StringSplitOptions.TrimEntries);
+        if (parts.Any(string.IsNullOrEmpty)) return false;
 
         string? mainKey = null;
         foreach (var part in parts)
@@ -112,7 +116,7 @@ public sealed class HotKeyService : IDisposable
             }
         }
 
-        if (mainKey == null || modifiers == 0) return false; // 必须同时有主键和修饰键
+        if (mainKey == null) return false;
 
         vk = (uint)KeyToVk(mainKey);
         return vk != 0;
@@ -128,6 +132,7 @@ public sealed class HotKeyService : IDisposable
             return c switch
             {
                 ' ' => 0x20,
+                '+' => 0xBB,
                 '-' => 0xBD,
                 '=' => 0xBB,
                 ',' => 0xBC,
@@ -145,6 +150,7 @@ public sealed class HotKeyService : IDisposable
 
         return key.ToUpperInvariant() switch
         {
+            "SPACE" => 0x20,
             "F1" => 0x70, "F2" => 0x71, "F3" => 0x72, "F4" => 0x73,
             "F5" => 0x74, "F6" => 0x75, "F7" => 0x76, "F8" => 0x77,
             "F9" => 0x78, "F10" => 0x79, "F11" => 0x7A, "F12" => 0x7B,

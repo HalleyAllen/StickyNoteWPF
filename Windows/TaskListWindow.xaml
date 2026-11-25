@@ -246,8 +246,19 @@
                         FontSize="15" ToolTip="设置"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
 
+                <Button x:Name="OtherButton" Grid.Column="5" Style="{StaticResource UiToolbarButton}" Width="32" Height="32" ToolTip="其他：任务模板与显示设置" Click="OtherButton_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button.ContextMenu><ContextMenu Style="{StaticResource UiSortMenu}" Placement="Bottom" VerticalOffset="6" Opened="OtherMenu_Opened">
+                        <MenuItem x:Name="WeeklyTemplateMenu" Header="应用一周任务模板" ToolTip="每张清单只应用一次；已有任务归入今天的分组" Click="WeeklyTemplate_Click"/>
+                        <MenuItem x:Name="ShowCompletedMenu" Header="显示已完成任务" IsCheckable="True" Click="ShowCompletedMenu_Click"/>
+                    </ContextMenu></Button.ContextMenu>
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Width="3" Height="3" Margin="0,0,3,0" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                        <Ellipse Width="3" Height="3" Margin="0,0,3,0" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                        <Ellipse Width="3" Height="3" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                    </StackPanel>
+                </Button>
                 <!-- 关闭 -->
-                <Button Style="{StaticResource UiIconButton}" Padding="0" FontFamily="{StaticResource UiIconFont}" x:Name="CloseButton" Grid.Column="5" Content="&#xE8BB;"
+                <Button Style="{StaticResource UiIconButton}" Padding="0" FontFamily="{StaticResource UiIconFont}" x:Name="CloseButton" Grid.Column="6" Content="&#xE8BB;"
                         Width="40" Height="32" Background="Transparent"
                         Foreground="#FF222222" BorderThickness="0" Cursor="Hand"
                         FontSize="14" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>

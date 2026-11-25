@@ -42,10 +42,11 @@
 
                 <CheckBox x:Name="ShowCompletedCheck" Content="显示已完成任务"
                           FontSize="14" Cursor="Hand" VerticalAlignment="Center"
-                          Margin="0,0,0,18"
+                          Margin="0,0,0,5"
                           ToolTip="关闭后本清单将隐藏已勾选完成的任务"
                           Checked="ShowCompletedCheck_Changed"
                           Unchecked="ShowCompletedCheck_Changed"/>
+                <TextBlock Text="仅影响本清单；隐藏的完成项可随时重新显示。" FontSize="12" Foreground="{DynamicResource UiMuted}" TextWrapping="Wrap" Margin="0,0,0,18"/>
 
                 <TextBlock Text="背景颜色" FontSize="14" Margin="0,0,0,8"/>
                 <WrapPanel x:Name="BgColorPanel" Margin="0,0,0,8"/>

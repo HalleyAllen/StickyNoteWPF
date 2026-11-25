@@ -81,9 +81,13 @@ public static class SnapshotTools
                 || !Style(n.Color, n.TextColor, n.Opacity, n.FontSize)
                 || !string.IsNullOrEmpty(n.BackgroundImagePath)) return "便利贴数据无效。";
         foreach (var l in data.TaskLists)
+        {
+            if (l?.WeeklyTemplateDays is { } days && (days.Count != 7 || days.Keys.Any(day => !Enum.IsDefined(day))
+                || days.Values.Any(id => id == Guid.Empty) || days.Values.Distinct().Count() != 7)) return "一周模板分组信息无效。";
             if (l is null || !ValidId(l.Id) || !Text(l.Title, 1000) || !Text(l.FontFamily, 200)
                 || !Style(l.Color, l.TextColor, l.Opacity, l.FontSize)
                 || !string.IsNullOrEmpty(l.BackgroundImagePath) || !Tasks(l.Items, 0)) return "任务清单数据无效或层级过深。";
+        }
         return null;
     }
 }

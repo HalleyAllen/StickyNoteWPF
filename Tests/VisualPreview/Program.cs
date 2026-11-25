@@ -77,7 +77,12 @@ internal static class Program
             search.Clear();
             RenderWindow(new StickyNoteWindow(notes[0]) { Width = 300, Height = 250 }, "desktop-note");
             RenderWindow(new TaskListWindow(lists[0]), "desktop-tasks");
+            CheckDefaultAppearance();
+            RenderWindow(new StickyNoteWindow(new StickyNoteModel { Title = "默认便签", Text = "白色文字，灰色背景。\n背景略带透明，文字保持清晰。", Color = App.Current.Settings.DefaultColor, TextColor = App.Current.Settings.NoteTextColor, Opacity = App.Current.Settings.WindowOpacity }) { Width = 300, Height = 250 }, "gray-default-note");
+            RenderWindow(new TaskListWindow(new TaskListModel { Title = "默认任务清单", Color = StickyNoteWPF.Services.AppSettings.TaskListDefaultColorHex, TextColor = StickyNoteWPF.Services.AppSettings.TaskListDefaultTextColorHex, Opacity = StickyNoteWPF.Services.AppSettings.TaskListDefaultOpacity, Items = { new TaskItem { Text = "整理今天的安排" }, new TaskItem { Text = "完成一件重要的事" } } }), "gray-default-tasks");
             NoteListChecks.Run(Render);
+            WeeklyTemplateChecks.Run(Render);
+            HotKeyChecks.Run(manager);
             var settings = new SettingsWindow(app.Settings);
             PlaceOffscreen(settings);
             settings.Show();
@@ -155,6 +160,27 @@ internal static class Program
     }
 
     private static void Click(Window window, string name) => ((Button)window.FindName(name)).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    private static void CheckDefaultAppearance()
+    {
+        var normalize = typeof(StickyNoteWPF.Services.AppSettings).GetMethod("EnsureTaskListDefaults", BindingFlags.NonPublic | BindingFlags.Static)!;
+        var fresh = new StickyNoteWPF.Services.AppSettings();
+        normalize.Invoke(null, new object[] { fresh });
+        if (fresh.NoteTextColor != "#FFFFFFFF" || fresh.DefaultColor != "#FF4B5058" || fresh.WindowOpacity != 0.85
+            || fresh.TaskListColor != fresh.DefaultColor || fresh.TaskListTextColor != fresh.NoteTextColor || fresh.TaskListOpacity != fresh.WindowOpacity)
+            throw new InvalidOperationException("新建便签和清单应为白字灰底、85% 不透明度。");
+        var old = System.Text.Json.JsonSerializer.Deserialize<StickyNoteWPF.Services.AppSettings>("{\"DefaultColor\":\"#FFF7A900\",\"NoteTextColor\":\"#FF222222\",\"WindowOpacity\":1,\"TitleTextColor\":\"#FF333333\",\"ButtonColor\":\"#FF333333\"}")!;
+        normalize.Invoke(null, new object[] { old });
+        if (old.DefaultColor != fresh.DefaultColor || old.TaskListColor != fresh.TaskListColor || old.TitleTextColor != fresh.TitleTextColor || old.WindowOpacity != 0.85)
+            throw new InvalidOperationException("旧出厂默认值应迁移到新配色。");
+        var custom = new StickyNoteWPF.Services.AppSettings { DefaultColor = "#FF123456", NoteTextColor = "#FFEEEEEE", WindowOpacity = 0.62, TaskListColor = "#FFABCDEF", TaskListTextColor = "#FF112233", TaskListOpacity = 0.7 };
+        normalize.Invoke(null, new object[] { custom });
+        if (custom.DefaultColor != "#FF123456" || custom.WindowOpacity != 0.62 || custom.TaskListColor != "#FFABCDEF" || custom.TaskListOpacity != 0.7)
+            throw new InvalidOperationException("自定义默认配色不应被迁移覆盖。");
+        old.DefaultColor = "#FFF7A900"; old.NoteTextColor = "#FF222222"; old.WindowOpacity = 1;
+        normalize.Invoke(null, new object[] { old });
+        if (old.DefaultColor != "#FFF7A900") throw new InvalidOperationException("完成迁移后允许用户重新选择原配色。");
+        Console.WriteLine("PASS: gray/white translucent defaults, legacy migration and custom appearance preservation.");
+    }
     private static void CheckThemes(MainWindow manager, SettingsWindow settings, SyncPage sync, PeerSyncPage peer)
     {
         var app = App.Current;
