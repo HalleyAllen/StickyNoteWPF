@@ -38,8 +38,8 @@ internal static class Program
         };
         var lists = new List<TaskListModel> { new() { Title = "本周安排", Color = "#FFB8D9CF", Items = { new TaskItem { Text = "整理主窗口展示", IsDone = true }, new TaskItem { Text = "检查任务清单样式", SubItems = { new TaskItem { Text = "确认子任务缩进" } } }, new TaskItem { Text = "保留现有操作方式" } } } };
         lists.Add(new TaskListModel { Title = "采购清单", Color = "#FFE7D2B7", Items = { new TaskItem { Text = "补充常用物品" } } });
-        typeof(App).GetField("_notes", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(app, notes);
-        typeof(App).GetField("_taskLists", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(app, lists);
+        typeof(App).GetField("_notes", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(app, new System.Collections.ObjectModel.ObservableCollection<StickyNoteModel>(notes));
+        typeof(App).GetField("_taskLists", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(app, new System.Collections.ObjectModel.ObservableCollection<TaskListModel>(lists));
         Directory.CreateDirectory(Output);
         var manager = new MainWindow();
         PlaceOffscreen(manager);
@@ -256,6 +256,8 @@ internal static class Program
     {
         var sort = (Button)manager.FindName("SortButton");
         var menu = sort.ContextMenu;
+        var previousStaysOpen = menu.StaysOpen;
+        menu.StaysOpen = true; // 屏幕外宿主的焦点切换不应干扰布局检查。
         var width = manager.Width;
         var height = manager.Height;
         try
@@ -303,6 +305,7 @@ internal static class Program
         finally
         {
             menu.IsOpen = false;
+            menu.StaysOpen = previousStaysOpen;
             manager.Width = width; manager.Height = height;
             Click(manager, "NavNotes");
             Pump();

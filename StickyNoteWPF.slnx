@@ -3,4 +3,7 @@
   <Project Path="Shared/StickyNote.Sync.Shared.csproj" />
   <Project Path="Server/StickyNote.Sync.Server.csproj" />
   <Project Path="Tests/StickyNote.Sync.Tests.csproj" />
+  <Project Path="Tests/StickyNoteWPF.Tests.csproj" />
+  <Project Path="Tests/Windows/StickyNoteWPF.WindowsSmoke.csproj" />
+  <Project Path="Tests/VisualPreview/StickyNote.VisualPreview.csproj" />
 </Solution>

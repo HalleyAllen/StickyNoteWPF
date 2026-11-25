@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 ﻿using System.Configuration;
 using System.Data;
 using System.Threading;
@@ -20,8 +21,8 @@ public partial class App : System.Windows.Application
     // 用于通知已运行实例退出的自定义窗口消息（新实例接管时发送）
     internal static readonly int ShutdownMessage = NativeMethods.RegisterWindowMessage("StickyNoteWPF_Shutdown");
 
-    private List<StickyNoteModel> _notes = new();
-    private List<TaskListModel> _taskLists = new();
+    private ObservableCollection<StickyNoteModel> _notes = new();
+    private ObservableCollection<TaskListModel> _taskLists = new();
     private readonly Dictionary<Guid, StickyNoteWindow> _openWindows = new();
     private readonly Dictionary<Guid, TaskListWindow> _openTaskLists = new();
     private MainWindow? _manager;
@@ -29,8 +30,18 @@ public partial class App : System.Windows.Application
     private TrayIconService? _tray;
     private bool _isExiting;
     private bool _applyingSync;
+    private bool _exitInProgress;
+    private long _saveRevision;
+    private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(400) };
+    private readonly SaveQueue<string> _saveQueue;
+    private bool _saveWarningShown;
+    private bool _settingsWarningShown;
     private HotKeyService? _hotKey;
     public AppSettings Settings { get; private set; } = new();
+
+    public App() => _saveQueue = new SaveQueue<string>(WriteSnapshot);
+
+    protected virtual bool WriteSnapshot(string json) => NoteStore.SaveJson(json);
 
     public IReadOnlyList<StickyNoteModel> Notes => _notes;
     public IReadOnlyList<TaskListModel> TaskLists => _taskLists;
@@ -67,11 +78,16 @@ public partial class App : System.Windows.Application
 
         base.OnStartup(e);
 
+        _saveTimer.Tick += SaveTimer_Tick;
+        _saveQueue.SaveFailed += () => Dispatcher.BeginInvoke(new Action(ShowSaveError));
+        AppSettings.SaveFailed += ShowSettingsSaveError;
+
         Settings = AppSettings.Load();
         ThemeManager.Apply(Settings.DarkMode);
         var data = NoteStore.Load();
-        _notes = data.Notes;
-        _taskLists = data.TaskLists;
+        _notes = new(data.Notes);
+        _taskLists = new(data.TaskLists);
+        if (!NoteStore.LoadSucceeded) ShowSaveError();
         _tray = new TrayIconService(this);
 
         // 启动时只打开上次处于打开状态的便利贴与任务清单（其余保持关闭，可在管理界面打开）
@@ -127,27 +143,21 @@ public partial class App : System.Windows.Application
     /// <summary>注册便签和任务清单显隐快捷键；空值取消注册，失败保留原快捷键。</summary>
     public bool RegisterToggleHotKey(string combination)
     {
-        if (string.IsNullOrWhiteSpace(combination)) { UnregisterToggleHotKey(); return true; }
-        if (_hotKey?.IsRegistered == true && string.Equals(_registeredToggleHotKey, combination, StringComparison.OrdinalIgnoreCase)) return true;
-
-        var service = new HotKeyService();
-        if (!service.Register(combination, ToggleAllWindows))
+        if (string.IsNullOrWhiteSpace(combination))
         {
-            service.Dispose();
-            return false;
+            UnregisterToggleHotKey();
+            return true;
         }
-        _hotKey?.Dispose();
-        _hotKey = service;
-        _registeredToggleHotKey = combination;
-        return true;
+        _hotKey ??= new HotKeyService();
+        return _hotKey.Register(combination, ToggleAllWindows);
     }
-    private string? _registeredToggleHotKey;
+
 
     public void UnregisterToggleHotKey()
     {
         _hotKey?.Dispose();
         _hotKey = null;
-        _registeredToggleHotKey = null;
+
     }
 
     // 主页不参与显隐判断，避免仅主页可见时仍反复执行隐藏。
@@ -205,27 +215,7 @@ public partial class App : System.Windows.Application
         var w = new StickyNoteSettingsWindow(noteWindow);
         w.Owner = noteWindow;
 
-        // 计算位置：默认放在便利贴右侧外部，避免遮挡；超出屏幕则放左侧
-        const double gap = 12;
-        var screen = System.Windows.SystemParameters.WorkArea;
-        double left = noteWindow.Left + noteWindow.Width + gap;
-        double top = noteWindow.Top;
-
-        if (left + w.Width > screen.Right)
-        {
-            // 右侧放不下，改放便利贴左侧
-            left = noteWindow.Left - w.Width - gap;
-            if (left < screen.Left)
-                left = screen.Left + gap; // 实在放不下就贴屏幕左边
-        }
-
-        // 垂直方向限制在屏幕工作区内
-        if (top < screen.Top) top = screen.Top + gap;
-        if (top + w.Height > screen.Bottom)
-            top = System.Math.Max(screen.Top + gap, screen.Bottom - w.Height - gap);
-
-        w.Left = left;
-        w.Top = top;
+        WindowPlacement.PlaceBeside(w, noteWindow);
 
         w.ShowDialog();
     }
@@ -235,24 +225,7 @@ public partial class App : System.Windows.Application
         var w = new TaskListSettingsWindow(listWindow);
         w.Owner = listWindow;
 
-        const double gap = 12;
-        var screen = System.Windows.SystemParameters.WorkArea;
-        double left = listWindow.Left + listWindow.Width + gap;
-        double top = listWindow.Top;
-
-        if (left + w.Width > screen.Right)
-        {
-            left = listWindow.Left - w.Width - gap;
-            if (left < screen.Left)
-                left = screen.Left + gap;
-        }
-
-        if (top < screen.Top) top = screen.Top + gap;
-        if (top + w.Height > screen.Bottom)
-            top = System.Math.Max(screen.Top + gap, screen.Bottom - w.Height - gap);
-
-        w.Left = left;
-        w.Top = top;
+        WindowPlacement.PlaceBeside(w, listWindow);
 
         w.ShowDialog();
     }
@@ -261,7 +234,7 @@ public partial class App : System.Windows.Application
     {
         if (_openWindows.TryGetValue(note.Id, out var existing))
         {
-            existing.Activate();
+            RestoreAndActivate(existing);
             return;
         }
 
@@ -286,10 +259,13 @@ public partial class App : System.Windows.Application
     }
 
     // 外观/标题等修改后，刷新已打开的便签窗口显示；refreshManager=true 时同步刷新管理界面列表
-    public void RefreshNote(StickyNoteModel note, bool refreshManager = false)
+    public void RefreshNote(StickyNoteModel note, bool refreshManager = false, bool titleOnly = false)
     {
         if (_openWindows.TryGetValue(note.Id, out var win) && win.IsLoaded)
-            win.RefreshFromModel();
+        {
+            if (titleOnly) win.ApplyTitle();
+            else win.RefreshFromModel();
+        }
         SaveAll();
         if (refreshManager) _manager?.RefreshLists();
     }
@@ -348,7 +324,7 @@ public partial class App : System.Windows.Application
     {
         if (_openTaskLists.TryGetValue(list.Id, out var existing))
         {
-            existing.Activate();
+            RestoreAndActivate(existing);
             return;
         }
 
@@ -362,10 +338,13 @@ public partial class App : System.Windows.Application
         win.ApplyForceShowAll();
     }
 
-    public void RefreshTaskList(TaskListModel list, bool refreshManager = false)
+    public void RefreshTaskList(TaskListModel list, bool refreshManager = false, bool titleOnly = false)
     {
         if (_openTaskLists.TryGetValue(list.Id, out var win) && win.IsLoaded)
-            win.RefreshFromModel();
+        {
+            if (titleOnly) win.ApplyTitle();
+            else win.RefreshFromModel();
+        }
         SaveAll();
         if (refreshManager) _manager?.RefreshLists();
     }
@@ -401,15 +380,12 @@ public partial class App : System.Windows.Application
         {
             _manager = new MainWindow();
         }
-        if (_manager.IsVisible)
-            _manager.Activate();
-        else
-            _manager.Show();
+        RestoreAndActivate(_manager);
         _manager.RefreshLists();
     }
 
     public StickyNoteWPF.Sync.SyncData CaptureSyncData()
-        => new() { Notes = _notes, TaskLists = _taskLists };
+        => new() { Notes = _notes.ToList(), TaskLists = _taskLists.ToList() };
 
     public void ApplySyncData(StickyNoteWPF.Sync.SyncData incoming)
     {
@@ -434,6 +410,7 @@ public partial class App : System.Windows.Application
             list.IsOpen = previous.IsOpen;
             list.BackgroundImagePath = previous.BackgroundImagePath;
         }
+        if (!FlushSaves()) throw new InvalidOperationException("本机数据尚未保存，无法替换同步数据。");
         NoteStore.ReplaceFromSync(new StoreData { Notes = data.Notes, TaskLists = data.TaskLists });
         _applyingSync = true;
         try
@@ -442,8 +419,10 @@ public partial class App : System.Windows.Application
             foreach (var win in _openTaskLists.Values.ToList()) win.Close();
             _openWindows.Clear();
             _openTaskLists.Clear();
-            _notes = data.Notes;
-            _taskLists = data.TaskLists;
+            _notes.Clear();
+            foreach (var note in data.Notes) _notes.Add(note);
+            _taskLists.Clear();
+            foreach (var list in data.TaskLists) _taskLists.Add(list);
             foreach (var note in _notes) if (note.IsOpen) OpenNote(note);
             foreach (var list in _taskLists) if (list.IsOpen) OpenTaskList(list);
             ApplyTopmost(Settings.GlobalTopmost);
@@ -453,56 +432,168 @@ public partial class App : System.Windows.Application
         SaveAll();
     }
 
-    public void SaveAll()
+    public void NotifyTaskContentChanged()
     {
-        if (_applyingSync) return;
-        int notes = _notes?.Count ?? 0;
-        int lists = _taskLists?.Count ?? 0;
-        Logger.Log($"SaveAll: 准备保存，内存便利贴数={notes}，任务清单数={lists}");
-        NoteStore.Save(new StoreData
-        {
-            Notes = _notes,
-            TaskLists = _taskLists
-        });
+        SaveAll();
+        _manager?.ScheduleRefresh();
     }
 
-    public void ExitApp()
+    public void SaveAll()
     {
-        _isExiting = true;
-        Logger.Log($"ExitApp: 开始退出，内存便利贴数={_notes?.Count ?? 0}，任务清单数={_taskLists?.Count ?? 0}");
-        // 退出前根据当前打开的窗口写回 IsOpen，下次启动只恢复这些窗口
+        if (_isExiting || _applyingSync) return;
+        _saveRevision++;
+        _saveTimer.Stop();
+        _saveTimer.Start();
+    }
+
+    private void SaveTimer_Tick(object? sender, EventArgs e)
+    {
+        _saveTimer.Stop();
+        QueueSnapshot();
+    }
+
+    private bool QueueSnapshot()
+    {
+        try
+        {
+            // Serialize on the UI thread; the background writer never touches mutable models.
+            _saveQueue.Enqueue(NoteStore.Serialize(new StoreData { Notes = _notes.ToList(), TaskLists = _taskLists.ToList() }));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("App.QueueSnapshot", ex);
+            ShowSaveError();
+            return false;
+        }
+    }
+
+    private async Task<bool> FlushSavesAsync()
+    {
+        long revision;
+        do
+        {
+            revision = _saveRevision;
+            if (_saveTimer.IsEnabled)
+            {
+                _saveTimer.Stop();
+                if (!QueueSnapshot()) return false;
+            }
+            await _saveQueue.FlushAsync();
+            // Editing can continue while disk I/O runs. Include those edits before exiting.
+        } while (_saveTimer.IsEnabled || revision != _saveRevision);
+        return _saveQueue.LastSaveSucceeded;
+    }
+
+    // The dispatcher cannot await during OnExit/OnSessionEnding. Queue workers never use it.
+    private bool FlushSaves()
+    {
+        if (_saveTimer.IsEnabled)
+        {
+            _saveTimer.Stop();
+            if (!QueueSnapshot()) return false;
+        }
+        _saveQueue.FlushAsync().GetAwaiter().GetResult();
+        return _saveQueue.LastSaveSucceeded;
+    }
+
+    protected virtual void ShowSaveError()
+    {
+        if (_saveWarningShown || _exitInProgress) return;
+        _saveWarningShown = true;
+        System.Windows.MessageBox.Show("便签数据未能保存。请检查磁盘空间、数据目录权限及备份文件。\n数据目录：" +
+            System.IO.Path.GetDirectoryName(NoteStore.SavePath), "保存失败",
+            MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
+    private void ShowSettingsSaveError()
+    {
+        if (_settingsWarningShown) return;
+        _settingsWarningShown = true;
+        System.Windows.MessageBox.Show("设置未能保存。请检查磁盘空间和目录权限。\n设置文件：" + AppSettings.SavePath +
+            "\n日志：" + Logger.LogPath, "保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
+    public async void ExitApp() => await RequestExitAsync();
+
+    public async Task<bool> RequestExitAsync()
+    {
+        if (_exitInProgress || _isExiting) return false;
+        _exitInProgress = true;
+        try
+        {
+            Logger.Log($"ExitApp: 请求退出，便利贴数={_notes.Count}，任务清单数={_taskLists.Count}");
+            while (true)
+            {
+                UpdateOpenStates();
+                SaveAll();
+                if (await FlushSavesAsync()) break;
+                if (!ConfirmSaveRetry()) return false;
+            }
+            // Keep every window, the tray and the mutex alive until the latest snapshot is safe.
+            _isExiting = true;
+            ShutdownAfterSave();
+            return true;
+        }
+        finally { _exitInProgress = false; }
+    }
+
+    protected virtual bool ConfirmSaveRetry() => System.Windows.MessageBox.Show(
+        "便签数据未能保存，程序将保留当前内容。请检查磁盘空间、目录权限及备份文件。\n" +
+        "选择“是”重试保存；选择“否”取消退出，返回编辑。\n数据目录：" +
+        System.IO.Path.GetDirectoryName(NoteStore.SavePath), "保存失败，暂不退出",
+        MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
+
+    private void UpdateOpenStates()
+    {
         foreach (var note in _notes)
             note.IsOpen = _openWindows.ContainsKey(note.Id);
         foreach (var list in _taskLists)
             list.IsOpen = _openTaskLists.ContainsKey(list.Id);
-        SaveAll();
-        foreach (var win in _openWindows.Values.ToList())
-            win.Close();
-        foreach (var win in _openTaskLists.Values.ToList())
-            win.Close();
+    }
+
+    protected virtual void ShutdownAfterSave()
+    {
+        foreach (var win in _openWindows.Values.ToList()) win.Close();
+        foreach (var win in _openTaskLists.Values.ToList()) win.Close();
         _hotKey?.Dispose();
         _hotKey = null;
         _tray?.Dispose();
         _tray = null;
-        // 释放单实例互斥锁，交出新实例接管
         _singleMutex?.ReleaseMutex();
         _singleMutex?.Close();
         _singleMutex = null;
         Shutdown();
     }
 
+    protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
+    {
+        base.OnSessionEnding(e);
+        if (e.Cancel || _isExiting) return;
+        UpdateOpenStates();
+        SaveAll();
+        if (!FlushSaves())
+        {
+            e.Cancel = true;
+            ShowSaveError();
+            return;
+        }
+        // OnExit runs after WPF closes windows; preserve the open states saved above.
+        _isExiting = true;
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
-        Logger.Log($"OnExit: _isExiting={_isExiting}，内存便利贴数={_notes?.Count ?? 0}，任务清单数={_taskLists?.Count ?? 0}");
-        // 兜底：仅当尚未经 ExitApp 处理时，写回当前打开状态
+        Logger.Log($"OnExit: _isExiting={_isExiting}，内存便利贴数={_notes.Count}，任务清单数={_taskLists.Count}");
+        // Controlled exits have already saved before closing windows; avoid a second snapshot.
         if (!_isExiting)
         {
-            foreach (var note in _notes)
-                note.IsOpen = _openWindows.ContainsKey(note.Id);
-            foreach (var list in _taskLists)
-                list.IsOpen = _openTaskLists.ContainsKey(list.Id);
+            UpdateOpenStates();
             SaveAll();
+            if (!FlushSaves()) ShowSaveError();
         }
+        _saveTimer.Tick -= SaveTimer_Tick;
+        AppSettings.SaveFailed -= ShowSettingsSaveError;
         _hotKey?.Dispose();
         _hotKey = null;
         _tray?.Dispose();

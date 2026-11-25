@@ -13,6 +13,7 @@ public partial class SettingsWindow : Window
     private bool _ready, _closing, _allowClose;
     private SyncPage? _syncPage;
     private PeerSyncPage? _peerPage;
+    private bool _updatingStartup;
 
     public SettingsWindow(AppSettings settings, SettingsSection section = SettingsSection.General)
     {
@@ -30,8 +31,8 @@ public partial class SettingsWindow : Window
         {
             if (e.LeftButton == MouseButtonState.Pressed) DragMove();
         };
-        StartupCheck.Checked += (_, _) => { AppSettings.SetStartupWithWindows(true); _settings.StartupWithWindows = true; _settings.Save(); };
-        StartupCheck.Unchecked += (_, _) => { AppSettings.SetStartupWithWindows(false); _settings.StartupWithWindows = false; _settings.Save(); };
+        StartupCheck.Checked += StartupCheck_Changed;
+        StartupCheck.Unchecked += StartupCheck_Changed;
         TopmostCheck.Checked += (_, _) => { _settings.GlobalTopmost = true; _settings.Save(); App.Current.ApplyTopmost(true); };
         TopmostCheck.Unchecked += (_, _) => { _settings.GlobalTopmost = false; _settings.Save(); App.Current.ApplyTopmost(false); };
 
@@ -111,6 +112,23 @@ public partial class SettingsWindow : Window
         }));
     }
 
+    private void StartupCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_updatingStartup) return;
+        bool requested = StartupCheck.IsChecked == true;
+        if (AppSettings.SetStartupWithWindows(requested))
+        {
+            _settings.StartupWithWindows = requested;
+            _settings.Save();
+            return;
+        }
+        _updatingStartup = true;
+        try { StartupCheck.IsChecked = AppSettings.IsStartupEnabled(); }
+        finally { _updatingStartup = false; }
+        System.Windows.MessageBox.Show(this, "开机自启设置未能更新。请检查注册表权限。\n日志：" + Logger.LogPath,
+            "设置失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
     private bool _capturingHotKey;
 
     private void BeginHotKeyCapture()
@@ -145,19 +163,21 @@ public partial class SettingsWindow : Window
         if (!_capturingHotKey) return;
         e.Handled = true;
 
-        if (e.Key == Key.Escape)
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        if (key == Key.Escape)
         {
             EndHotKeyCapture();
             return;
         }
 
         // 只按了修饰键（Ctrl/Alt/Shift/Win），继续等待主键
-        if (e.Key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt
+        if (key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt
             or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin)
             return;
 
         var mods = Keyboard.Modifiers;
-        var main = KeyToDisplay(e.Key == Key.System ? e.SystemKey : e.Key);
+
+        var main = KeyToDisplay(key);
         if (main == null) return;
 
         var combo = string.Empty;
@@ -187,12 +207,12 @@ public partial class SettingsWindow : Window
     {
         if (key >= Key.A && key <= Key.Z) return key.ToString();
         if (key >= Key.D0 && key <= Key.D9) return ((char)('0' + (key - Key.D0))).ToString();
-        if (key >= Key.NumPad0 && key <= Key.NumPad9) return ((char)('0' + (key - Key.NumPad0))).ToString();
+        if (key >= Key.NumPad0 && key <= Key.NumPad9) return key.ToString();
         if (key >= Key.F1 && key <= Key.F12) return key.ToString();
         return key switch
         {
             Key.Space => "Space",
-            Key.OemPlus => "+",
+            Key.OemPlus => "OemPlus",
             Key.OemMinus => "-",
             Key.OemComma => ",",
             Key.OemPeriod => ".",

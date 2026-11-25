@@ -17,7 +17,7 @@
     Foreground="{DynamicResource UiText}"
     UseLayoutRounding="True"
     Background="{DynamicResource UiCanvas}"
-    Icon="pack://application:,,,/Resources/StickyNote.png">
+    Icon="pack://application:,,,/StickyNote;component/Resources/StickyNote.png">
     <Window.Resources>
         <local:CardBrushConverter x:Key="CardBrush"/>
         <local:NotePreviewConverter x:Key="NotePreview"/>
@@ -436,7 +436,7 @@
                     Margin="18,0"
                     VerticalAlignment="Center">
                     <Image
-                        Source="pack://application:,,,/Resources/StickyNote.png"
+                        Source="pack://application:,,,/StickyNote;component/Resources/StickyNote.png"
                         Width="20"
                         Height="20"
                         Margin="0,0,10,0" />

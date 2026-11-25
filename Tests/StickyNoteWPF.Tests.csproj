@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Windows\**\*.cs;VisualPreview\**\*.cs;Program.cs;PeerTests.cs" />
+    <ProjectReference Include="../Shared/StickyNote.Sync.Shared.csproj" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.1">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <Compile Include="../Windows/Services/TaskTreeObserver.cs" Link="Services/TaskTreeObserver.cs" />
+    <Compile Include="../Windows/Services/TaskTreeLimits.cs" Link="Services/TaskTreeLimits.cs" />
+    <Compile Include="../Windows/Services/AtomicFile.cs" Link="Services/AtomicFile.cs" />
+    <Compile Include="../Windows/Services/SaveQueue.cs" Link="Services/SaveQueue.cs" />
+    <Compile Include="../Windows/Services/HotKeyGesture.cs" Link="Services/HotKeyGesture.cs" />
+    <Compile Include="../Windows/Services/WindowAppearance.cs" Link="Services/WindowAppearance.cs" />
+    <Compile Include="../Windows/Services/WindowGeometry.cs" Link="Services/WindowGeometry.cs" />
+    <Compile Include="../Windows/Services/RollingLogWriter.cs" Link="Services/RollingLogWriter.cs" />
+    <Compile Include="../Windows/Services/NoteFileStore.cs" Link="Services/NoteFileStore.cs" />
+    <Compile Include="../Windows/Services/StoreData.cs" Link="Services/StoreData.cs" />
+    <Compile Include="../Windows/Services/StoreDataCodec.cs" Link="Services/StoreDataCodec.cs" />
+  </ItemGroup>
+</Project>

@@ -10,6 +10,9 @@ public class AppSettings
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "StickyNoteWPF", "settings.json");
 
+    public static string SavePath => FilePath;
+    public static event Action? SaveFailed;
+
     public bool StartupWithWindows { get; set; }
     public bool GlobalTopmost { get; set; } = true;
     public bool DarkMode { get; set; }
@@ -63,16 +66,29 @@ public class AppSettings
             if (File.Exists(FilePath))
             {
                 var json = File.ReadAllText(FilePath);
-                var s = JsonSerializer.Deserialize<AppSettings>(json);
-                if (s != null) return EnsureTaskListDefaults(s);
+                return Parse(json);
             }
         }
-        catch { }
-        return EnsureTaskListDefaults(new AppSettings());
+        catch (Exception ex)
+        {
+            Logger.LogException("AppSettings.Load", ex);
+            try
+            {
+                AtomicFile.PreserveCorruptedFile(FilePath);
+                if (File.Exists(FilePath + ".bak"))
+                {
+                    var restored = Parse(File.ReadAllText(FilePath + ".bak"));
+                    AtomicFile.WriteAllText(FilePath, JsonSerializer.Serialize(restored), backupExisting: false);
+                    return restored;
+                }
+            }
+            catch (Exception recoveryError) { Logger.LogException("AppSettings.RecoverBackup", recoveryError); }
+        }
+        var defaults = new AppSettings();
+        defaults.Normalize();
+        return defaults;
     }
 
-    // 一次性迁移旧数据：TaskList* 为 null（旧版“跟随便利贴默认”）时，固化为当时的便利贴
-    // 默认值。此后任务清单默认完全独立，便利贴默认的修改不再影响新建任务清单。
     private static AppSettings EnsureTaskListDefaults(AppSettings s)
     {
         s.TaskListColor ??= s.DefaultColor;
@@ -105,40 +121,95 @@ public class AppSettings
         => string.Equals(color, "#FFF7A900", StringComparison.OrdinalIgnoreCase)
            && string.Equals(text, "#FF222222", StringComparison.OrdinalIgnoreCase) && opacity == 1;
 
-    public void Save()
+
+    public static AppSettings Parse(string json)
+    {
+        var settings = JsonSerializer.Deserialize<AppSettings>(json)
+            ?? throw new JsonException("设置文件不能为空");
+        settings.Normalize();
+        return settings;
+    }
+
+    /// <summary>Validate before use or persistence, preserving independent task defaults.</summary>
+    public void Normalize()
+    {
+        DefaultFontSize = FontSize(DefaultFontSize);
+        WindowOpacity = Opacity(WindowOpacity);
+        DefaultColor = Color(DefaultColor, TaskListDefaultColorHex);
+        NoteTextColor = Color(NoteTextColor, TaskListDefaultTextColorHex);
+        TitleTextColor = Color(TitleTextColor, "#FF333333");
+        ButtonColor = Color(ButtonColor, "#FF333333");
+        // Migrate absent legacy task defaults from the now-validated note defaults once.
+        TaskListFontSize = FontSize(TaskListFontSize ?? DefaultFontSize);
+        TaskListOpacity = Opacity(TaskListOpacity ?? WindowOpacity);
+        TaskListColor = Color(TaskListColor ?? DefaultColor, TaskListDefaultColorHex);
+        TaskListTextColor = Color(TaskListTextColor ?? NoteTextColor, TaskListDefaultTextColorHex);
+        EnsureTaskListDefaults(this);
+        ToggleWindowsHotKey = ToggleWindowsHotKey?.Trim() ?? string.Empty;
+        SettingsWindowWidth = Dimension(SettingsWindowWidth, 380, 320);
+        SettingsWindowHeight = Dimension(SettingsWindowHeight, 470, 380);
+        NoteSettingsWidth = Dimension(NoteSettingsWidth, 360, 320);
+        NoteSettingsHeight = Dimension(NoteSettingsHeight, 470, 380);
+        RecentColors = (RecentColors ?? []).Where(value => AppearanceHelper.TryParseColor(value, out _))
+            .Distinct(StringComparer.OrdinalIgnoreCase).Take(AppearanceHelper.MaxRecentColors).ToList();
+        if (RecentColors.Count == 0) RecentColors = new(AppearanceHelper.DefaultColors);
+    }
+
+    private static double FontSize(double value)
+        => double.IsFinite(value) && value > 0 ? Math.Clamp(value, 8, 48) : 14;
+    private static double Opacity(double value) => double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 1;
+    private static double Dimension(double value, double fallback, double minimum)
+        => double.IsFinite(value) && value > 0 ? Math.Clamp(value, minimum, 4096) : fallback;
+    private static string Color(string? value, string fallback)
+        => AppearanceHelper.TryParseColor(value, out _) ? value! : fallback;
+
+    public bool Save()
     {
         try
         {
+            Normalize();
             var dir = Path.GetDirectoryName(FilePath);
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
-            File.WriteAllText(FilePath,
+            AtomicFile.WriteAllText(FilePath,
                 JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+            return true;
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Logger.LogException("AppSettings.Save", ex);
+            SaveFailed?.Invoke();
+            return false;
+        }
     }
 
-    public static void SetStartupWithWindows(bool enable)
+    public static bool SetStartupWithWindows(bool enable)
     {
         try
         {
-            using var key = Registry.CurrentUser.OpenSubKey(
-                @"Software\Microsoft\Windows\CurrentVersion\Run", true);
-            if (key == null) return;
+            const string runKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+            using var key = enable ? Registry.CurrentUser.CreateSubKey(runKey)
+                : Registry.CurrentUser.OpenSubKey(runKey, true);
+            if (key == null) return !enable;
             if (enable)
             {
                 // 单文件发布下 Assembly.Location 为空字符串，需用 ProcessPath 获取 exe 路径
                 var exe = Environment.ProcessPath;
-                if (string.IsNullOrEmpty(exe)) return;
-                key.SetValue("StickyNoteWPF", exe);
+                if (string.IsNullOrEmpty(exe)) return false;
+                key.SetValue("StickyNoteWPF", "\"" + exe + "\"");
             }
             else
             {
                 if (key.GetValue("StickyNoteWPF") != null)
                     key.DeleteValue("StickyNoteWPF");
             }
+            return true;
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Logger.LogException("AppSettings.SetStartupWithWindows", ex);
+            return false;
+        }
     }
 
     public static bool IsStartupEnabled()
@@ -149,6 +220,10 @@ public class AppSettings
                 @"Software\Microsoft\Windows\CurrentVersion\Run", false);
             return key?.GetValue("StickyNoteWPF") != null;
         }
-        catch { return false; }
+        catch (Exception ex)
+        {
+            Logger.LogException("AppSettings.IsStartupEnabled", ex);
+            return false;
+        }
     }
 }

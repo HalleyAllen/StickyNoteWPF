@@ -14,18 +14,15 @@ namespace StickyNoteWPF;
 public partial class StickyNoteWindow : Window
 {
     public StickyNoteModel Note { get; }
-    private readonly NoteBackground _background;
+    private readonly WindowBackgroundImage _backgroundImage;
 
     public StickyNoteWindow(StickyNoteModel note)
     {
         InitializeComponent();
         Note = note;
+        _backgroundImage = new(this, RootBorder);
 
-        Left = note.Left;
-        Top = note.Top;
-        Width = note.Width;
-        Height = note.Height;
-        _background = new NoteBackground(RootBorder, TitleBar, ApplyBackground);
+        WindowPlacement.Restore(this, new(note.Left, note.Top, note.Width, note.Height), 220, 220);
         NoteTextBox.Text = note.Text;
         // 兼容旧数据：若字体大小无效（<=0），回退到默认字体大小并写回模型
         if (note.FontSize <= 0)
@@ -36,20 +33,34 @@ public partial class StickyNoteWindow : Window
         ApplyTitle();
 
         TitleBar.MouseLeftButtonDown += TitleBar_MouseLeftButtonDown;
+        NoteTextBox.PreviewKeyDown += NoteTextBox_PreviewKeyDown;
+        SizeChanged += (_, _) => TitleText.Visibility = ActualWidth < 200 ? Visibility.Hidden : Visibility.Visible;
         CloseButton.Click += (_, _) => RequestClose();
         SettingsButton.Click += (_, _) => App.Current.OpenNoteSettings(this);
         EyeButton.Click += (_, _) => ToggleHover();
         LockButton.Click += (_, _) => ToggleLock();
         NoteTextBox.TextChanged += (_, _) => { Note.Text = NoteTextBox.Text; Persist(); };
-        NoteTextBox.PreviewKeyDown += NoteTextBox_PreviewKeyDown;
-        // 最窄便签优先保留全部操作按钮，避免标题只剩下一个被截断的省略号。
-        SizeChanged += (_, _) => TitleText.Visibility = ActualWidth < 200 ? Visibility.Hidden : Visibility.Visible;
 
         // 鼠标悬停显示：用全局光标坐标判定是否落在便签矩形内（Opacity=0 时窗口不可命中，需轮询）
+        IsVisibleChanged += Window_IsVisibleChanged;
         ApplyHoverState();
-        Closed += (_, _) => { _hoverTimer?.Stop(); _background.Dispose(); };
     }
 
+    private void Window_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (IsVisible) ApplyHoverState();
+        else StopHoverTimer();
+    }
+
+    private void StopHoverTimer()
+    {
+        if (_hoverTimer == null) return;
+        _hoverTimer.Stop();
+        _hoverTimer.Tick -= HoverTick;
+        _hoverTimer = null;
+    }
+
+    // 眼睛按钮：切换该便签是否启用“鼠标移入才显示”
     private void ListButton_Click(object sender, RoutedEventArgs e)
     {
         ListButton.ContextMenu.PlacementTarget = ListButton;
@@ -100,7 +111,7 @@ public partial class StickyNoteWindow : Window
         NoteTextBox.Focus();
     }
 
-    // 眼睛按钮：切换该便签是否启用“鼠标移入才显示”
+
     private void ToggleHover()
     {
         Note.HoverToShow = !Note.HoverToShow;
@@ -119,7 +130,7 @@ public partial class StickyNoteWindow : Window
     // 根据当前便签的 IsLocked 刷新锁图标与文本框只读状态
     private void ApplyLockState()
     {
-        LockButton.Content = Note.IsLocked ? "\uE72E" : "\uE785";
+        LockButton.Content = Note.IsLocked ? "🔒" : "🔓";
         LockButton.ToolTip = Note.IsLocked ? "已锁定（点此解锁，解锁后可编辑）" : "未锁定（点此锁定，锁定后不可编辑）";
         NoteTextBox.IsReadOnly = Note.IsLocked;
         ListButton.IsEnabled = !Note.IsLocked;
@@ -129,14 +140,18 @@ public partial class StickyNoteWindow : Window
     // 根据当前便签的 HoverToShow 应用悬停显隐状态，并刷新眼睛图标
     private void ApplyHoverState()
     {
-        EyeButton.Content = Note.HoverToShow ? "\uE890" : "\uED1A";
+        if (!IsVisible)
+        {
+            StopHoverTimer();
+            return;
+        }
+        EyeButton.Content = Note.HoverToShow ? "👁" : "🚫";
         EyeButton.ToolTip = Note.HoverToShow ? "鼠标移入才显示（点此关闭）" : "始终显示（点此开启悬停）";
 
         // 全局“全部显示”开启时，无论单个便签开关如何，一律强制不透明且始终显示
         if (App.Current?.Settings.ForceShowAll == true)
         {
-            _hoverTimer?.Stop();
-            _hoverTimer = null;
+            StopHoverTimer();
             Opacity = 1;
             IsHitTestVisible = true;
             Topmost = App.Current?.Settings.GlobalTopmost ?? true;
@@ -156,8 +171,7 @@ public partial class StickyNoteWindow : Window
         }
         else
         {
-            _hoverTimer?.Stop();
-            _hoverTimer = null;
+            StopHoverTimer();
             Opacity = 1;
             IsHitTestVisible = true;
             Topmost = App.Current?.Settings.GlobalTopmost ?? true;
@@ -167,19 +181,8 @@ public partial class StickyNoteWindow : Window
     // 全局“全部显示”开关：开启时强制所有便签不透明且始终可见（停用各自的隐藏/透明效果）
     public void ApplyForceShowAll()
     {
-        if (App.Current?.Settings.ForceShowAll == true)
-        {
-            _hoverTimer?.Stop();
-            _hoverTimer = null;
-            Opacity = 1;
-            IsHitTestVisible = true;
-            Topmost = App.Current?.Settings.GlobalTopmost ?? true;
-        }
-        else
-        {
-            // 恢复该便签自身设置
-            ApplyHoverState();
-        }
+        ApplyBackground();
+        ApplyHoverState();
     }
 
     private DispatcherTimer? _hoverTimer;
@@ -243,21 +246,40 @@ public partial class StickyNoteWindow : Window
     // 关键：图片模式下 RootBorder.Background 直接设为 ImageBrush，
     // 不再叠加纯色层，否则透明度拉满时纯色不透明会盖住图片。
     public void ApplyBackground()
-        => _background?.Apply(Note.BackgroundImagePath, Note.Color, "Fill", Note.Opacity, Width, Height);
+    {
+        var o = WindowAppearance.EffectiveOpacity(Note.Opacity, App.Current.Settings.ForceShowAll);
+        var color = AppearanceHelper.ParseColor(Note.Color, System.Windows.Media.Colors.White);
+        color.A = (byte)(o * 255);
+        _backgroundImage.Apply(Note.BackgroundImagePath, "Fill", o, new SolidColorBrush(color));
+        RootBorder.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb((byte)(o * 0x55), 0, 0, 0));
+        TitleBar.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb((byte)(o * 0x22), 0, 0, 0));
+
+        ApplyShadow();
+    }
+
+    private void ApplyShadow()
+    {
+        RootBorder.Effect ??= new DropShadowEffect
+        {
+            Color = System.Windows.Media.Colors.Black,
+            BlurRadius = 12,
+            ShadowDepth = 3,
+            Opacity = 0.3
+        };
+    }
 
     // 应用便签文字 / 标题文字 / 按钮 的颜色（来自该便签自身存储）
     public void ApplyTextStyle()
     {
-        var foreground = MakeBrush(Note.TextColor);
         NoteTextBox.FontSize = Note.FontSize > 0 ? Note.FontSize : (App.Current?.Settings.DefaultFontSize ?? 14);
-        NoteTextBox.Foreground = foreground;
-        NoteTextBox.CaretBrush = foreground;
-        TitleText.Foreground = foreground;
-        SettingsButton.Foreground = foreground;
-        CloseButton.Foreground = foreground;
-        EyeButton.Foreground = foreground;
-        LockButton.Foreground = foreground;
-        ListButton.Foreground = foreground;
+        NoteTextBox.Foreground = MakeBrush(Note.TextColor);
+        NoteTextBox.CaretBrush = MakeBrush(Note.TextColor);
+        TitleText.Foreground = MakeBrush(Note.TextColor);
+        SettingsButton.Foreground = MakeBrush(Note.TextColor);
+        CloseButton.Foreground = MakeBrush(Note.TextColor);
+        EyeButton.Foreground = MakeBrush(Note.TextColor);
+        ListButton.Foreground = MakeBrush(Note.TextColor);
+        LockButton.Foreground = MakeBrush(Note.TextColor);
 
         ApplyScrollBarTheme();
     }
@@ -271,10 +293,8 @@ public partial class StickyNoteWindow : Window
     {
         try
         {
-            var brush = new System.Windows.Media.SolidColorBrush(
+            return new System.Windows.Media.SolidColorBrush(
                 (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
-            brush.Freeze();
-            return brush;
         }
         catch
         {
@@ -310,11 +330,18 @@ public partial class StickyNoteWindow : Window
 
     protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
     {
-        _background?.Resize();
         Note.Width = Width;
         Note.Height = Height;
         Persist();
         base.OnRenderSizeChanged(sizeInfo);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        IsVisibleChanged -= Window_IsVisibleChanged;
+        StopHoverTimer();
+        _backgroundImage.Dispose();
+        base.OnClosed(e);
     }
 
     public void RequestClose()

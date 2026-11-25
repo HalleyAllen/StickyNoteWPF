@@ -296,8 +296,8 @@ internal static class MemoryChecks
     }
     private static void SetData(List<StickyNoteModel> notes, List<TaskListModel> lists)
     {
-        typeof(App).GetField("_notes", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(App.Current, notes);
-        typeof(App).GetField("_taskLists", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(App.Current, lists);
+        typeof(App).GetField("_notes", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(App.Current, new System.Collections.ObjectModel.ObservableCollection<StickyNoteModel>(notes));
+        typeof(App).GetField("_taskLists", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(App.Current, new System.Collections.ObjectModel.ObservableCollection<TaskListModel>(lists));
     }
     private static void Show(Window window)
     {

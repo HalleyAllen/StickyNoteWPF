@@ -18,19 +18,20 @@ namespace StickyNoteWPF;
 public partial class TaskListWindow : Window
 {
     public TaskListModel List { get; }
-    private readonly NoteBackground _background;
+    private readonly WindowBackgroundImage _backgroundImage;
+    private readonly TaskTreeObserver _taskObserver;
+    private readonly Action? _depthLimitWarning;
 
-    public TaskListWindow(TaskListModel list)
+    public TaskListWindow(TaskListModel list, Action? depthLimitWarning = null)
     {
         InitializeComponent();
+        _depthLimitWarning = depthLimitWarning;
         List = list;
+        _backgroundImage = new(this, RootBorder);
+        _taskObserver = new TaskTreeObserver(list.Items, OnTaskTreeChanged);
 
-        Left = double.IsNaN(list.Left) ? 200 : list.Left;
-        Top = double.IsNaN(list.Top) ? 150 : list.Top;
-        Width = 320;
-        Height = 360;
-        _background = new NoteBackground(RootBorder, TitleBar, ApplyBackground);
         if (!list.IsLocked && TaskTemplates.HasWeeklyTemplate(list)) TaskTemplates.ApplyWeekly(list, DateTime.Today.DayOfWeek);
+        WindowPlacement.Restore(this, new(list.Left, list.Top, list.Width, list.Height), 320, 360);
 
         var view = CollectionViewSource.GetDefaultView(list.Items);
         EnsureSubSorting(list.Items);
@@ -46,8 +47,23 @@ public partial class TaskListWindow : Window
         EyeButton.Click += (_, _) => ToggleHover();
         LockButton.Click += (_, _) => ToggleLock();
 
+        IsVisibleChanged += Window_IsVisibleChanged;
         ApplyHoverState();
-        Closed += (_, _) => { _hoverTimer?.Stop(); _background.Dispose(); };
+
+    }
+
+    private void Window_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (IsVisible) ApplyHoverState();
+        else StopHoverTimer();
+    }
+
+    private void StopHoverTimer()
+    {
+        if (_hoverTimer == null) return;
+        _hoverTimer.Stop();
+        _hoverTimer.Tick -= HoverTick;
+        _hoverTimer = null;
     }
 
     // 眼睛按钮：切换是否启用“鼠标移入才显示”
@@ -84,12 +100,17 @@ public partial class TaskListWindow : Window
     private void ApplyHoverState()
     {
         EyeButton.Content = List.HoverToShow ? "\uE890" : "\uED1A";
+        if (!IsVisible)
+        {
+            StopHoverTimer();
+            return;
+        }
+
         EyeButton.ToolTip = List.HoverToShow ? "鼠标移入才显示（点此关闭）" : "始终显示（点此开启悬停）";
 
         if (App.Current?.Settings.ForceShowAll == true)
         {
-            _hoverTimer?.Stop();
-            _hoverTimer = null;
+            StopHoverTimer();
             Opacity = 1;
             IsHitTestVisible = true;
             Topmost = App.Current?.Settings.GlobalTopmost ?? true;
@@ -109,8 +130,7 @@ public partial class TaskListWindow : Window
         }
         else
         {
-            _hoverTimer?.Stop();
-            _hoverTimer = null;
+            StopHoverTimer();
             Opacity = 1;
             IsHitTestVisible = true;
             Topmost = App.Current?.Settings.GlobalTopmost ?? true;
@@ -119,18 +139,8 @@ public partial class TaskListWindow : Window
 
     public void ApplyForceShowAll()
     {
-        if (App.Current?.Settings.ForceShowAll == true)
-        {
-            _hoverTimer?.Stop();
-            _hoverTimer = null;
-            Opacity = 1;
-            IsHitTestVisible = true;
-            Topmost = App.Current?.Settings.GlobalTopmost ?? true;
-        }
-        else
-        {
-            ApplyHoverState();
-        }
+        ApplyBackground();
+        ApplyHoverState();
     }
 
     private DispatcherTimer? _hoverTimer;
@@ -185,7 +195,22 @@ public partial class TaskListWindow : Window
     }
 
     public void ApplyBackground()
-        => _background?.Apply(List.BackgroundImagePath, List.Color, List.BackgroundImageMode, List.Opacity, Width, Height);
+    {
+        var o = WindowAppearance.EffectiveOpacity(List.Opacity, App.Current.Settings.ForceShowAll);
+        var color = AppearanceHelper.ParseColor(List.Color, Colors.White);
+        color.A = (byte)(o * 255);
+        _backgroundImage.Apply(List.BackgroundImagePath, List.BackgroundImageMode, o, new SolidColorBrush(color));
+        RootBorder.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb((byte)(o * 0x55), 0, 0, 0));
+        TitleBar.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb((byte)(o * 0x22), 0, 0, 0));
+
+        RootBorder.Effect ??= new DropShadowEffect
+        {
+            Color = Colors.Black,
+            BlurRadius = 12,
+            ShadowDepth = 3,
+            Opacity = 0.3
+        };
+    }
 
     public void ApplyTextStyle()
     {
@@ -225,6 +250,7 @@ public partial class TaskListWindow : Window
 
     private void TaskText_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
+        if (List.IsLocked) return;
         if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None)
         {
             // Enter 提交当前任务并新建一条同级任务
@@ -252,6 +278,7 @@ public partial class TaskListWindow : Window
 
     private void DeleteTask_Click(object sender, RoutedEventArgs e)
     {
+        if (List.IsLocked) return;
         if ((sender as FrameworkElement)?.DataContext is not TaskItem item)
         {
             Logger.Log($"删除任务按钮点击但未识别任务项（sender 类型={sender?.GetType().Name}）");
@@ -364,6 +391,12 @@ public partial class TaskListWindow : Window
 
     private void AddSubTask(TaskItem parent)
     {
+        if (List.IsLocked) return;
+        if (!TaskTreeLimits.CanAddChild(List.Items, parent))
+        {
+            ShowTaskDepthLimit();
+            return;
+        }
         long maxOrder = parent.SubItems.Count == 0 ? 0 : parent.SubItems.Max(i => i.Order);
         var sub = new TaskItem { Text = "新子任务", Order = maxOrder + 1 };
         parent.SubItems.Add(sub);
@@ -372,6 +405,14 @@ public partial class TaskListWindow : Window
         EnsureSubSorting(parent.SubItems);
         Persist();
         FocusItemTextBox(sub);
+    }
+
+    private void ShowTaskDepthLimit()
+    {
+        if (_depthLimitWarning != null) { _depthLimitWarning(); return; }
+        System.Windows.MessageBox.Show(this,
+            $"任务最多支持 {TaskTreeLimits.MaximumDepth} 层嵌套。请在同级添加任务。",
+            "已达到任务层级上限", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     // 聚焦到指定任务项的文本框（可用于任意层级）
@@ -471,7 +512,8 @@ public partial class TaskListWindow : Window
 
     protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
     {
-        _background?.Resize();
+        List.Width = Width;
+        List.Height = Height;
         Persist();
         base.OnRenderSizeChanged(sizeInfo);
     }
@@ -482,6 +524,21 @@ public partial class TaskListWindow : Window
     }
 
     public event EventHandler? ClosedByUser;
+
+    protected override void OnClosed(EventArgs e)
+    {
+        IsVisibleChanged -= Window_IsVisibleChanged;
+        StopHoverTimer();
+        _taskObserver.Dispose();
+        _backgroundImage.Dispose();
+        base.OnClosed(e);
+    }
+
+    private void OnTaskTreeChanged()
+    {
+        List.NotifyTaskChanges();
+        App.Current?.NotifyTaskContentChanged();
+    }
 
     private void TaskText_TextChanged(object sender, TextChangedEventArgs e) => Persist();
 
