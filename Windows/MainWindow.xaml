@@ -653,10 +653,10 @@
                             <Path Width="18" Height="18" Stretch="Uniform" Data="{StaticResource UiPaletteGeometry}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
                         </Button>
                         <Button
-                            x:Name="ForceShowButton"
+                            x:Name="ShowWindowsButton"
                             Grid.Column="5"
                             Style="{StaticResource UiToolbarButton}"
-                            ToolTip="全部显示">
+                            ToolTip="显示便签与清单（恢复各自的透明度和自动隐藏）">
                             <Path Width="18" Height="18" Stretch="Uniform" Data="{StaticResource UiEyeGeometry}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.4" StrokeLineJoin="Round"/>
                         </Button>
                     </Grid>

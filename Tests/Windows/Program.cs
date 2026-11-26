@@ -62,6 +62,7 @@ internal static class Program
             });
             app.DispatcherUnhandledException += (_, e) => ReportError(e.Exception);
             RunCheck("templates and opacity", () => CheckTemplatesAndOpacity(app));
+            RunCheck("show restores preferences", () => CheckShowRestoresPreferences(app));
             RunCheck("hover timers", CheckHoverTimers);
             RunCheck("image cache", CheckImageCache);
             RunCheck("async image presentation", CheckAsyncImagePresentation);
@@ -114,21 +115,68 @@ internal static class Program
             note.RefreshFromModel();
             Check(ReferenceEquals(template, textbox.Template), "The text template was recreated.");
             Check(textbox.CaretIndex == 5, "Refreshing the theme moved the caret.");
-            app.Settings.ForceShowAll = true;
-            note.ApplyForceShowAll();
-            tasks.ApplyForceShowAll();
-            Check(BackgroundAlpha(note) == 255 && BackgroundAlpha(tasks) == 255, "Force-show left a transparent background.");
-            app.Settings.ForceShowAll = false;
-            note.ApplyForceShowAll();
-            tasks.ApplyForceShowAll();
-            Check(BackgroundAlpha(note) == 63 && BackgroundAlpha(tasks) == 63, "Stored opacity was not restored.");
+            note.ApplyOpacity(0);
+            tasks.ApplyOpacity(0);
+            Check(BackgroundAlpha(note) == 0 && BackgroundAlpha(tasks) == 0, "Zero opacity did not clear backgrounds.");
+            note.ApplyOpacity(0.25);
+            tasks.ApplyOpacity(0.25);
+            Check(BackgroundAlpha(note) == 63 && BackgroundAlpha(tasks) == 63, "Opacity adjustment was ignored.");
+            textbox.Clear();
+            foreach (var window in new Window[] { note, tasks })
+            {
+                Check(window.AllowsTransparency && ((SolidColorBrush)window.Background).Color.A == 0,
+                    "An opaque window background covers the desktop.");
+                window.UpdateLayout();
+                var content = (FrameworkElement)window.Content;
+                var bitmap = new RenderTargetBitmap((int)content.ActualWidth, (int)content.ActualHeight,
+                    96, 96, PixelFormats.Pbgra32);
+                bitmap.Render(content);
+                var pixel = new byte[4];
+                bitmap.CopyPixels(new Int32Rect(bitmap.PixelWidth / 2, bitmap.PixelHeight / 2, 1, 1), pixel, 4, 0);
+                Check(pixel[3] > 0 && pixel[3] < 180, $"Rendered {window.GetType().Name} has opaque content: alpha={pixel[3]}.");
+            }
         }
         finally { note.Close(); tasks.Close(); }
-        Console.WriteLine("PASS: shared template, caret preservation and force-show opacity.");
+        Console.WriteLine("PASS: opacity edits, transparent rendered pixels and caret preservation.");
     }
 
     private static byte BackgroundAlpha(Window window)
         => ((SolidColorBrush)((Border)window.FindName("RootBorder")).Background).Color.A;
+
+    private static void CheckShowRestoresPreferences(App app)
+    {
+        var manager = new MainWindow();
+        var noteModel = new StickyNoteModel { Opacity = 0.25, HoverToShow = true };
+        var taskModel = new TaskListModel { Opacity = 0.25, HoverToShow = true };
+        app.OpenNote(noteModel);
+        app.OpenTaskList(taskModel);
+        var note = app.Windows.OfType<StickyNoteWindow>().Single(window => window.Note == noteModel);
+        var tasks = app.Windows.OfType<TaskListWindow>().Single(window => window.List == taskModel);
+        try
+        {
+            var legacy = AppSettings.Parse("""{"ForceShowAll":true,"WindowOpacity":0.35,"DefaultAppearanceVersion":1}""");
+            Check(legacy.WindowOpacity == 0.35, "Legacy settings changed the saved opacity.");
+            manager.Show();
+            note.Hide(); tasks.Hide();
+            var show = (Button)manager.FindName("ShowWindowsButton");
+            show.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            show.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            foreach (var window in new Window[] { note, tasks })
+            {
+                Check(window.IsVisible && BackgroundAlpha(window) == 63 && window.Opacity == 0 && !window.IsHitTestVisible
+                    && HoverTimer(window)?.IsEnabled == true,
+                    "Repeated Show clicks did not restore transparency and auto-hide.");
+            }
+            Check(noteModel.Opacity == 0.25 && taskModel.Opacity == 0.25
+                && noteModel.HoverToShow && taskModel.HoverToShow,
+                "Showing windows overwrote per-window settings.");
+        }
+        finally
+        {
+            note.Close(); tasks.Close(); manager.Close();
+        }
+        Console.WriteLine("PASS: Show clicks restore windows without disabling transparency or auto-hide.");
+    }
 
     private static void CheckHoverTimers()
     {

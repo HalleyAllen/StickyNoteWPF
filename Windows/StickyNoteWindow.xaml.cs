@@ -36,7 +36,7 @@ public partial class StickyNoteWindow : Window
         NoteTextBox.PreviewKeyDown += NoteTextBox_PreviewKeyDown;
         SizeChanged += (_, _) => TitleText.Visibility = ActualWidth < 200 ? Visibility.Hidden : Visibility.Visible;
         CloseButton.Click += (_, _) => RequestClose();
-        SettingsButton.Click += (_, _) => App.Current.OpenNoteSettings(this);
+        SettingsButton.Click += (_, _) => App.Current?.OpenNoteSettings(this);
         EyeButton.Click += (_, _) => ToggleHover();
         LockButton.Click += (_, _) => ToggleLock();
         NoteTextBox.TextChanged += (_, _) => { Note.Text = NoteTextBox.Text; Persist(); };
@@ -130,7 +130,7 @@ public partial class StickyNoteWindow : Window
     // 根据当前便签的 IsLocked 刷新锁图标与文本框只读状态
     private void ApplyLockState()
     {
-        LockButton.Content = Note.IsLocked ? "🔒" : "🔓";
+        LockButton.Content = Note.IsLocked ? "\uE72E" : "\uE785";
         LockButton.ToolTip = Note.IsLocked ? "已锁定（点此解锁，解锁后可编辑）" : "未锁定（点此锁定，锁定后不可编辑）";
         NoteTextBox.IsReadOnly = Note.IsLocked;
         ListButton.IsEnabled = !Note.IsLocked;
@@ -140,24 +140,13 @@ public partial class StickyNoteWindow : Window
     // 根据当前便签的 HoverToShow 应用悬停显隐状态，并刷新眼睛图标
     private void ApplyHoverState()
     {
+        EyeButton.Content = Note.HoverToShow ? "\uE890" : "\uED1A";
+        EyeButton.ToolTip = Note.HoverToShow ? "鼠标移入才显示（点此关闭）" : "始终显示（点此开启悬停）";
         if (!IsVisible)
         {
             StopHoverTimer();
             return;
         }
-        EyeButton.Content = Note.HoverToShow ? "👁" : "🚫";
-        EyeButton.ToolTip = Note.HoverToShow ? "鼠标移入才显示（点此关闭）" : "始终显示（点此开启悬停）";
-
-        // 全局“全部显示”开启时，无论单个便签开关如何，一律强制不透明且始终显示
-        if (App.Current?.Settings.ForceShowAll == true)
-        {
-            StopHoverTimer();
-            Opacity = 1;
-            IsHitTestVisible = true;
-            Topmost = App.Current?.Settings.GlobalTopmost ?? true;
-            return;
-        }
-
         if (Note.HoverToShow)
         {
             if (_hoverTimer == null)
@@ -178,8 +167,8 @@ public partial class StickyNoteWindow : Window
         }
     }
 
-    // 全局“全部显示”开关：开启时强制所有便签不透明且始终可见（停用各自的隐藏/透明效果）
-    public void ApplyForceShowAll()
+    // 恢复该便签自己的背景透明度和鼠标悬停显隐。
+    public void RestoreAppearance()
     {
         ApplyBackground();
         ApplyHoverState();
@@ -247,7 +236,7 @@ public partial class StickyNoteWindow : Window
     // 不再叠加纯色层，否则透明度拉满时纯色不透明会盖住图片。
     public void ApplyBackground()
     {
-        var o = WindowAppearance.EffectiveOpacity(Note.Opacity, App.Current.Settings.ForceShowAll);
+        var o = WindowAppearance.EffectiveOpacity(Note.Opacity);
         var color = AppearanceHelper.ParseColor(Note.Color, System.Windows.Media.Colors.White);
         color.A = (byte)(o * 255);
         _backgroundImage.Apply(Note.BackgroundImagePath, "Fill", o, new SolidColorBrush(color));

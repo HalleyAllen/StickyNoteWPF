@@ -177,8 +177,7 @@ public partial class App : System.Windows.Application
         }
         else
         {
-            foreach (var win in _openWindows.Values) win.Show();
-            foreach (var win in _openTaskLists.Values) win.Show();
+            ShowAllWindows();
             // 清除键盘焦点：重新显示后 WPF 会把焦点分给之前点过的控件，
             // 从而画出焦点虚线框，这里主动清除避免残留
             Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => Keyboard.ClearFocus()));
@@ -246,16 +245,22 @@ public partial class App : System.Windows.Application
         note.IsOpen = true;
         SaveAll();
         win.Show();
-        win.ApplyForceShowAll();
+        win.RestoreAppearance();
     }
 
-    // 全局“全部显示”开关切换后，实时刷新所有已打开的窗口
-    public void ApplyForceShowAll()
+    // 显示只恢复各窗口自身的透明度和悬停设置，不覆盖外观。
+    public void ShowAllWindows()
     {
         foreach (var win in _openWindows.Values)
-            win.ApplyForceShowAll();
+        {
+            win.Show();
+            win.RestoreAppearance();
+        }
         foreach (var win in _openTaskLists.Values)
-            win.ApplyForceShowAll();
+        {
+            win.Show();
+            win.RestoreAppearance();
+        }
     }
 
     // 外观/标题等修改后，刷新已打开的便签窗口显示；refreshManager=true 时同步刷新管理界面列表
@@ -335,7 +340,7 @@ public partial class App : System.Windows.Application
         list.IsOpen = true;
         SaveAll();
         win.Show();
-        win.ApplyForceShowAll();
+        win.RestoreAppearance();
     }
 
     public void RefreshTaskList(TaskListModel list, bool refreshManager = false, bool titleOnly = false)

@@ -19,7 +19,6 @@ public class AppSettings
 
     // 全局快捷键：仅隐藏/显示便签与清单，如 "F1" 或 "Ctrl+Alt+H"；空字符串表示未设置
     public string ToggleWindowsHotKey { get; set; } = string.Empty;
-    public bool ForceShowAll { get; set; } = false;   // 全局强制所有便签不透明且始终显示（停用隐藏/透明效果）
 
     // ===== 新建便利贴的默认外观（仅影响之后新建的便利贴）=====
     public const string NoteDefaultColorHex = "#FF4B5058";

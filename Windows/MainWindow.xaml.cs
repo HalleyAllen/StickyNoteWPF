@@ -56,7 +56,7 @@ public partial class MainWindow : Window
             else
                 App.Current.CreateNote();
         };
-        ForceShowButton.Click += ForceShowButton_Click;
+        ShowWindowsButton.Click += (_, _) => App.Current.ShowAllWindows();
         DefaultAppearanceButton.Click += (_, _) => App.Current.OpenDefaultAppearance(_showTasks);
         SettingsButton.Click += (_, _) => App.Current.OpenSettings();
         MinButton.Click += (_, _) => WindowState = WindowState.Minimized;
@@ -80,7 +80,6 @@ public partial class MainWindow : Window
         {
             Width = Math.Min(Width, SystemParameters.WorkArea.Width);
             Height = Math.Min(Height, SystemParameters.WorkArea.Height);
-            UpdateForceShowButton();
             RefreshLists();
             UpdateNavVisuals();
             UpdateViewButtons();
@@ -88,26 +87,6 @@ public partial class MainWindow : Window
             var source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
             source.AddHook(WndProc);
         };
-    }
-
-    // 根据设置更新“全部显示”按钮状态（图标加深表示已开启）。
-    private void UpdateForceShowButton()
-    {
-        var on = App.Current.Settings.ForceShowAll;
-        ForceShowButton.SetResourceReference(Control.ForegroundProperty, on ? "UiText" : "UiMuted");
-        ForceShowButton.Background = System.Windows.Media.Brushes.Transparent;
-        ForceShowButton.ToolTip = on
-            ? "全部显示：开启（所有便签已强制不透明且始终显示，点此关闭）"
-            : "全部显示：关闭（点此开启，强制所有便签不透明且始终显示）";
-    }
-
-    private void ForceShowButton_Click(object sender, RoutedEventArgs e)
-    {
-        var s = App.Current.Settings;
-        s.ForceShowAll = !s.ForceShowAll;
-        s.Save();
-        App.Current.ApplyForceShowAll();
-        UpdateForceShowButton();
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)

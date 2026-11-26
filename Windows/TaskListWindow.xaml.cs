@@ -108,15 +108,6 @@ public partial class TaskListWindow : Window
 
         EyeButton.ToolTip = List.HoverToShow ? "鼠标移入才显示（点此关闭）" : "始终显示（点此开启悬停）";
 
-        if (App.Current?.Settings.ForceShowAll == true)
-        {
-            StopHoverTimer();
-            Opacity = 1;
-            IsHitTestVisible = true;
-            Topmost = App.Current?.Settings.GlobalTopmost ?? true;
-            return;
-        }
-
         if (List.HoverToShow)
         {
             if (_hoverTimer == null)
@@ -137,7 +128,7 @@ public partial class TaskListWindow : Window
         }
     }
 
-    public void ApplyForceShowAll()
+    public void RestoreAppearance()
     {
         ApplyBackground();
         ApplyHoverState();
@@ -196,7 +187,7 @@ public partial class TaskListWindow : Window
 
     public void ApplyBackground()
     {
-        var o = WindowAppearance.EffectiveOpacity(List.Opacity, App.Current.Settings.ForceShowAll);
+        var o = WindowAppearance.EffectiveOpacity(List.Opacity);
         var color = AppearanceHelper.ParseColor(List.Color, Colors.White);
         color.A = (byte)(o * 255);
         _backgroundImage.Apply(List.BackgroundImagePath, List.BackgroundImageMode, o, new SolidColorBrush(color));

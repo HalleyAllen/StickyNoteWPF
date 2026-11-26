@@ -45,7 +45,7 @@ public partial class TaskListSettingsWindow : Window
         AppearanceHelper.BuildColorSwatches(TextColorPanel, App.Current.Settings, _list.TextColor, SetText);
 
         if (_list.FontSize <= 0)
-            _list.FontSize = App.Current?.Settings.TaskListFontSize ?? App.Current?.Settings.DefaultFontSize ?? 16;
+            _list.FontSize = s.TaskListFontSize ?? s.DefaultFontSize;
 
         FontSizeValue.Text = $"{Math.Round(_list.FontSize)}";
         OpacityValue.Text = $"{Math.Round(_list.Opacity * 100)}%";

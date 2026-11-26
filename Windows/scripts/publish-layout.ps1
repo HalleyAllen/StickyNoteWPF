@@ -1,10 +1,10 @@
-# 发布后布局整理脚本（由 StickyNoteWPF.csproj 的 AfterTargets=Publish 自动调用）
-# 作用：清理带 RID 的 build 中间产物目录（如 win-x86\）和残留的 lib\，避免重复副本留在根目录。
-# 注意：自包含 WPF 的托管 dll 必须平铺在发布根目录（deps.json 的加载路径指向根目录），不能收进子目录。
+# Keep this script ASCII-only: Windows PowerShell 5.1 reads BOM-less files
+# using the system code page. Non-ASCII comments can break parsing there.
+# Managed DLLs must remain at the publish root for deps.json resolution.
 param(
     [Parameter(Mandatory = $true)][string]$ProjectDir,
     [Parameter(Mandatory = $true)][string]$PublishDir,
-    [string]$Rid = ""
+    [ValidateSet("", "win-x86", "win-x64", "win-arm64")][string]$Rid = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,22 +14,25 @@ $pub = if ([System.IO.Path]::IsPathRooted($PublishDir)) {
     [System.IO.Path]::GetFullPath((Join-Path $ProjectDir $PublishDir))
 }
 $exe = Join-Path $pub "StickyNote.exe"
-if (-not (Test-Path $exe)) { throw "publish dir not found: $pub" }
+if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw "publish dir not found: $pub" }
 
-# 1) 清理带 RID 的 build 中间产物目录（如 win-x86\），避免整套重复副本留在根目录
-if ($Rid) {
-    $ridDir = Join-Path $pub $Rid
-    if (Test-Path $ridDir) { Remove-Item $ridDir -Recurse -Force }
+function Remove-PublishChild([string]$Name) {
+    $publishRoot = $pub.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+    $target = [System.IO.Path]::GetFullPath((Join-Path $pub $Name))
+    if (-not $target.StartsWith($publishRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Cleanup path is outside the publish directory: $target"
+    }
+    if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
 }
 
-# 2) 清理历史方案遗留的 lib\ 子目录（托管 dll 必须平铺在根目录）
-$libDir = Join-Path $pub "lib"
-if (Test-Path $libDir) { Remove-Item $libDir -Recurse -Force }
+# Remove duplicate RID build output and the legacy lib directory.
+if ($Rid) { Remove-PublishChild $Rid }
+Remove-PublishChild "lib"
 
-# 3) 确保 Resources\（托盘图标等）复制到发布目录：Content 复制在带 RID 发布时可能被跳过
+# Ensure tray icon resources are present even when RID publishing skips content.
 $srcRes = Join-Path $ProjectDir "Resources"
 $dstRes = Join-Path $pub "Resources"
-if (Test-Path $srcRes) {
+if (Test-Path -LiteralPath $srcRes) {
     New-Item -ItemType Directory -Path $dstRes -Force | Out-Null
     Copy-Item (Join-Path $srcRes "*") $dstRes -Recurse -Force
 }

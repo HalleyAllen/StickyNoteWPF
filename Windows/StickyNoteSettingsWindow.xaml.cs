@@ -51,7 +51,7 @@ public partial class StickyNoteSettingsWindow : Window
 
         // 兼容旧数据：字体大小无效（<=0）时回退默认，避免被 Slider 钳到最小值并误写回
         if (_note.FontSize <= 0)
-            _note.FontSize = App.Current?.Settings.DefaultFontSize ?? 14;
+            _note.FontSize = s.DefaultFontSize;
 
         // 文本先显示真实值（不依赖 Slider）
         FontSizeValue.Text = $"{Math.Round(_note.FontSize)}";
