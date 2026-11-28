@@ -36,14 +36,18 @@ StickyNoteWPF/
   - 桌面可勾选清单，实时显示完成进度
   - 「其他（⋯）」菜单可一次性应用一周任务模板，已有任务归入今天，按周一至周日填写子任务，并切换已完成任务的显示
   - 支持新建多张清单独立管理
+  - 主页预览独立遵守「显示已完成任务」，首次加载即生效，完成状态变化实时更新，无需先打开清单窗口
 - **管理界面**（主窗口）
-  - 左侧导航切换「便利贴 / 任务清单」
+  - 左侧导航切换「便利贴 / 任务清单 / 归档」
   - 支持关键字搜索、排序（默认 / 标题 A→Z / Z→A）
   - 卡片 / 列表两种视图切换
+  - 选中时保留卡片原色；浅色使用阴影，暗色使用中性浅灰光晕；新建、排序的焦点和按压状态不会改变布局尺寸
+  - 便利贴和待办支持归档、搜索与恢复；归档后从桌面及日常列表收起，归档待办始终显示已完成项和子任务，恢复后保留原有设置
   - 长列表和任务预览按可见区域加载，背景图按窗口所需尺寸解码，降低内存占用
 - **默认外观**（🎨）
   - 在统一设置窗口的「便签外观 / 清单外观」页调整新建项的默认样式
 - **全局设置**（⚙）
+  - 全局、便签和清单设置均为非模态窗口，打开时可继续编辑便签、勾选待办；外观调整即时生效，重复打开会唤回已有窗口
   - 开机自启、窗口置顶、全局显示/隐藏快捷键（支持 F1、F2 等单键，只切换便签和清单，主页保持原状态）
   - 常规设置可切换深色模式，即时生效并记住选择；便签和清单保留自定义颜色
 - **账号与数据同步**
@@ -62,6 +66,15 @@ StickyNoteWPF/
 
 - Windows 10 / 11
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)（仅开发构建需要；发布为自包含后可免环境运行）
+
+## 归档与恢复
+
+1. 在日常卡片或列表中点击「归档」，对应桌面窗口会关闭，内容保留在归档区。
+2. 点击左侧「归档」，在右上角选择「便利贴 / 待办」，可继续搜索、排序和切换视图。
+3. 双击归档项只读查看完整内容；归档待办的预览和详情均显示已完成项，详情包含子任务。
+4. 点击「恢复」或详情中的「恢复到日常列表」，再从日常列表打开即可继续编辑。
+
+归档不删除内容，也不会修改任务完成状态、样式或原来的「显示已完成任务」设置。归档状态参与本地保存和同步；归档项不会在启动或点击「显示便签与清单」时重新出现在桌面。
 
 ## 构建与运行
 
@@ -83,13 +96,16 @@ dotnet run --project Tests/StickyNote.Sync.Tests.csproj
 dotnet test Tests/StickyNoteWPF.Tests.csproj
 
 # Linux 云环境：仅交叉编译 Windows 目标；WPF 界面仍须在 Windows 上运行
-dotnet build StickyNoteWPF.csproj -p:EnableWindowsTargeting=true -r win-x64 --self-contained false
+dotnet build Windows/StickyNoteWPF.csproj -p:EnableWindowsTargeting=true -r win-x64 --self-contained false
 
 # Windows：实际加载控件，检查模板、透明度、定时器、快捷键冲突和列表虚拟化
 dotnet run --project Tests/Windows/StickyNoteWPF.WindowsSmoke.csproj
+
+# Windows：渲染界面并检查主题、选中效果、新建/排序布局、设置页和归档详情
+dotnet run --project Tests/VisualPreview/StickyNote.VisualPreview.csproj
 ```
 
-GitHub Actions 会执行核心测试、Windows 构建、自包含发布和界面冒烟检查。
+GitHub Actions 会执行核心测试、同步检查、Windows 构建、界面预览回归、自包含发布和界面冒烟检查。窗口检查包含非模态设置、归档恢复、主页完成项过滤、透明度和自动隐藏。
 发布包的界面检查会通过管理器新建一张便签，退出后验证已写入数据文件；应在隔离的 Windows 测试账户中执行。
 
 数据和设置使用原子替换写入，`.bak` 保留上一版；损坏文件会另存为 `.corrupt-*.json`。
@@ -102,6 +118,10 @@ Windows 项目内置发布整理脚本（`Windows/scripts/publish-layout.ps1`）
 ```bash
 dotnet publish Windows/StickyNoteWPF.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 ```
+
+Visual Studio 中的 `FolderProfile` 使用 `win-x86` 自包含单文件发布；也可在仓库根目录执行 `dotnet publish Windows/StickyNoteWPF.csproj -p:PublishProfile=FolderProfile`。整理脚本兼容 Windows PowerShell 5.1，支持相对或绝对发布目录。
+
+更换程序版本前先从托盘退出旧实例，再启动新文件；重复启动会激活当前运行的实例。用户数据不在程序目录中，无需随发布包移动。
 
 ## 数据存储
 

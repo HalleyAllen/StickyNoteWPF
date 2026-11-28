@@ -18,11 +18,17 @@ internal static class Program
 {
     private static string _phase = "initialization";
 
+    private sealed class SmokeSettings : AppSettings
+    {
+        public override bool Save() => true;
+    }
+
     // Application queues OnStartup on its dispatcher even when the test never calls Run().
     // Exercise real controls without loading user data, acquiring the single-instance mutex
     // or installing the production persistence/exit handlers in the test host.
     private sealed class SmokeApp : App
     {
+        public SmokeApp() => typeof(App).GetProperty(nameof(Settings))!.SetValue(this, new SmokeSettings());
         public Func<string, bool> SnapshotWriter { get; set; } = _ => true;
         public Func<bool> RetryDecision { get; set; } = () => throw new Exception("Unexpected save failure.");
         public bool ExitCompleted { get; private set; }
@@ -63,6 +69,9 @@ internal static class Program
             app.DispatcherUnhandledException += (_, e) => ReportError(e.Exception);
             RunCheck("templates and opacity", () => CheckTemplatesAndOpacity(app));
             RunCheck("show restores preferences", () => CheckShowRestoresPreferences(app));
+            RunCheck("modeless settings", () => CheckModelessSettings(app));
+            RunCheck("archive lifecycle", () => CheckArchiveLifecycle(app));
+            RunCheck("home completion filter", () => CheckHomeCompletionFilter(app));
             RunCheck("hover timers", CheckHoverTimers);
             RunCheck("image cache", CheckImageCache);
             RunCheck("async image presentation", CheckAsyncImagePresentation);
@@ -176,6 +185,201 @@ internal static class Program
             note.Close(); tasks.Close(); manager.Close();
         }
         Console.WriteLine("PASS: Show clicks restore windows without disabling transparency or auto-hide.");
+    }
+
+    private static void CheckModelessSettings(App app)
+    {
+        var managerField = typeof(App).GetField("_manager", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var previousManager = managerField.GetValue(app);
+        var manager = new MainWindow();
+        var noteModel = new StickyNoteModel { Opacity = 0.4 };
+        var task = new TaskItem { Text = "editable task" };
+        var taskModel = new TaskListModel { Opacity = 0.6, Items = { task } };
+        app.OpenNote(noteModel);
+        app.OpenTaskList(taskModel);
+        var note = app.Windows.OfType<StickyNoteWindow>().Single(window => window.Note == noteModel);
+        var tasks = app.Windows.OfType<TaskListWindow>().Single(window => window.List == taskModel);
+        try
+        {
+            managerField.SetValue(app, manager);
+            manager.Show();
+            app.OpenSettings();
+            app.OpenNoteSettings(note);
+            app.OpenTaskListSettings(tasks);
+            var general = app.Windows.OfType<SettingsWindow>().Single();
+            var noteSettings = app.Windows.OfType<StickyNoteSettingsWindow>().Single();
+            var taskSettings = app.Windows.OfType<TaskListSettingsWindow>().Single();
+            foreach (Window window in new Window[] { manager, note, tasks })
+                Check(IsWindowEnabled(new WindowInteropHelper(window).Handle),
+                    "Opening settings disabled another window.");
+
+            ((TextBox)note.FindName("NoteTextBox")).Text = "edited with settings open";
+            tasks.UpdateLayout();
+            var taskText = VisualDescendants(tasks).OfType<TextBox>().Single(box => box.DataContext == task);
+            taskText.Text = "updated with settings open";
+            VisualDescendants(tasks).OfType<CheckBox>().Single(box => box.DataContext == task).IsChecked = true;
+            Check(noteModel.Text == "edited with settings open" && task.Text == "updated with settings open" && task.IsDone,
+                "Settings prevented editing notes or completing tasks.");
+            ((Slider)noteSettings.FindName("OpacitySlider")).Value = 0.3;
+            ((Slider)taskSettings.FindName("OpacitySlider")).Value = 0.5;
+            Check(BackgroundAlpha(note) == 76 && BackgroundAlpha(tasks) == 127,
+                "Modeless settings stopped applying appearance changes live.");
+
+            general.WindowState = WindowState.Minimized;
+            noteSettings.WindowState = WindowState.Minimized;
+            taskSettings.WindowState = WindowState.Minimized;
+            app.OpenSettings(SettingsSection.TaskAppearance);
+            app.OpenNoteSettings(note);
+            app.OpenTaskListSettings(tasks);
+            Check(app.Windows.OfType<SettingsWindow>().Single() == general
+                && app.Windows.OfType<StickyNoteSettingsWindow>().Single() == noteSettings
+                && app.Windows.OfType<TaskListSettingsWindow>().Single() == taskSettings
+                && general.WindowState == WindowState.Normal && noteSettings.WindowState == WindowState.Normal
+                && taskSettings.WindowState == WindowState.Normal,
+                "Repeated settings opens duplicated windows or failed to restore them.");
+            noteSettings.Close();
+            app.OpenNoteSettings(note);
+            Check(app.Windows.OfType<StickyNoteSettingsWindow>().Single() != noteSettings,
+                "Closing settings did not release the cached window.");
+            note.Close(); tasks.Close();
+            Check(!app.Windows.OfType<StickyNoteSettingsWindow>().Any()
+                && !app.Windows.OfType<TaskListSettingsWindow>().Any(),
+                "Closing an owner left orphan settings windows.");
+            general.Close();
+            app.OpenSettings();
+            Check(app.Windows.OfType<SettingsWindow>().Single() != general,
+                "Global settings could not reopen after closing.");
+        }
+        finally
+        {
+            foreach (Window window in app.Windows.Cast<Window>().Where(window =>
+                window is SettingsWindow or StickyNoteSettingsWindow or TaskListSettingsWindow).ToArray()) window.Close();
+            note.Close(); tasks.Close(); manager.Close();
+            managerField.SetValue(app, previousManager);
+        }
+        Console.WriteLine("PASS: modeless settings preserve enabled windows, editing, live appearance, reuse and owner cleanup.");
+    }
+
+    private static void CheckArchiveLifecycle(App app)
+    {
+        var managerField = typeof(App).GetField("_manager", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var previousManager = managerField.GetValue(app);
+        var notes = (System.Collections.ObjectModel.ObservableCollection<StickyNoteModel>)app.Notes;
+        var lists = (System.Collections.ObjectModel.ObservableCollection<TaskListModel>)app.TaskLists;
+        var note = new StickyNoteModel { Title = "archive note", Text = "preserved content" };
+        var done = new TaskItem { Text = "finished root", IsDone = true, SubItems = { new TaskItem { Text = "finished child", IsDone = true } } };
+        var list = new TaskListModel { Title = "archive tasks", ShowCompleted = false, Items = { done, new TaskItem { Text = "pending" } } };
+        notes.Add(note); lists.Add(list);
+        var manager = new MainWindow();
+        try
+        {
+            managerField.SetValue(app, manager);
+            manager.Show();
+            app.OpenNote(note); app.OpenTaskList(list);
+            var desktopList = app.Windows.OfType<TaskListWindow>().Single(window => window.List == list);
+            Check(((ListBox)desktopList.FindName("TaskList")).Items.Count == 1, "The active list did not hide completed tasks.");
+            manager.UpdateLayout();
+            VisualDescendants(manager).OfType<Button>().Single(button => button.DataContext == note && button.Content?.ToString() == "归档")
+                .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            app.SetArchived(list, true);
+            Check(note.IsArchived && list.IsArchived && !note.IsOpen && !list.IsOpen
+                && !app.Windows.OfType<StickyNoteWindow>().Any(window => window.Note == note)
+                && !app.Windows.OfType<TaskListWindow>().Any(window => window.List == list),
+                "Archiving did not close desktop windows and preserve records.");
+            app.ShowAllWindows();
+            Check(!((ListBox)manager.FindName("NoteList")).Items.Contains(note), "Archived note remains in the daily list.");
+            ((Button)manager.FindName("NavArchive")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(((ListBox)manager.FindName("NoteList")).Items.Contains(note), "Archived note is missing from archive.");
+            app.OpenNote(note);
+            var viewer = app.Windows.OfType<ArchiveViewerWindow>().Single();
+            Check(((TextBox)viewer.FindName("NoteBody")).IsReadOnly
+                && ((TextBox)viewer.FindName("NoteBody")).Text == "preserved content" && !note.IsOpen,
+                "Opening an archive reopened the desktop or lost its text.");
+            viewer.Close();
+            ((ComboBox)manager.FindName("ArchiveKindBox")).SelectedIndex = 1;
+            var archivedList = (ListBox)manager.FindName("TaskListBox");
+            manager.UpdateLayout();
+            Check(archivedList.Items.Contains(list), "Archived task list is missing.");
+            var cardPreview = VisualDescendants(manager).OfType<ItemsControl>()
+                .First(control => control.DataContext == list && control is not ListBox && control.ItemsSource is not null);
+            Check(cardPreview.Items.Count == 2, "Archived preview hid completed root tasks.");
+            ((TextBox)manager.FindName("SearchBox")).Text = "finished child";
+            manager.RefreshLists();
+            Check(archivedList.Items.Contains(list), "Archive search did not find a completed child.");
+            app.OpenTaskList(list);
+            viewer = app.Windows.OfType<ArchiveViewerWindow>().Single();
+            app.OpenTaskList(list);
+            Check(app.Windows.OfType<ArchiveViewerWindow>().Count() == 1, "Archive detail windows were duplicated.");
+            var tree = (TreeView)viewer.FindName("ArchivedTaskTree");
+            viewer.UpdateLayout();
+            Check(tree.Items.Count == 2 && VisualDescendants(tree).OfType<TextBlock>().Any(text => text.Text == "finished child"),
+                "Archive details hid completed tasks or children.");
+            Check(!list.ShowCompleted, "Archive viewing overwrote the daily completion preference.");
+            ((Button)viewer.FindName("RestoreButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(!list.IsArchived && !list.IsOpen && !list.ShowCompleted && done.IsDone && done.SubItems[0].IsDone,
+                "Restore changed task contents, completion or preferences.");
+            ((Button)manager.FindName("NavTasks")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            ((TextBox)manager.FindName("SearchBox")).Clear();
+            manager.RefreshLists();
+            Check(archivedList.Items.Contains(list), "Restoring did not return tasks to the daily list.");
+            app.OpenTaskList(list);
+            desktopList = app.Windows.OfType<TaskListWindow>().Single(window => window.List == list);
+            Check(((ListBox)desktopList.FindName("TaskList")).Items.Count == 1, "Restored desktop lost the original completed-task filter.");
+            app.SetArchived(note, false);
+        }
+        finally
+        {
+            app.DeleteNote(note); app.DeleteTaskList(list);
+            manager.Close();
+            managerField.SetValue(app, previousManager);
+        }
+        Console.WriteLine("PASS: archive/restore, desktop isolation, search, read-only details and completed-task visibility.");
+    }
+
+    private static void CheckHomeCompletionFilter(App app)
+    {
+        // Simulate a freshly loaded list: no desktop window has initialized a view.
+        var loaded = StoreDataCodec.Parse("""{"TaskLists":[{"ShowCompleted":false,"Items":[{"Text":"done","IsDone":true},{"Text":"pending","IsDone":false}]}]}""");
+        var model = loaded.TaskLists[0];
+        var lists = (System.Collections.ObjectModel.ObservableCollection<TaskListModel>)app.TaskLists;
+        lists.Add(model);
+        var manager = new MainWindow();
+        TaskListWindow? desktop = null;
+        try
+        {
+            manager.Show();
+            ((Button)manager.FindName("NavTasks")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            manager.UpdateLayout();
+            ItemsControl Preview() => VisualDescendants(manager).OfType<ItemsControl>()
+                .First(control => control.DataContext == model && control is not ListBox && control.ItemsSource is not null);
+            Check(Preview().Items.Count == 1 && !((TaskItem)Preview().Items[0]).IsDone,
+                "Home preview showed completed items before the desktop was opened.");
+            app.OpenTaskList(model);
+            desktop = app.Windows.OfType<TaskListWindow>().Single(window => window.List == model);
+            desktop.Close();
+            Check(Preview().Items.Count == 1, "Closing the task window changed the home completion filter.");
+            model.ShowCompleted = true;
+            Check(AwaitOnDispatcher(WaitFor(() => Preview().Items.Count == 2)), "Home ignored ShowCompleted changes.");
+            model.ShowCompleted = false;
+            Check(AwaitOnDispatcher(WaitFor(() => Preview().Items.Count == 1)), "Home failed to hide completed items again.");
+            model.Items[1].IsDone = true;
+            Check(AwaitOnDispatcher(WaitFor(() => Preview().Items.Count == 0)), "Completing a task did not update the preview live.");
+            model.Items[0].IsDone = false;
+            Check(AwaitOnDispatcher(WaitFor(() => Preview().Items.Count == 1)), "Uncompleting a task did not restore it live.");
+            model.Items.Add(new TaskItem { Text = "new completed", IsDone = true });
+            Check(AwaitOnDispatcher(WaitFor(() => Preview().Items.Count == 1)), "A newly added completed item bypassed filtering.");
+            app.SetArchived(model, true);
+            ((Button)manager.FindName("NavArchive")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            manager.UpdateLayout();
+            Check(Preview().Items.Count == 3 && !model.ShowCompleted, "Archive must show all tasks without changing the saved preference.");
+        }
+        finally
+        {
+            desktop?.Close();
+            lists.Remove(model);
+            manager.Close();
+        }
+        Console.WriteLine("PASS: home filters loaded tasks before opening, survives closing, updates live and keeps archives complete.");
     }
 
     private static void CheckHoverTimers()
@@ -692,6 +896,10 @@ internal static class Program
     {
         if (!condition) throw new InvalidOperationException(message);
     }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindowEnabled(IntPtr hwnd);
 
     [DllImport("user32.dll")]
     private static extern IntPtr SendMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam);

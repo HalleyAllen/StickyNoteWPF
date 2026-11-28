@@ -10,5 +10,6 @@
     <SolidColorBrush x:Key="UiSelected" Color="#363E4B"/>
     <SolidColorBrush x:Key="UiDanger" Color="#FF9292"/>
     <SolidColorBrush x:Key="UiAccentText" Color="#16223A"/>
-    <DropShadowEffect x:Key="UiCardShadow" Color="#000000" BlurRadius="14" ShadowDepth="3" Direction="270" Opacity="0.55" RenderingBias="Quality"/>
+    <!-- A neutral halo remains visible against the dark canvas and colored cards. -->
+    <DropShadowEffect x:Key="UiCardShadow" Color="#D5DEEB" BlurRadius="14" ShadowDepth="0" Opacity="0.5" RenderingBias="Quality"/>
 </ResourceDictionary>

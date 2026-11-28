@@ -18,6 +18,7 @@ namespace StickyNoteWPF;
 public partial class MainWindow : Window
 {
     private bool _showTasks;
+    private bool _showArchive;
     private ListCollectionView? _noteView;
     private ListCollectionView? _taskView;
     private readonly DispatcherTimer _searchTimer = new() { Interval = TimeSpan.FromMilliseconds(180) };
@@ -41,10 +42,10 @@ public partial class MainWindow : Window
         InitializeComponent();
         _noteView = new ListCollectionView((IList)App.Current.Notes);
         _taskView = new ListCollectionView((IList)App.Current.TaskLists);
-        _noteView.Filter = item => item is StickyNoteModel note &&
+        _noteView.Filter = item => item is StickyNoteModel note && note.IsArchived == _showArchive &&
             (string.IsNullOrWhiteSpace(_searchNoteText) || ContainsIgnoreCase(note.Title, _searchNoteText.Trim())
                 || ContainsIgnoreCase(note.Text, _searchNoteText.Trim()));
-        _taskView.Filter = item => item is TaskListModel list &&
+        _taskView.Filter = item => item is TaskListModel list && list.IsArchived == _showArchive &&
             (string.IsNullOrWhiteSpace(_searchTaskText) || TaskMatches(list, _searchTaskText.Trim()));
         NoteList.ItemsSource = _noteView;
         TaskListBox.ItemsSource = _taskView;
@@ -108,6 +109,24 @@ public partial class MainWindow : Window
 
     private void NavNotes_Click(object sender, RoutedEventArgs e) => SwitchTab(false);
     private void NavTasks_Click(object sender, RoutedEventArgs e) => SwitchTab(true);
+    private void NavArchive_Click(object sender, RoutedEventArgs e) => SwitchTab(_showTasks, true);
+
+    private void ArchiveKind_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_showArchive && _noteView is not null && _showTasks != (ArchiveKindBox.SelectedIndex == 1))
+            SwitchTab(ArchiveKindBox.SelectedIndex == 1, true);
+    }
+
+    private void ArchiveItem_Click(object sender, RoutedEventArgs e)
+    {
+        switch ((sender as FrameworkElement)?.DataContext)
+        {
+            case StickyNoteModel note: App.Current.SetArchived(note, !note.IsArchived); break;
+            case TaskListModel list: App.Current.SetArchived(list, !list.IsArchived); break;
+        }
+        RefreshLists();
+        e.Handled = true;
+    }
 
     // 标题文本框会处理鼠标事件，先在容器的隧道阶段选中卡片，再保留正常编辑行为。
     private void Card_PreviewMouseDown(object sender, MouseButtonEventArgs e)
@@ -121,9 +140,15 @@ public partial class MainWindow : Window
         if (sender is ListBoxItem item) item.IsSelected = true;
     }
 
-    private void SwitchTab(bool showTasks)
+    private void SwitchTab(bool showTasks, bool archived = false)
     {
         _showTasks = showTasks;
+        _showArchive = archived;
+        ArchiveKindBox.Visibility = archived ? Visibility.Visible : Visibility.Collapsed;
+        ArchiveKindBox.SelectedIndex = showTasks ? 1 : 0;
+        AddNoteButton.Visibility = archived ? Visibility.Collapsed : Visibility.Visible;
+        DefaultAppearanceButton.Visibility = archived ? Visibility.Collapsed : Visibility.Visible;
+        ShowWindowsButton.Visibility = archived ? Visibility.Collapsed : Visibility.Visible;
         NoteList.Visibility = showTasks ? Visibility.Collapsed : Visibility.Visible;
         TaskListBox.Visibility = showTasks ? Visibility.Visible : Visibility.Collapsed;
         AddNoteButton.ToolTip = showTasks ? "新建任务清单" : "新建便利贴";
@@ -138,13 +163,16 @@ public partial class MainWindow : Window
     // 左侧导航选中态：淡灰底色、加深文字。
     private void UpdateNavVisuals()
     {
-        PageTitle.Text = _showTasks ? "任务清单" : "便利贴";
-        NavNotes.SetResourceReference(Control.ForegroundProperty, _showTasks ? "UiMuted" : "UiText");
-        NavNotes.FontWeight = _showTasks ? FontWeights.Normal : FontWeights.SemiBold;
-        NavTasks.SetResourceReference(Control.ForegroundProperty, _showTasks ? "UiText" : "UiMuted");
-        NavTasks.FontWeight = _showTasks ? FontWeights.SemiBold : FontWeights.Normal;
-        NavIndicatorNotes.Opacity = _showTasks ? 0 : 1;
-        NavIndicatorTasks.Opacity = _showTasks ? 1 : 0;
+        PageTitle.Text = _showArchive ? "归档" : _showTasks ? "任务清单" : "便利贴";
+        NavNotes.SetResourceReference(Control.ForegroundProperty, !_showArchive && !_showTasks ? "UiText" : "UiMuted");
+        NavNotes.FontWeight = !_showArchive && !_showTasks ? FontWeights.SemiBold : FontWeights.Normal;
+        NavTasks.SetResourceReference(Control.ForegroundProperty, !_showArchive && _showTasks ? "UiText" : "UiMuted");
+        NavTasks.FontWeight = !_showArchive && _showTasks ? FontWeights.SemiBold : FontWeights.Normal;
+        NavArchive.SetResourceReference(Control.ForegroundProperty, _showArchive ? "UiText" : "UiMuted");
+        NavArchive.FontWeight = _showArchive ? FontWeights.SemiBold : FontWeights.Normal;
+        NavIndicatorNotes.Opacity = !_showArchive && !_showTasks ? 1 : 0;
+        NavIndicatorTasks.Opacity = !_showArchive && _showTasks ? 1 : 0;
+        NavIndicatorArchive.Opacity = _showArchive ? 1 : 0;
         DefaultAppearanceButton.ToolTip = _showTasks
             ? "默认外观：设置新建任务清单的默认样式（不影响便利贴与已创建的任务清单）"
             : "默认外观：设置新建便利贴的默认样式（不影响任务清单与已创建的便利贴）";
@@ -221,9 +249,12 @@ public partial class MainWindow : Window
                 // CustomSort marks the view for refresh, including when set to null.
                 // DeferRefresh performs that refresh once when this scope ends.
             }
-            bool totalEmpty = _showTasks ? App.Current.TaskLists.Count == 0 : App.Current.Notes.Count == 0;
+            bool totalEmpty = _showTasks ? !App.Current.TaskLists.Any(list => list.IsArchived == _showArchive)
+                : !App.Current.Notes.Any(note => note.IsArchived == _showArchive);
             EmptyHint.Visibility = view.IsEmpty ? Visibility.Visible : Visibility.Collapsed;
-            EmptyHint.Text = _showTasks
+            EmptyHint.Text = _showArchive
+                ? totalEmpty ? "暂无归档，日常列表中的「归档」按钮可将内容收起。" : "没有找到匹配的归档内容"
+                : _showTasks
                 ? totalEmpty ? "还没有任务清单，点击右上角「＋ 新建」创建第一个吧。" : "没有找到匹配的任务清单"
                 : totalEmpty ? "还没有便利贴，点击右上角「＋ 新建」创建第一张吧。" : "没有找到匹配的便利贴";
         }

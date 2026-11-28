@@ -48,6 +48,7 @@ internal static class Program
             manager.Show();
             Render(manager, "manager-cards");
             CheckSortLayout(manager);
+            CheckCreateButtonLayout(manager);
             var noteList = (ListBox)manager.FindName("NoteList");
             var originalCards = Enumerable.Range(0, notes.Count).Select(i => CardSnapshot(noteList, i)).ToArray();
             noteList.SelectedIndex = 0;
@@ -83,6 +84,21 @@ internal static class Program
             NoteListChecks.Run(Render);
             WeeklyTemplateChecks.Run(Render);
             HotKeyChecks.Run(manager);
+            Click(manager, "NavNotes");
+            app.SetArchived(notes[0], true);
+            Click(manager, "NavArchive");
+            Render(manager, "archive-notes");
+            RenderWindow(new ArchiveViewerWindow(notes[0], () => { }), "archive-note-details");
+            var originalShowCompleted = lists[0].ShowCompleted;
+            lists[0].ShowCompleted = false;
+            app.SetArchived(lists[0], true);
+            ((ComboBox)manager.FindName("ArchiveKindBox")).SelectedIndex = 1;
+            Render(manager, "archive-tasks");
+            RenderWindow(new ArchiveViewerWindow(lists[0], () => { }), "archive-task-details");
+            app.SetArchived(notes[0], false);
+            app.SetArchived(lists[0], false);
+            lists[0].ShowCompleted = originalShowCompleted;
+            Click(manager, "NavNotes");
             var settings = new SettingsWindow(app.Settings);
             PlaceOffscreen(settings);
             settings.Show();
@@ -202,6 +218,8 @@ internal static class Program
                 throw new InvalidOperationException("主题设置必须可保存，旧配置默认使用浅色。");
             StickyNoteWPF.Services.ThemeManager.Apply(true);
             Render(manager, "dark-manager-cards");
+            CheckDarkSelectionContrast(manager, list);
+            CheckCreateButtonLayout(manager);
             if (((SolidColorBrush)manager.Background).Color == originalCanvas)
                 throw new InvalidOperationException("主题切换必须更新已打开的窗口。");
             AssertBrush(((Button)manager.FindName("NavNotes")).Foreground, "UiText");
@@ -252,6 +270,93 @@ internal static class Program
                 throw new InvalidOperationException("控件没有跟随主题资源：" + key);
         }
     }
+    private static void CheckDarkSelectionContrast(MainWindow manager, ListBox list)
+    {
+        for (var index = 0; index < list.Items.Count; index++)
+        {
+            list.SelectedIndex = -1;
+            manager.UpdateLayout();
+            var original = CardSnapshot(list, index);
+            var before = MarginPixel(index);
+            list.SelectedIndex = index;
+            Render(manager, "dark-selection-" + index);
+            CheckSelection(list, index, original);
+            var after = MarginPixel(index);
+            if (after.R + after.G + after.B < before.R + before.G + before.B + 24)
+                throw new InvalidOperationException("暗色模式的选中光晕必须在卡片边缘外有可见的亮度差。");
+        }
+        Console.WriteLine("PASS: rendered dark selection is visible on each card color without changing card size or fill.");
+
+        Color MarginPixel(int index)
+        {
+            manager.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            manager.UpdateLayout();
+            var content = (FrameworkElement)manager.Content;
+            var card = Card(list, index);
+            var point = card.TranslatePoint(new Point(-3, card.ActualHeight / 2), content);
+            var bitmap = new RenderTargetBitmap((int)content.ActualWidth, (int)content.ActualHeight,
+                96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(content);
+            var pixel = new byte[4];
+            bitmap.CopyPixels(new Int32Rect((int)point.X, (int)point.Y, 1, 1), pixel, 4, 0);
+            return Color.FromArgb(pixel[3], pixel[2], pixel[1], pixel[0]);
+        }
+    }
+
+    private static void CheckCreateButtonLayout(MainWindow manager)
+    {
+        var button = (Button)manager.FindName("AddNoteButton");
+        var search = (TextBox)manager.FindName("SearchBox");
+        var pressedKey = (DependencyPropertyKey)typeof(System.Windows.Controls.Primitives.ButtonBase)
+            .GetField("IsPressedPropertyKey", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!;
+        var width = manager.Width;
+        var height = manager.Height;
+        try
+        {
+            foreach (var size in new[] { (860d, 600d), (manager.MinWidth, manager.MinHeight) })
+            {
+                manager.Width = size.Item1; manager.Height = size.Item2;
+                foreach (var tasks in new[] { false, true })
+                {
+                    Click(manager, tasks ? "NavTasks" : "NavNotes");
+                    search.Focus();
+                    var original = Snapshot();
+                    button.Focus(); AssertStable("获得焦点");
+                    if (!button.IsKeyboardFocused)
+                        throw new InvalidOperationException("新建按钮的布局检查未获得键盘焦点。");
+                    button.SetValue(pressedKey, true); AssertStable("按下");
+                    button.SetValue(pressedKey, false); AssertStable("松开");
+                    search.Focus(); AssertStable("失去焦点");
+
+                    void AssertStable(string phase)
+                    {
+                        if (!original.SequenceEqual(Snapshot()))
+                            throw new InvalidOperationException("新建按钮" + phase + "时不能改变标题、工具栏或列表的位置和尺寸。");
+                    }
+                }
+            }
+        }
+        finally
+        {
+            button.SetValue(pressedKey, false);
+            manager.Width = width; manager.Height = height;
+            Click(manager, "NavNotes");
+            manager.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            manager.UpdateLayout();
+        }
+        Console.WriteLine("PASS: New button focus, press and release keep layout stable in both categories and window sizes.");
+
+        Rect[] Snapshot()
+        {
+            manager.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            manager.UpdateLayout();
+            return new[] { "AddNoteButton", "PageTitle", "SearchBox", "SortButton", "NoteList", "TaskListBox" }
+                .Select(name => (FrameworkElement)manager.FindName(name))
+                .Where(element => element.Visibility == Visibility.Visible)
+                .Select(element => element.TransformToAncestor(manager).TransformBounds(new Rect(element.RenderSize))).ToArray();
+        }
+    }
+
     private static void CheckSortLayout(MainWindow manager)
     {
         var sort = (Button)manager.FindName("SortButton");
@@ -313,7 +418,7 @@ internal static class Program
         void Pump() { manager.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle); manager.UpdateLayout(); }
         Rect[] Snapshot(ListBox list) => new[] { (FrameworkElement)manager.FindName("SearchBox"), sort,
             (FrameworkElement)manager.FindName("CardViewButton"), (FrameworkElement)manager.FindName("RowViewButton"),
-            (FrameworkElement)manager.FindName("DefaultAppearanceButton"), (FrameworkElement)manager.FindName("ForceShowButton"), list }
+            (FrameworkElement)manager.FindName("DefaultAppearanceButton"), (FrameworkElement)manager.FindName("ShowWindowsButton"), list }
             .Select(element => element.TransformToAncestor(manager).TransformBounds(new Rect(element.RenderSize))).ToArray();
         void Check(Rect[] original, ListBox list, string phase)
         {
@@ -428,6 +533,11 @@ internal static class Program
 // 即使不调用 Application.Run，也不能执行真实的本地数据加载及系统服务初始化。
 internal sealed class PreviewApp : App
 {
+    private sealed class PreviewSettings : StickyNoteWPF.Services.AppSettings
+    {
+        public override bool Save() => true;
+    }
+    public PreviewApp() => typeof(App).GetProperty(nameof(Settings))!.SetValue(this, new PreviewSettings());
     protected override void OnStartup(StartupEventArgs e) { }
     protected override void OnExit(ExitEventArgs e) { }
 }

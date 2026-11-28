@@ -45,6 +45,7 @@ public static class StoreDataCodec
         foreach (var note in data.Notes)
         {
             note.Id = UniqueId(note.Id, ids);
+            if (note.IsArchived) note.IsOpen = false;
             note.Title ??= string.Empty;
             note.Text ??= string.Empty;
             note.Color = Nonempty(note.Color, "#FFF7A900");
@@ -61,6 +62,7 @@ public static class StoreDataCodec
         foreach (var list in data.TaskLists)
         {
             list.Id = UniqueId(list.Id, ids);
+            if (list.IsArchived) list.IsOpen = false;
             list.Title ??= string.Empty;
             list.Color = Nonempty(list.Color, "#FFF7A900");
             list.TextColor = Nonempty(list.TextColor, "#FF222222");

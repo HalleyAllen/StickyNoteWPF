@@ -27,6 +27,9 @@ public partial class App : System.Windows.Application
     private readonly Dictionary<Guid, TaskListWindow> _openTaskLists = new();
     private MainWindow? _manager;
     private SettingsWindow? _settingsWindow;
+    private readonly Dictionary<StickyNoteWindow, StickyNoteSettingsWindow> _noteSettingsWindows = new();
+    private readonly Dictionary<TaskListWindow, TaskListSettingsWindow> _taskSettingsWindows = new();
+    private readonly Dictionary<Guid, ArchiveViewerWindow> _archiveViewers = new();
     private TrayIconService? _tray;
     private bool _isExiting;
     private bool _applyingSync;
@@ -92,10 +95,10 @@ public partial class App : System.Windows.Application
 
         // 启动时只打开上次处于打开状态的便利贴与任务清单（其余保持关闭，可在管理界面打开）
         foreach (var note in _notes)
-            if (note.IsOpen)
+            if (note.IsOpen && !note.IsArchived)
                 OpenNote(note);
         foreach (var list in _taskLists)
-            if (list.IsOpen)
+            if (list.IsOpen && !list.IsArchived)
                 OpenTaskList(list);
 
         ApplyTopmost(Settings.GlobalTopmost);
@@ -191,7 +194,7 @@ public partial class App : System.Windows.Application
         if (_settingsWindow is not null)
         {
             _settingsWindow.SelectSection(section);
-            _settingsWindow.Activate();
+            RestoreAndActivate(_settingsWindow);
             return;
         }
         var w = new SettingsWindow(Settings, section);
@@ -199,7 +202,7 @@ public partial class App : System.Windows.Application
         w.Closed += (_, _) => _settingsWindow = null;
         if (_manager != null)
             w.Owner = _manager;
-        w.ShowDialog();
+        w.Show();
     }
 
     // 默认外观：按入口类型单独打开 —— forTaskOnly=true 只设置新建任务清单的默认，
@@ -211,26 +214,41 @@ public partial class App : System.Windows.Application
 
     public void OpenNoteSettings(StickyNoteWindow noteWindow)
     {
+        if (_noteSettingsWindows.TryGetValue(noteWindow, out var existing))
+        {
+            RestoreAndActivate(existing);
+            return;
+        }
         var w = new StickyNoteSettingsWindow(noteWindow);
         w.Owner = noteWindow;
+        _noteSettingsWindows.Add(noteWindow, w);
+        w.Closed += (_, _) => _noteSettingsWindows.Remove(noteWindow);
 
         WindowPlacement.PlaceBeside(w, noteWindow);
 
-        w.ShowDialog();
+        w.Show();
     }
 
     public void OpenTaskListSettings(TaskListWindow listWindow)
     {
+        if (_taskSettingsWindows.TryGetValue(listWindow, out var existing))
+        {
+            RestoreAndActivate(existing);
+            return;
+        }
         var w = new TaskListSettingsWindow(listWindow);
         w.Owner = listWindow;
+        _taskSettingsWindows.Add(listWindow, w);
+        w.Closed += (_, _) => _taskSettingsWindows.Remove(listWindow);
 
         WindowPlacement.PlaceBeside(w, listWindow);
 
-        w.ShowDialog();
+        w.Show();
     }
 
     public void OpenNote(StickyNoteModel note)
     {
+        if (note.IsArchived) { OpenArchived(note); return; }
         if (_openWindows.TryGetValue(note.Id, out var existing))
         {
             RestoreAndActivate(existing);
@@ -291,6 +309,7 @@ public partial class App : System.Windows.Application
     // 真正删除便签：关闭窗口并从数据/磁盘移除
     public void DeleteNote(StickyNoteModel note)
     {
+        CloseArchiveViewer(note.Id);
         if (_openWindows.TryGetValue(note.Id, out var win))
         {
             _openWindows.Remove(note.Id);
@@ -327,6 +346,7 @@ public partial class App : System.Windows.Application
 
     public void OpenTaskList(TaskListModel list)
     {
+        if (list.IsArchived) { OpenArchived(list); return; }
         if (_openTaskLists.TryGetValue(list.Id, out var existing))
         {
             RestoreAndActivate(existing);
@@ -368,6 +388,7 @@ public partial class App : System.Windows.Application
 
     public void DeleteTaskList(TaskListModel list)
     {
+        CloseArchiveViewer(list.Id);
         if (_openTaskLists.TryGetValue(list.Id, out var win))
         {
             _openTaskLists.Remove(list.Id);
@@ -377,6 +398,49 @@ public partial class App : System.Windows.Application
         _taskLists.Remove(list);
         SaveAll();
         _manager?.RefreshLists();
+    }
+
+    public void SetArchived(StickyNoteModel note, bool archived)
+    {
+        note.IsArchived = archived;
+        if (archived) HideNote(note);
+        CloseArchiveViewer(note.Id);
+        SaveAll();
+        _manager?.RefreshLists();
+    }
+
+    public void SetArchived(TaskListModel list, bool archived)
+    {
+        list.IsArchived = archived;
+        if (archived) HideTaskList(list);
+        CloseArchiveViewer(list.Id);
+        SaveAll();
+        _manager?.RefreshLists();
+    }
+
+    private void CloseArchiveViewer(Guid id)
+    {
+        if (_archiveViewers.Remove(id, out var viewer)) viewer.Close();
+    }
+
+    public void OpenArchived(StickyNoteModel note) => OpenArchived(note.Id,
+        () => new ArchiveViewerWindow(note, () => SetArchived(note, false)));
+
+    public void OpenArchived(TaskListModel list) => OpenArchived(list.Id,
+        () => new ArchiveViewerWindow(list, () => SetArchived(list, false)));
+
+    private void OpenArchived(Guid id, Func<ArchiveViewerWindow> create)
+    {
+        if (_archiveViewers.TryGetValue(id, out var existing))
+        {
+            RestoreAndActivate(existing);
+            return;
+        }
+        var viewer = create();
+        _archiveViewers.Add(id, viewer);
+        viewer.Closed += (_, _) => _archiveViewers.Remove(id);
+        if (_manager is not null) viewer.Owner = _manager;
+        viewer.Show();
     }
 
     public void ShowManager()
@@ -403,7 +467,7 @@ public partial class App : System.Windows.Application
             if (previous is null) continue;
             note.Left = previous.Left; note.Top = previous.Top;
             note.Width = previous.Width; note.Height = previous.Height;
-            note.IsOpen = previous.IsOpen;
+            note.IsOpen = !note.IsArchived && previous.IsOpen;
             note.BackgroundImagePath = previous.BackgroundImagePath;
         }
         foreach (var list in data.TaskLists)
@@ -412,7 +476,7 @@ public partial class App : System.Windows.Application
             if (previous is null) continue;
             list.Left = double.IsFinite(previous.Left) ? previous.Left : 200;
             list.Top = double.IsFinite(previous.Top) ? previous.Top : 150;
-            list.IsOpen = previous.IsOpen;
+            list.IsOpen = !list.IsArchived && previous.IsOpen;
             list.BackgroundImagePath = previous.BackgroundImagePath;
         }
         if (!FlushSaves()) throw new InvalidOperationException("本机数据尚未保存，无法替换同步数据。");
@@ -420,6 +484,7 @@ public partial class App : System.Windows.Application
         _applyingSync = true;
         try
         {
+            foreach (var viewer in _archiveViewers.Values.ToList()) viewer.Close();
             foreach (var win in _openWindows.Values.ToList()) win.Close();
             foreach (var win in _openTaskLists.Values.ToList()) win.Close();
             _openWindows.Clear();

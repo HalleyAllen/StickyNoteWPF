@@ -75,6 +75,7 @@ public class TaskListModel : INotifyPropertyChanged
     private bool _showCompleted = true;
     private bool _isLocked;
     private bool _isOpen;
+    private bool _isArchived;
 
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Title
@@ -151,6 +152,12 @@ public class TaskListModel : INotifyPropertyChanged
     {
         get => _isOpen;
         set { if (_isOpen == value) return; _isOpen = value; OnPropertyChanged(); }
+    }
+
+    public bool IsArchived
+    {
+        get => _isArchived;
+        set { if (_isArchived == value) return; _isArchived = value; OnPropertyChanged(); }
     }
 
     [JsonInclude]

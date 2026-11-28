@@ -51,6 +51,17 @@ public class StickyNoteModel : INotifyPropertyChanged
     public bool HoverToShow { get; set; } = false;       // 鼠标移到该便签区域才显示，移开隐藏
     public bool IsLocked { get; set; } = false;           // 锁定后便签内容只读，不可编辑
     public bool IsOpen { get; set; } = false;             // 是否处于打开（显示）状态，用于记住下次启动恢复
+    private bool _isArchived;
+    public bool IsArchived
+    {
+        get => _isArchived;
+        set
+        {
+            if (_isArchived == value) return;
+            _isArchived = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsArchived)));
+        }
+    }
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public event PropertyChangedEventHandler? PropertyChanged;
 }

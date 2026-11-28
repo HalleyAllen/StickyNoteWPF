@@ -162,7 +162,7 @@ public class AppSettings
     private static string Color(string? value, string fallback)
         => AppearanceHelper.TryParseColor(value, out _) ? value! : fallback;
 
-    public bool Save()
+    public virtual bool Save()
     {
         try
         {
